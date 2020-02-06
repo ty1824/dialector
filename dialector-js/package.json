@@ -1,0 +1,27 @@
+{
+  "name": "dialector-js",
+  "version": "1.0.0",
+  "description": "A langauge workbench for anyone.",
+  "main": "dialector.js",
+  "dependencies": {
+    "typescript": "^3.7.5"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ty1824/dialector.git"
+  },
+  "keywords": [
+    "language",
+    "workbench"
+  ],
+  "author": "Tyler Hodgkins (ty1824@gmail.com)",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ty1824/dialector/issues"
+  },
+  "homepage": "https://github.com/ty1824/dialector#readme"
+}
