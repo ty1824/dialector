@@ -4,21 +4,21 @@ import kotlin.reflect.KClass
 
 /**
  * A clause that describes a type.
- *
- * TypeClauses created for specific Types and Typeclasses are preferred as they facilitate caching. Create these
- * using the [type] and [typeClass] factories.
  */
-interface TypeClause {
-    fun match(candidate: Type): Boolean
+interface TypeClause<T : Type> {
+    val typeClass: KClass<out T>
+    fun constraint(candidate: T): Boolean
 }
+
+operator fun <T : Type> TypeClause<T>.invoke(candidate: Type) = this.typeClass.isInstance(candidate) && this.constraint(candidate as T)
 
 /**
  * A special TypeClause that matches against a specific Type.
  *
  * This specialization facilitates optimizations in TypeLattice implementation.
  */
-data class TypeObjectClause internal constructor(val type: Type) : TypeClause {
-    override fun match(candidate: Type): Boolean = type == candidate
+data class TypeObjectClause<T : Type> internal constructor(override val typeClass: KClass<out T>, val type: T) : TypeClause<T> {
+    override fun constraint(candidate: T): Boolean = type == candidate
 }
 
 /**
@@ -26,24 +26,25 @@ data class TypeObjectClause internal constructor(val type: Type) : TypeClause {
  *
  * This specialization facilitates optimizations in TypeLattice implementation.
  */
-data class TypeClassClause internal constructor(val typeClass: KClass<out Type>) : TypeClause {
-    override fun match(candidate: Type): Boolean = typeClass.isInstance(candidate)
+data class TypeClassClause<T : Type> internal constructor(override val typeClass: KClass<T>) : TypeClause<T> {
+    override fun constraint(candidate: T): Boolean = true
 }
 
 /**
  * Creates a TypeClause that matches against a specific Type.
  */
-fun type(type: Type): TypeClause = TypeObjectClause(type)
+fun <T : Type> type(type: T): TypeClause<T> = TypeObjectClause(type::class, type)
 
 /**
  * Creates a TypeClause that matches against a specific Typeclass.
  */
-fun typeClass(typeClass: KClass<out Type>): TypeClause = TypeClassClause(typeClass)
+fun <T : Type> typeClass(typeClass: KClass<T>): TypeClause<T> = TypeClassClause(typeClass)
 
 /**
  * Creates a TypeClause that matches types against a given predicate.
  */
-fun typeClause(predicate: (Type) -> Boolean) = object : TypeClause {
-    override fun match(candidate: Type): Boolean = predicate(candidate)
+inline fun <reified T : Type> typeClause(crossinline predicate: (T) -> Boolean) = object : TypeClause<T> {
+    override val typeClass = T::class
+    override fun constraint(candidate: T): Boolean = predicate(candidate)
 }
 

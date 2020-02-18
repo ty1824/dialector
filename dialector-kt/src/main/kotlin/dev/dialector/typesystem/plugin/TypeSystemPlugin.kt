@@ -8,3 +8,8 @@ import dev.dialector.typesystem.SupertypeRelation
 interface TypeSystemPlugin {
     val subtypeRelations: List<SupertypeRelation>
 }
+
+/**
+ * @param C The type of the configuration object this plugin supports.
+ */
+abstract class ConfigurableTypeSystemPlugin<C>
