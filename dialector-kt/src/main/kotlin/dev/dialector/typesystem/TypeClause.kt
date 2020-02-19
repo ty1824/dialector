@@ -1,5 +1,7 @@
 package dev.dialector.typesystem
 
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 import kotlin.reflect.KClass
 
 /**
@@ -10,7 +12,9 @@ interface TypeClause<T : Type> {
     fun constraint(candidate: T): Boolean
 }
 
-operator fun <T : Type> TypeClause<T>.invoke(candidate: Type) = this.typeClass.isInstance(candidate) && this.constraint(candidate as T)
+operator fun <T : Type> TypeClause<T>.invoke(candidate: Type): Boolean {
+    return this.typeClass.isInstance(candidate) && this.constraint(candidate as T)
+}
 
 /**
  * A special TypeClause that matches against a specific Type.

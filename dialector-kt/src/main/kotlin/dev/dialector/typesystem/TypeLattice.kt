@@ -1,10 +1,7 @@
 package dev.dialector.typesystem
 
-import com.google.common.collect.HashMultimap
-import com.google.common.collect.LinkedHashMultimap
-import com.google.common.collect.Multimap
 import dev.dialector.util.Cache
-import dev.dialector.util.lruCache
+import dev.dialector.util.lraCache
 
 import kotlin.reflect.KClass
 
@@ -22,29 +19,38 @@ interface TypeLattice {
 /**
  *
  */
-interface SupertypeRelation {
-    val isValidFor: TypeClause<*>
-    fun supertypes(type: Type): Iterable<Type>
+interface SupertypeRelation<T : Type> {
+    val isValidFor: TypeClause<T>
+    fun supertypes(type: T): Iterable<Type>
 }
+
+fun <T : Type> SupertypeRelation<T>.evaluate(candidate: Type): Iterable<Type>? =
+    if (this.isValidFor(candidate)) this.supertypes(candidate as T) else null
+
 
 interface ReplacementRule {
     fun check(subtype: Type, supertype: Type, lattice: TypeLattice): Boolean
 }
 
-infix fun <T : Type> TypeClause<T>.hasSupertypes(supertypes: (type: T) -> Iterable<Type>): SupertypeRelation = object : SupertypeRelation {
+infix fun <T : Type> TypeClause<T>.hasSupertypes(supertypeFunction: (type: T) -> Iterable<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
     override val isValidFor = this@hasSupertypes
-    override fun supertypes(type: Type): Iterable<Type> = supertypes(type)
+    override fun supertypes(type: T): Iterable<Type> = supertypeFunction(type)
+}
+
+infix fun <T : Type> TypeClause<T>.hasSupertypes(explicitSupertypes: Iterable<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
+    override val isValidFor = this@hasSupertypes
+    override fun supertypes(type: T): Iterable<Type> = explicitSupertypes
 }
 
 //val test = type(object : Type {}) hasSupertypes { object : Type {} }
 
-class SampleTypeLattice(supertypeRelations: Collection<SupertypeRelation>, subtypeRules: Collection<ReplacementRule>) : TypeLattice {
-    private val supertypeRelations: List<SupertypeRelation> = supertypeRelations.toList()
+class DefaultTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, subtypeRules: Collection<ReplacementRule>) : TypeLattice {
+    private val supertypeRelations: List<SupertypeRelation<*>> = supertypeRelations.toList()
     private val subtypeRules: List<ReplacementRule> = subtypeRules.toList()
     private val supertypes: MutableMap<Type, Set<Type>> = mutableMapOf()
-    private val subtypeCache: Cache<Pair<Type, Type>, Boolean> = lruCache(100)
+    private val subtypeCache: Cache<Pair<Type, Type>, Boolean> = lraCache(100)
 
-    override fun isSubtypeOf(candidate: Type, supertype: Type): Boolean =
+    override fun isSubtypeOf(candidate: Type, supertype: Type): Boolean = candidate == supertype ||
             subtypeCache.computeIfAbsent(candidate to supertype) { isSubtypeOf(it.first, it.second, mutableSetOf()) }
 
     private fun isSubtypeOf(candidate: Type, supertype: Type, visited: MutableSet<Type>): Boolean {
@@ -66,8 +72,13 @@ class SampleTypeLattice(supertypeRelations: Collection<SupertypeRelation>, subty
 
     override fun directSupertypes(type: Type): Set<Type> = supertypes.computeIfAbsent(type) {
         supertypeRelations.asSequence()
-                .filter { it.isValidFor(type) }
-                .flatMap { it.supertypes(type).asSequence() }
+                .flatMap {
+                    sequence<Type> {
+                        it.evaluate(type)?.apply {
+                            yieldAll(this)
+                        }
+                    }
+                }
                 .toSet()
     }
 }
