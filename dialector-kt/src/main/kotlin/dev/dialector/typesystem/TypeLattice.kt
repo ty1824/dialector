@@ -21,25 +21,25 @@ interface TypeLattice {
  */
 interface SupertypeRelation<T : Type> {
     val isValidFor: TypeClause<T>
-    fun supertypes(type: T): Iterable<Type>
+    fun supertypes(type: T): Sequence<Type>
 }
 
-fun <T : Type> SupertypeRelation<T>.evaluate(candidate: Type): Iterable<Type>? =
-    if (this.isValidFor(candidate)) this.supertypes(candidate as T) else null
+fun <T : Type> SupertypeRelation<T>.evaluate(candidate: Type): Sequence<Type> =
+    if (this.isValidFor(candidate)) this.supertypes(candidate as T) else sequenceOf()
 
 
 interface ReplacementRule {
     fun check(subtype: Type, supertype: Type, lattice: TypeLattice): Boolean
 }
 
-infix fun <T : Type> TypeClause<T>.hasSupertypes(supertypeFunction: (type: T) -> Iterable<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
+infix fun <T : Type> TypeClause<T>.hasSupertypes(supertypeFunction: (type: T) -> Sequence<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
     override val isValidFor = this@hasSupertypes
-    override fun supertypes(type: T): Iterable<Type> = supertypeFunction(type)
+    override fun supertypes(type: T): Sequence<Type> = supertypeFunction(type)
 }
 
-infix fun <T : Type> TypeClause<T>.hasSupertypes(explicitSupertypes: Iterable<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
+infix fun <T : Type> TypeClause<T>.hasSupertypes(explicitSupertypes: Sequence<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
     override val isValidFor = this@hasSupertypes
-    override fun supertypes(type: T): Iterable<Type> = explicitSupertypes
+    override fun supertypes(type: T): Sequence<Type> = explicitSupertypes
 }
 
 //val test = type(object : Type {}) hasSupertypes { object : Type {} }
@@ -57,18 +57,47 @@ class DefaultTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, s
         visited.add(candidate)
         val directSupertypes = directSupertypes(candidate)
         // Check supertypes first, if none apply then check if types are replaceable
-        if (directSupertypes.contains(supertype) || subtypeRules.any { it.check(candidate, supertype, this ) }) {
-            return true
-        } else {
-            // If no match found, recurse on supertypes.
-            return directSupertypes.asSequence().minus(visited).any { isSubtypeOf(it, supertype, visited) } || subtypeRules.any { it.check(candidate, supertype, this ) }
-        }
+        return directSupertypes.contains(supertype) ||
+                subtypeRules.any { it.check(candidate, supertype, this ) } ||
+                // If no match found, recurse on supertypes.
+                directSupertypes.asSequence()
+                        .minus(visited)
+                        .any { isSubtypeOf(it, supertype, visited) }
 
     }
 
     override fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val initialTypes = types.asSequence()
+                .distinct()
+                .filter { supertypeFilter(types, it) }
+
+        if (initialTypes.none() || initialTypes.drop(1).none()) {
+            return initialTypes.toSet()
+        }
+
+        var frontier: Sequence<Type> = initialTypes
+        val result: MutableSet<Type> = mutableSetOf()
+        do {
+            frontier = frontier.flatMap { directSupertypes(it).asSequence() }
+                    .distinct()
+                    .filter { supertypeFilter(frontier.asIterable(), it)}
+                    .filter { type ->
+                        // If all of the input types is a subtype of this type, filter it out
+                        if (initialTypes.all { isSubtypeOf(it, type) }) {
+                            // Additionally, if none of the existing result types is a subtype of this type, add it to result
+                            if (result.none { isSubtypeOf(it, type) }) result += type
+                            false
+                        } else true
+                    }
+
+        } while (frontier.none())
+
+        return result.filter { subtypeFilter(result, it) }.toSet()
     }
+
+    private fun supertypeFilter(types: Iterable<Type>, type: Type) = types.none { type != it && isSubtypeOf(it, type) }
+    private fun subtypeFilter(types: Iterable<Type>, type: Type) = types.none { type != it && isSubtypeOf(type, it) }
+
 
     override fun directSupertypes(type: Type): Set<Type> = supertypes.computeIfAbsent(type) {
         supertypeRelations.asSequence()

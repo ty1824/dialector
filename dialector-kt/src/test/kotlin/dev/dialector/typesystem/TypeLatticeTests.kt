@@ -14,8 +14,8 @@ class TypeLatticeTests {
         val c = object : IdentityType() {}
 
         val lattice = DefaultTypeLattice(listOf(
-                type(a) hasSupertypes listOf(b),
-                type(b) hasSupertypes listOf(c)
+                type(a) hasSupertypes sequenceOf(b),
+                type(b) hasSupertypes sequenceOf(c)
         ), listOf())
 
         assertAll("basic lattice",
