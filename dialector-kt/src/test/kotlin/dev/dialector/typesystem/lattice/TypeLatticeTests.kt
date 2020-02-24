@@ -1,5 +1,7 @@
-package dev.dialector.typesystem
+package dev.dialector.typesystem.lattice
 
+import dev.dialector.typesystem.IdentityType
+import dev.dialector.typesystem.type
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

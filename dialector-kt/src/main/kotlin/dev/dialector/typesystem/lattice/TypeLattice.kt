@@ -1,9 +1,10 @@
-package dev.dialector.typesystem
+package dev.dialector.typesystem.lattice
 
+import dev.dialector.typesystem.Type
+import dev.dialector.typesystem.TypeClause
+import dev.dialector.typesystem.invoke
 import dev.dialector.util.Cache
 import dev.dialector.util.lraCache
-
-import kotlin.reflect.KClass
 
 interface TypeLattice {
     fun isSubtypeOf(candidate: Type, supertype: Type): Boolean

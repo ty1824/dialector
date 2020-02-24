@@ -16,7 +16,6 @@ interface Type {
  */
 abstract class IdentityType : Type {
     override fun equals(other: Any?): Boolean = this::class.isInstance(other)
-
     override fun hashCode(): Int = this::class.hashCode()
 }
 
