@@ -1,6 +1,7 @@
 package dev.dialector.typesystem.inference
 
 import dev.dialector.typesystem.Type
+import dev.dialector.typesystem.lattice.TypeLattice
 
 sealed class InferenceTerm {
     abstract val id: Int
@@ -19,33 +20,25 @@ sealed class Relation {
     data class Supertype(override val left: InferenceTerm, override val right: InferenceTerm) : Relation()
 }
 
-typealias Relations = Pair<InferenceTerm, InferenceTerm>
-
-sealed class Bound {
-    abstract val variable: VariableTerm
-    abstract val bound: InferenceTerm
-}
-
-data class UpperBound(override val variable: VariableTerm, override val bound: InferenceTerm) : Bound()
-data class LowerBound(override val variable: VariableTerm, override val bound: InferenceTerm) : Bound()
-
 interface InferenceEnvironment {
 
 }
 
 interface InferenceSolver {
-    fun solve(context: InferenceContext): Map<InferenceTerm, Type>
+    fun solve(context: InferenceContext): Map<InferenceTerm, InferenceResult>
 }
 
-class InferenceContext {
-    val relationGroups: MutableMap<VariableTerm, Group> = mutableMapOf()
+class InferenceContext(val lattice: TypeLattice) {
+    private val relationGroups: MutableMap<VariableTerm, Group> = mutableMapOf()
+
+    private fun getRelationGroup(variable: VariableTerm) = relationGroups.computeIfAbsent(variable) { Group(setOf(variable)) }
 
     /**
      * Register equality between two terms
      */
     public fun equality(left: InferenceTerm, right: InferenceTerm) {
-        val leftGroup = if (left is VariableTerm) relationGroups.computeIfAbsent(left) { Group(setOf(left)) } else Group(setOf(left))
-        val rightGroup = if (right is VariableTerm) relationGroups.computeIfAbsent(right) { Group(setOf(right)) }  else Group(setOf(right))
+        val leftGroup = if (left is VariableTerm) getRelationGroup(left) else Group(setOf(left))
+        val rightGroup = if (right is VariableTerm) getRelationGroup(right)  else Group(setOf(right))
 
         // If these two are not already in the same group, unify their groups
         if (leftGroup != rightGroup) {
@@ -56,16 +49,24 @@ class InferenceContext {
     /**
      * Register a lower bound for a variable
      */
-    public fun lowerBound(left: VariableTerm, right: InferenceTerm) {
-        relationGroups.computeIfAbsent(left) { Group(setOf(left)) }.lowerBounds += right
+    public fun subtype(left: VariableTerm, right: InferenceTerm) {
+        getRelationGroup(left).lowerBounds += asBound(right)
     }
 
     /**
      * Register an upper bound for a variable
      */
-    public fun upperBound(left: VariableTerm, right: InferenceTerm) {
-        relationGroups.computeIfAbsent(left) { Group(setOf(left)) }.upperBounds += right
+    public fun supertype(left: VariableTerm, right: InferenceTerm) {
+        getRelationGroup(left).upperBounds += asBound(right)
     }
+
+    public fun getRelationGroups(): Map<VariableTerm, Group> = this.relationGroups.toMap()
+
+    private fun asBound(term: InferenceTerm): Bound =
+        when (term) {
+            is VariableTerm -> Bound.GroupBound(getRelationGroup(term))
+            is TypeTerm -> Bound.TypeBound(term)
+        }
 
     private fun Group.unify(other: Group) {
         this.terms += other.terms
@@ -90,17 +91,64 @@ class InferenceContext {
      */
     class Group(
         terms: Set<InferenceTerm>,
-        upperBounds: Set<InferenceTerm> = setOf(),
-        lowerBounds: Set<InferenceTerm> = setOf()
+        upperBounds: Set<Bound> = setOf(),
+        lowerBounds: Set<Bound> = setOf()
     ) {
         val terms: MutableSet<InferenceTerm> = terms.toMutableSet()
-        val upperBounds: MutableSet<InferenceTerm> = upperBounds.toMutableSet()
-        val lowerBounds: MutableSet<InferenceTerm> = lowerBounds.toMutableSet()
+        val upperBounds: MutableSet<Bound> = upperBounds.toMutableSet()
+        val lowerBounds: MutableSet<Bound> = lowerBounds.toMutableSet()
     }
 }
 
+sealed class Bound {
+    data class TypeBound(val type: TypeTerm) : Bound()
+    data class GroupBound(val group: InferenceContext.Group) : Bound()
+}
+
+interface InferenceResult
+
+class TypeResult(val type: Type) : InferenceResult
+
+class ErrorResult(val reason: String) : InferenceResult
+
 object DefaultInferenceSolver : InferenceSolver {
-    override fun solve(context: InferenceContext): Map<InferenceTerm, Type> {
-        TODO("Not yet implemented")
+    override fun solve(context: InferenceContext): Map<InferenceTerm, InferenceResult> {
+        val typeMap: MutableMap<InferenceContext.Group, InferenceResult> = mutableMapOf()
+
+        val inequalities = context.getRelationGroups().values.filter { group ->
+            val typeTerms = group.terms.filterIsInstance<TypeTerm>()
+            if (typeTerms.size > 0) {
+                if (typeTerms.size == 1) {
+                    typeMap[group] = TypeResult(typeTerms.first().type)
+                    false
+                } else {
+                    typeMap[group] = ErrorResult("Too many bound types: " + typeTerms.toString())
+                    false
+                }
+            }
+
+            true
+        }.toMutableSet()
+
+//        while (inequalities.isNotEmpty()) {
+//            val current = inequalities.first()
+//            val upperBound = current.upperBounds.
+//
+//
+//        }
+
+        return typeMap.keys.flatMap { group ->
+            val type = typeMap[group]?.let { it } ?: ErrorResult("No type inferred")
+            group.terms.map { it to type }
+        }.toMap()
     }
+
+//    private fun Set<Bound>.resolve(typeMap: Map<InferenceContext.Group, InferenceResult>): Set<InferenceResult> {
+//        return this.map {
+//            when (it) {
+//                is Bound.TypeBound -> TypeResult(it.type)
+//                is Bound.GroupBound -> typeMap[it.group]
+//            }
+//        }.toSet()
+//    }
 }
