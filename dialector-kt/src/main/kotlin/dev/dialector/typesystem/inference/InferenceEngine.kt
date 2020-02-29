@@ -2,6 +2,7 @@ package dev.dialector.typesystem.inference
 
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.lattice.TypeLattice
+import java.util.concurrent.atomic.AtomicInteger
 
 sealed class InferenceTerm {
     abstract val id: Int
@@ -29,14 +30,20 @@ interface InferenceSolver {
 }
 
 class InferenceContext(val lattice: TypeLattice) {
+    private var termIndex: AtomicInteger = AtomicInteger(0)
+
     private val relationGroups: MutableMap<VariableTerm, Group> = mutableMapOf()
 
     private fun getRelationGroup(variable: VariableTerm) = relationGroups.computeIfAbsent(variable) { Group(setOf(variable)) }
 
+    fun varTerm(): VariableTerm = VariableTerm(termIndex.getAndIncrement())
+
+    fun typeTerm(type: Type): TypeTerm = TypeTerm(termIndex.getAndIncrement(), type)
+
     /**
      * Register equality between two terms
      */
-    public fun equality(left: InferenceTerm, right: InferenceTerm) {
+    fun equality(left: InferenceTerm, right: InferenceTerm) {
         val leftGroup = if (left is VariableTerm) getRelationGroup(left) else Group(setOf(left))
         val rightGroup = if (right is VariableTerm) getRelationGroup(right)  else Group(setOf(right))
 
@@ -49,18 +56,18 @@ class InferenceContext(val lattice: TypeLattice) {
     /**
      * Register a lower bound for a variable
      */
-    public fun subtype(left: VariableTerm, right: InferenceTerm) {
+    fun subtype(left: VariableTerm, right: InferenceTerm) {
         getRelationGroup(left).lowerBounds += asBound(right)
     }
 
     /**
      * Register an upper bound for a variable
      */
-    public fun supertype(left: VariableTerm, right: InferenceTerm) {
+    fun supertype(left: VariableTerm, right: InferenceTerm) {
         getRelationGroup(left).upperBounds += asBound(right)
     }
 
-    public fun getRelationGroups(): Map<VariableTerm, Group> = this.relationGroups.toMap()
+    fun getRelationGroups(): Map<VariableTerm, Group> = this.relationGroups.toMap()
 
     private fun asBound(term: InferenceTerm): Bound =
         when (term) {
@@ -115,19 +122,19 @@ object DefaultInferenceSolver : InferenceSolver {
     override fun solve(context: InferenceContext): Map<InferenceTerm, InferenceResult> {
         val typeMap: MutableMap<InferenceContext.Group, InferenceResult> = mutableMapOf()
 
+        // Handle types without inequalities and isolate inequalities
         val inequalities = context.getRelationGroups().values.filter { group ->
             val typeTerms = group.terms.filterIsInstance<TypeTerm>()
             if (typeTerms.size > 0) {
                 if (typeTerms.size == 1) {
-                    typeMap[group] = TypeResult(typeTerms.first().type)
+                    val groupType = typeTerms.first().type
+                    typeMap[group] = TypeResult(groupType)
                     false
                 } else {
-                    typeMap[group] = ErrorResult("Too many bound types: " + typeTerms.toString())
+                    typeMap[group] = ErrorResult("Too many bound types: $typeTerms")
                     false
                 }
-            }
-
-            true
+            } else true
         }.toMutableSet()
 
 //        while (inequalities.isNotEmpty()) {
