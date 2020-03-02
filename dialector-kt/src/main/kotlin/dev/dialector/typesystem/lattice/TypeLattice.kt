@@ -2,12 +2,14 @@ package dev.dialector.typesystem.lattice
 
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.TypeClause
+import dev.dialector.typesystem.TypeObjectClause
 import dev.dialector.typesystem.invoke
 import dev.dialector.util.Cache
 import dev.dialector.util.lraCache
 
 interface TypeLattice {
     fun isSubtypeOf(candidate: Type, supertype: Type): Boolean
+    fun isEquivalent(candidate: Type, other: Type): Boolean
     fun leastCommonSupertypes(types: Iterable<Type>): Set<Type>
 
     /**
@@ -52,6 +54,14 @@ class DefaultTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, s
     private val supertypes: MutableMap<Type, Set<Type>> = mutableMapOf()
     private val subtypeCache: Cache<Pair<Type, Type>, Boolean> = lraCache(100)
 
+    init {
+        this.supertypeRelations.asSequence()
+                .map { it.isValidFor }
+                .filterIsInstance<TypeObjectClause<*>>()
+                .map { it.type }
+                .forEach { this.directSupertypes(it) }
+    }
+
     override fun isSubtypeOf(candidate: Type, supertype: Type): Boolean = candidate == supertype ||
             subtypeCache.computeIfAbsent(candidate to supertype) { isSubtypeOf(it.first, it.second, mutableSetOf()) }
 
@@ -68,8 +78,12 @@ class DefaultTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, s
 
     }
 
+    override fun isEquivalent(candidate: Type, other: Type): Boolean {
+        return candidate == other
+    }
+
     override fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
-        val initialTypes = types.asSequence().filterRedundantSupertypes()
+        val initialTypes = types.asSequence().filterRedundantSubtypes()
 
         if (initialTypes.none() || initialTypes.drop(1).none()) {
             return initialTypes.toSet()
@@ -80,7 +94,6 @@ class DefaultTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, s
         do {
             frontier = frontier.asSequence()
                     .flatMap { directSupertypes(it).asSequence() }
-                    .distinct()
                     .filterRedundantSupertypes()
                     .filter { type ->
                         // If all of the input types is a subtype of this type, filter it out
@@ -93,23 +106,27 @@ class DefaultTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, s
 
         } while (frontier.isNotEmpty())
 
-        return result.asSequence().filterRedundantSubtypes().toSet()
+        return result.asSequence().filterRedundantSupertypes().toSet()
     }
 
     private fun Sequence<Type>.filterRedundantSupertypes(): Sequence<Type> =
-            this.distinct().filter { type -> this.none { type != it && isSubtypeOf(type, it) } }
+            this.distinct().filter { type ->
+                this.none {
+                    type != it && isSubtypeOf(it, type)
+                }
+            }
 
     private fun Sequence<Type>.filterRedundantSubtypes(): Sequence<Type> =
-            this.distinct().filter { type -> this.none { type != it && isSubtypeOf(it, type) }}
+            this.distinct().filter { type ->
+                this.none {
+                    type != it && isSubtypeOf(type, it)
+                }
+            }
 
 
     override fun directSupertypes(type: Type): Set<Type> = supertypes.computeIfAbsent(type) {
         supertypeRelations.asSequence()
-                .flatMap {
-                    sequence<Type> {
-                        yieldAll(it.evaluate(type))
-                    }
-                }
+                .flatMap { it.evaluate(type) }
                 .toSet()
     }
 }

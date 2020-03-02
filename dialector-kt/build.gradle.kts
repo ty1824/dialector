@@ -14,6 +14,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.9.3")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("com.natpryce:hamkrest:1.7.0.2")
 
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
 }
