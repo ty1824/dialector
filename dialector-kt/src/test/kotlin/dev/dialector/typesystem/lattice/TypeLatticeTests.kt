@@ -20,7 +20,7 @@ class TypeLatticeTests {
 
     @Test
     fun isSubtypeOfBasicTest() {
-        val lattice = DefaultTypeLattice(listOf(
+        val lattice = SimpleTypeLattice(listOf(
                 type(a) hasSupertypes sequenceOf(b),
                 type(b) hasSupertypes sequenceOf(c)
         ), listOf())
@@ -40,7 +40,7 @@ class TypeLatticeTests {
 
     @Test
     fun commonSupertypeTest() {
-        val lattice = DefaultTypeLattice(listOf(
+        val lattice = SimpleTypeLattice(listOf(
                 typeClass(Type::class) hasSupertypes sequenceOf(any),
                 type(a) hasSupertypes sequenceOf(c),
                 type(b) hasSupertypes sequenceOf(c),
@@ -57,7 +57,7 @@ class TypeLatticeTests {
 
     @Test
     fun `multiple valid common supertypes`() {
-        val lattice = DefaultTypeLattice(listOf(
+        val lattice = SimpleTypeLattice(listOf(
                 typeClass(Type::class) hasSupertypes sequenceOf(any),
                 type(a) hasSupertypes sequenceOf(g, f),
                 type(b) hasSupertypes sequenceOf(g, f),

@@ -2,15 +2,70 @@ package dev.dialector.typesystem.lattice
 
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.TypeClause
-import dev.dialector.typesystem.TypeObjectClause
 import dev.dialector.typesystem.invoke
-import dev.dialector.util.Cache
-import dev.dialector.util.lraCache
 
-interface TypeLattice {
-    fun isSubtypeOf(candidate: Type, supertype: Type): Boolean
-    fun isEquivalent(candidate: Type, other: Type): Boolean
+/**
+ * Defines algorithms for resolving the supremum and infimum of some set of types.
+ */
+interface ExtremumSolver {
+    /**
+     * Resolves the set of least common supertypes, otherwise known as the supremum, for the input types.
+     *
+     * A Common Supertype of some set of types T0-Tn is defined as some type S that is a supertype of all types T0-Tn.
+     *
+     * A Least Common Supertype for some set of types T0-Tn is defined as some Common Supertype S that is a subtype of
+     * a unique set of Common Supertypes. There may be multiple candidate types that meet these constraints, this
+     * function should return all applicable results.
+     */
     fun leastCommonSupertypes(types: Iterable<Type>): Set<Type>
+
+    /**
+     * Resolves to the single least common supertype (supremum). Unlike [leastCommonSupertypes], this should reduce the set of
+     * candidates down to a single valid type.
+     */
+    fun leastCommonSupertype(types: Iterable<Type>): Type
+
+    /**
+     * Resolves the set of greatest common subtypes, otherwise known as the infimum, for input types.
+     *
+     * A Common Subtype of some set of types T0-Tn is defined as some type S that is a subtype of all types T0-Tn.
+     *
+     * A Greatest Common Subtype for some set of types T0-Tn is defined as some Common Subtype S that is a supertype of
+     * a unique set of Common Subtypes. There may be multiple candidate types that meet these constraints, this
+     * function should return all applicable results.
+     */
+    fun greatestCommonSubtypes(types: Iterable<Type>): Set<Type>
+
+    /**
+     * Resolves to the single greatest common subtype (infimum). Unlike [greatestCommonSubtypes], this should reduce the set of
+     * candidates down to a single valid type.
+     */
+    fun greatestCommonSubtype(types: Iterable<Type>): Type
+}
+
+/**
+ * An object that maintains the type inheritance graph in lattice form.
+ */
+interface TypeLattice : ExtremumSolver {
+    /**
+     * The common supertype of all other types.
+     */
+    val topType: Type
+
+    /**
+     * The common subtype of all other types.
+     */
+    val bottomType: Type
+
+    /**
+     * Returns true if the candidate type is a subtype of the expected supertype.
+     */
+    fun isSubtypeOf(candidate: Type, supertype: Type): Boolean
+
+    /**
+     * Returns true if the candidate type is considered to be the same type as the other type.
+     */
+    fun isEquivalent(candidate: Type, other: Type): Boolean
 
     /**
      * Returns supertypes defined by [SupertypingRelation]s, does not include implicit supertypes derived from
@@ -20,7 +75,8 @@ interface TypeLattice {
 }
 
 /**
- *
+ * Defines a relation between some category of types matching a [TypeClause] and a set of valid supertypes for all types
+ * in that category. Multiple relations may apply to the same type.
  */
 interface SupertypeRelation<T : Type> {
     val isValidFor: TypeClause<T>
@@ -32,7 +88,7 @@ fun <T : Type> SupertypeRelation<T>.evaluate(candidate: Type): Sequence<Type> =
     if (this.isValidFor(candidate)) this.supertypes(candidate as T) else sequenceOf()
 
 
-interface ReplacementRule {
+interface SupertypeRule {
     fun check(subtype: Type, supertype: Type, lattice: TypeLattice): Boolean
 }
 
@@ -46,87 +102,4 @@ infix fun <T : Type> TypeClause<T>.hasSupertypes(explicitSupertypes: Sequence<Ty
     override fun supertypes(type: T): Sequence<Type> = explicitSupertypes
 }
 
-//val test = type(object : Type {}) hasSupertypes { object : Type {} }
 
-class DefaultTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, subtypeRules: Collection<ReplacementRule>) : TypeLattice {
-    private val supertypeRelations: List<SupertypeRelation<*>> = supertypeRelations.toList()
-    private val subtypeRules: List<ReplacementRule> = subtypeRules.toList()
-    private val supertypes: MutableMap<Type, Set<Type>> = mutableMapOf()
-    private val subtypeCache: Cache<Pair<Type, Type>, Boolean> = lraCache(100)
-
-    init {
-        this.supertypeRelations.asSequence()
-                .map { it.isValidFor }
-                .filterIsInstance<TypeObjectClause<*>>()
-                .map { it.type }
-                .forEach { this.directSupertypes(it) }
-    }
-
-    override fun isSubtypeOf(candidate: Type, supertype: Type): Boolean = candidate == supertype ||
-            subtypeCache.computeIfAbsent(candidate to supertype) { isSubtypeOf(it.first, it.second, mutableSetOf()) }
-
-    private fun isSubtypeOf(candidate: Type, supertype: Type, visited: MutableSet<Type>): Boolean {
-        visited.add(candidate)
-        val directSupertypes = directSupertypes(candidate)
-        // Check supertypes first, if none apply then check if types are replaceable
-        return directSupertypes.contains(supertype) ||
-                subtypeRules.any { it.check(candidate, supertype, this ) } ||
-                // If no match found, recurse on supertypes.
-                directSupertypes.asSequence()
-                        .minus(visited)
-                        .any { isSubtypeOf(it, supertype, visited) }
-
-    }
-
-    override fun isEquivalent(candidate: Type, other: Type): Boolean {
-        return candidate == other
-    }
-
-    override fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
-        val initialTypes = types.asSequence().filterRedundantSubtypes()
-
-        if (initialTypes.none() || initialTypes.drop(1).none()) {
-            return initialTypes.toSet()
-        }
-
-        var frontier: Set<Type> = initialTypes.toSet()
-        val result: MutableSet<Type> = mutableSetOf()
-        do {
-            frontier = frontier.asSequence()
-                    .flatMap { directSupertypes(it).asSequence() }
-                    .filterRedundantSupertypes()
-                    .filter { type ->
-                        // If all of the input types is a subtype of this type, filter it out
-                        if (initialTypes.all { isSubtypeOf(it, type) }) {
-                            // Additionally, if none of the existing result types is a subtype of this type, add it to result
-                            if (result.none { isSubtypeOf(it, type) }) result += type
-                            false
-                        } else true
-                    }.toSet()
-
-        } while (frontier.isNotEmpty())
-
-        return result.asSequence().filterRedundantSupertypes().toSet()
-    }
-
-    private fun Sequence<Type>.filterRedundantSupertypes(): Sequence<Type> =
-            this.distinct().filter { type ->
-                this.none {
-                    type != it && isSubtypeOf(it, type)
-                }
-            }
-
-    private fun Sequence<Type>.filterRedundantSubtypes(): Sequence<Type> =
-            this.distinct().filter { type ->
-                this.none {
-                    type != it && isSubtypeOf(type, it)
-                }
-            }
-
-
-    override fun directSupertypes(type: Type): Set<Type> = supertypes.computeIfAbsent(type) {
-        supertypeRelations.asSequence()
-                .flatMap { it.evaluate(type) }
-                .toSet()
-    }
-}

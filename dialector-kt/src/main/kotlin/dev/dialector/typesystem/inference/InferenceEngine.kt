@@ -131,12 +131,12 @@ interface InferenceContext {
     /**
      * Indicates that the left term must be a subtype of the right term (left <= right)
      */
-    fun subtype(left: VariableTerm, right: VariableTerm)
+    fun subtype(left: VariableTerm, right: VariableTerm): InferenceResult
 
     /**
      * Indicates that the left term must be a supertype of the right term (left >= right)
      */
-    fun supertype(left: VariableTerm, right: VariableTerm)
+    fun supertype(left: VariableTerm, right: VariableTerm): InferenceResult
 }
 
 internal class BaseInferenceContext(override val lattice: TypeLattice) : InferenceContext {
@@ -173,24 +173,6 @@ internal class BaseInferenceContext(override val lattice: TypeLattice) : Inferen
                 // type == type
                 is TypeTerm -> equals(left, right)
             }
-//            // variable == variable
-//            left is VariableTerm && right is VariableTerm -> {
-//                getRelationGroup(left).unify(getRelationGroup(right))
-//            }
-//            // variable == type
-//            left is VariableTerm && right is TypeTerm -> {
-//                getRelationGroup(left).unify(right)
-//            }
-//            // type == variable
-//            left is TypeTerm && right is VariableTerm -> {
-//                getRelationGroup(right).unify(left)
-//            }
-//            // type == type
-//            left is TypeTerm && right is TypeTerm -> {
-//                if (lattice.isEquivalent(left.type, right.type)) {
-//                    InferenceResult.Ok
-//                } else InferenceResult.Error("Types not equivalent: ${left.type} and ${right.type}")
-//            }
         }
 
     /**
@@ -245,15 +227,29 @@ internal class BaseInferenceContext(override val lattice: TypeLattice) : Inferen
     /**
      * Indicates that the left term must be a subtype of the right term (left <= right)
      */
-    override fun subtype(left: VariableTerm, right: VariableTerm) {
-        getRelationGroup(left).upperBounds += getRelationGroup(right)
+    override fun subtype(left: VariableTerm, right: VariableTerm): InferenceResult {
+        val leftGroup = getRelationGroup(left)
+        val rightGroup = getRelationGroup(right)
+
+        // Check if this is invalid given existing state
+//        if (leftGroup.)
+
+        leftGroup.upperBounds += rightGroup
+        rightGroup.lowerBounds += leftGroup
+
+        return InferenceResult.Ok
     }
 
     /**
      * Indicates that the left term must be a supertype of the right term (left >= right)
      */
-    override fun supertype(left: VariableTerm, right: VariableTerm) {
-        getRelationGroup(left).lowerBounds += getRelationGroup(right)
+    override fun supertype(left: VariableTerm, right: VariableTerm): InferenceResult {
+        val leftGroup = getRelationGroup(left)
+        val rightGroup = getRelationGroup(right)
+        leftGroup.lowerBounds += rightGroup
+        rightGroup.upperBounds += leftGroup
+
+        return InferenceResult.Ok
     }
 
     private fun MutableInferenceGroup.unify(other: MutableInferenceGroup): Boolean =

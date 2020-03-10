@@ -1,21 +1,24 @@
 package dev.dialector.typesystem.inference
 
-import com.natpryce.hamkrest.MatchResult
-import com.natpryce.hamkrest.Matcher
-import com.natpryce.hamkrest.assertion.assertThat
 import dev.dialector.typesystem.IdentityType
 import dev.dialector.typesystem.Type
+import dev.dialector.typesystem.lattice.SimpleTypeLattice
 import dev.dialector.typesystem.lattice.TypeLattice
+import dev.dialector.typesystem.lattice.hasSupertypes
+import dev.dialector.typesystem.type
+import dev.dialector.typesystem.typeClass
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
-import kotlin.reflect.KClass
 
 class InferenceEngineTest {
     private val booleanType = object : IdentityType("boolean") {}
     private val stringType = object : IdentityType("string") {}
+    private val integerType = object : IdentityType("integer") {}
+    private val numberType = object : IdentityType("number") {}
+    private val anyType = object : IdentityType("any") {}
 
     @Test
     fun `simple equality inference`() {
@@ -58,5 +61,22 @@ class InferenceEngineTest {
         assertEquals(context.equals(var2, var3), InferenceResult.Ok)
         val equals = context.equals(var3, stringTerm)
         assertEquals(equals, InferenceResult.UnifyError(var3, stringTerm))
+    }
+
+    @Test
+    fun `simple inequality inference`() {
+        val lattice = SimpleTypeLattice(listOf(
+            // integer < number
+            type(integerType) hasSupertypes sequenceOf(numberType),
+            // ~all types~ < any
+            typeClass(Type::class) hasSupertypes sequenceOf(anyType)
+        ), listOf())
+
+        val context = BaseInferenceContext(lattice)
+
+        val var1 = context.varTerm()
+        val var2 = context.varTerm()
+
+        val integerTerm = context.asTerm(integerType)
     }
 }
