@@ -53,7 +53,7 @@ class SimpleTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, su
         return candidate == other
     }
 
-    override fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
+    fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
         assert(!types.none()) { "May not call leastCommonSupertypes without at least one argument type"}
 
         val initialTypes = types.asSequence().filterRedundantSubtypes()
@@ -84,18 +84,24 @@ class SimpleTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, su
 
     override fun leastCommonSupertype(types: Iterable<Type>): Type {
         assert(!types.none()) { "May not call leastCommonSupertype without at least one argument type"}
-        return OrType(leastCommonSupertypes(types))
-    }
+        val commonSupertypes = leastCommonSupertypes(types)
 
-    override fun greatestCommonSubtypes(types: Iterable<Type>): Set<Type> {
-        assert(!types.none()) { "May not call greatestCommonSubtypes without at least one argument type"}
-        return setOf(greatestCommonSubtype(types))
+        return if (commonSupertypes.size > 1) {
+            OrType(commonSupertypes)
+        } else {
+            commonSupertypes.first()
+        }
     }
 
     override fun greatestCommonSubtype(types: Iterable<Type>): Type {
         assert(!types.none()) { "May not call greatestCommonSubtype without at least one argument type"}
-        val filteredTypes = types.asSequence().filterRedundantSupertypes()
-        return AndType(filteredTypes.toSet())
+        val filteredTypes = types.asSequence().filterRedundantSupertypes().toSet()
+
+        return if (filteredTypes.size > 1) {
+            AndType(filteredTypes)
+        } else {
+            filteredTypes.first()
+        }
     }
 
     private fun Sequence<Type>.filterRedundantSupertypes(): Sequence<Type> =

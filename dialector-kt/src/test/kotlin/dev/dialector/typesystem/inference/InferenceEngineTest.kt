@@ -22,20 +22,20 @@ class InferenceEngineTest {
 
     @Test
     fun `simple equality inference`() {
-        val context = BaseInferenceContext(mockk<TypeLattice>())
+        val system = BaseInferenceSystem(mockk<TypeLattice>())
 
-        val var1 = context.varTerm()
-        val var2 = context.varTerm()
-        val var3 = context.varTerm()
+        val var1 = system.varTerm()
+        val var2 = system.varTerm()
+        val var3 = system.varTerm()
 
-        val boolTerm = context.asTerm(booleanType)
-        val stringTerm = context.asTerm(stringType)
+        val boolTerm = system.asTerm(booleanType)
+        val stringTerm = system.asTerm(stringType)
 
-        context.equals(var1, boolTerm)
-        context.equals(var2, var1)
-        context.equals(var3, stringTerm)
+        system.equals(var1, boolTerm)
+        system.equals(var2, var1)
+        system.equals(var3, stringTerm)
 
-        val result = DefaultInferenceSolver.solve(context)
+        val result = DefaultInferenceSolver.solve(system)
         assertAll("variable results",
                 { assertEquals(booleanType, (result[var1] as TypeResult.Success).type) },
                 { assertEquals(booleanType, (result[var2] as TypeResult.Success).type) },
@@ -47,19 +47,19 @@ class InferenceEngineTest {
     fun `exception with too many bound types`() {
         val lattice = mockk<TypeLattice>()
         every { lattice.isEquivalent(any<Type>(), any<Type>()) } returns false
-        val context = BaseInferenceContext(lattice)
+        val system = BaseInferenceSystem(lattice)
 
-        val var1 = context.varTerm()
-        val var2 = context.varTerm()
-        val var3 = context.varTerm()
+        val var1 = system.varTerm()
+        val var2 = system.varTerm()
+        val var3 = system.varTerm()
 
-        val boolTerm = context.asTerm(booleanType)
-        val stringTerm = context.asTerm(stringType)
+        val boolTerm = system.asTerm(booleanType)
+        val stringTerm = system.asTerm(stringType)
 
-        assertEquals(context.equals(var1, boolTerm), InferenceResult.Ok)
-        assertEquals(context.equals(var2, var1), InferenceResult.Ok)
-        assertEquals(context.equals(var2, var3), InferenceResult.Ok)
-        val equals = context.equals(var3, stringTerm)
+        assertEquals(system.equals(var1, boolTerm), InferenceResult.Ok)
+        assertEquals(system.equals(var2, var1), InferenceResult.Ok)
+        assertEquals(system.equals(var2, var3), InferenceResult.Ok)
+        val equals = system.equals(var3, stringTerm)
         assertEquals(equals, InferenceResult.UnifyError(var3, stringTerm))
     }
 
@@ -72,11 +72,20 @@ class InferenceEngineTest {
             typeClass(Type::class) hasSupertypes sequenceOf(anyType)
         ), listOf())
 
-        val context = BaseInferenceContext(lattice)
+        val system = BaseInferenceSystem(lattice)
 
-        val var1 = context.varTerm()
-        val var2 = context.varTerm()
+        val var1 = system.varTerm()
+        val var2 = system.varTerm()
 
-        val integerTerm = context.asTerm(integerType)
+        val integerTerm = system.asTerm(integerType)
+
+        system.equals(var1, integerTerm)
+        system.subtype(var2, var1)
+
+        val result = DefaultInferenceSolver.solve(system)
+
+        assertAll("variable results",
+            { assertEquals(integerType, (result[var1] as TypeResult.Success).type) },
+            { assertEquals(integerType, (result[var2] as TypeResult.Success).type) })
     }
 }

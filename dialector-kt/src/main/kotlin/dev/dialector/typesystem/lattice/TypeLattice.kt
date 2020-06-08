@@ -13,15 +13,11 @@ interface ExtremumSolver {
      *
      * A Common Supertype of some set of types T0-Tn is defined as some type S that is a supertype of all types T0-Tn.
      *
-     * A Least Common Supertype for some set of types T0-Tn is defined as some Common Supertype S that is a subtype of
-     * a unique set of Common Supertypes. There may be multiple candidate types that meet these constraints, this
-     * function should return all applicable results.
-     */
-    fun leastCommonSupertypes(types: Iterable<Type>): Set<Type>
-
-    /**
-     * Resolves to the single least common supertype (supremum). Unlike [leastCommonSupertypes], this should reduce the set of
-     * candidates down to a single valid type.
+     * The Least Common Supertype for some set of types T0-Tn is defined as some Common Supertype S that is a subtype of
+     * all other Common Supertypes.
+     *
+     * In some cases, there may be multiple valid candidate types. This method should resolve them using a Join-like
+     * type.
      */
     fun leastCommonSupertype(types: Iterable<Type>): Type
 
@@ -30,15 +26,11 @@ interface ExtremumSolver {
      *
      * A Common Subtype of some set of types T0-Tn is defined as some type S that is a subtype of all types T0-Tn.
      *
-     * A Greatest Common Subtype for some set of types T0-Tn is defined as some Common Subtype S that is a supertype of
-     * a unique set of Common Subtypes. There may be multiple candidate types that meet these constraints, this
-     * function should return all applicable results.
-     */
-    fun greatestCommonSubtypes(types: Iterable<Type>): Set<Type>
-
-    /**
-     * Resolves to the single greatest common subtype (infimum). Unlike [greatestCommonSubtypes], this should reduce the set of
-     * candidates down to a single valid type.
+     * The Greatest Common Subtype for some set of types T0-Tn is defined as some Common Subtype S that is a supertype
+     * of all other Common Subtypes.
+     *
+     * In some cases, there may be multiple valid concrete candidate types. This method should resolve them using a
+     * Meet-like type.
      */
     fun greatestCommonSubtype(types: Iterable<Type>): Type
 }
