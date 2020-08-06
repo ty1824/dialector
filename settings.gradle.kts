@@ -10,3 +10,4 @@
 rootProject.name = "dialector"
 
 include("dialector-kt")
+include("glottony")

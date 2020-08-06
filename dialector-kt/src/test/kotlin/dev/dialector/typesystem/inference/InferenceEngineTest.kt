@@ -20,6 +20,8 @@ class InferenceEngineTest {
     private val numberType = object : IdentityType("number") {}
     private val anyType = object : IdentityType("any") {}
 
+    private infix fun Map<VariableTerm, TypeResult>.typeFor(term: VariableTerm): Type = (this[term] as TypeResult.Success).type
+
     @Test
     fun `simple equality inference`() {
         val system = BaseInferenceSystem(mockk<TypeLattice>())
@@ -82,10 +84,92 @@ class InferenceEngineTest {
         system.equals(var1, integerTerm)
         system.subtype(var2, var1)
 
+            val result = DefaultInferenceSolver.solve(system)
+
+        assertAll("variable results",
+            { assertEquals(integerType, result typeFor var1) },
+            { assertEquals(integerType, result typeFor var2) })
+    }
+
+    @Test
+    fun `upper and lower bounded inference`() {
+        val lattice = SimpleTypeLattice(listOf(
+            // integer < number
+            type(integerType) hasSupertypes sequenceOf(numberType),
+            // ~all types~ < any
+            typeClass(Type::class) hasSupertypes sequenceOf(anyType)
+        ), listOf())
+
+        val system = BaseInferenceSystem(lattice)
+
+        val integerVar = system.varTerm()
+        val inferredNumberVar = system.varTerm()
+        val numberVar = system.varTerm()
+        val inferredAnyVar = system.varTerm()
+        val anyVar = system.varTerm()
+
+        val integerTerm = system.asTerm(integerType)
+        val numberTerm = system.asTerm(numberType)
+        val anyTerm = system.asTerm(anyType)
+
+        // integer :< X :< number :< Y :< any
+        system.equals(integerVar, integerTerm)
+        system.equals(numberVar, numberTerm)
+        system.equals(anyVar, anyTerm)
+        system.supertype(inferredNumberVar, integerVar)
+        system.subtype(inferredNumberVar, numberVar)
+        system.supertype(inferredAnyVar, numberVar)
+        system.subtype(inferredAnyVar, anyVar)
+
         val result = DefaultInferenceSolver.solve(system)
 
         assertAll("variable results",
-            { assertEquals(integerType, (result[var1] as TypeResult.Success).type) },
-            { assertEquals(integerType, (result[var2] as TypeResult.Success).type) })
+            { assertEquals(integerType, result typeFor integerVar) },
+            { assertEquals(numberType, result typeFor numberVar) },
+            { assertEquals(anyType, result typeFor anyVar) },
+            { assertEquals(numberType, result typeFor inferredNumberVar) },
+            { assertEquals(anyType, result typeFor inferredAnyVar)} )
+    }
+
+    @Test
+    fun `codependent bounded inference`() {
+        val lattice = SimpleTypeLattice(listOf(
+            // integer < number
+            type(integerType) hasSupertypes sequenceOf(numberType),
+            // ~all types~ < any
+            typeClass(Type::class) hasSupertypes sequenceOf(anyType)
+        ), listOf())
+
+        val system = BaseInferenceSystem(lattice)
+
+        val integerVar = system.varTerm()
+        val inferredNumberVar = system.varTerm() // X
+        val numberVar = system.varTerm()
+        val inferredAnyVar = system.varTerm() // Y
+        val anyVar = system.varTerm()
+
+        val integerTerm = system.asTerm(integerType)
+        val numberTerm = system.asTerm(numberType)
+        val anyTerm = system.asTerm(anyType)
+
+        system.equals(integerVar, integerTerm)
+        system.equals(numberVar, numberTerm)
+        system.equals(anyVar, anyTerm)
+
+        // integer < X < number
+        // X < Y < any
+        system.supertype(inferredNumberVar, integerVar)
+        system.subtype(inferredNumberVar, numberVar)
+        system.supertype(inferredAnyVar, inferredNumberVar)
+        system.subtype(inferredAnyVar, anyVar)
+
+        val result = DefaultInferenceSolver.solve(system)
+
+        assertAll("variable results",
+            { assertEquals(integerType, result typeFor integerVar) },
+            { assertEquals(numberType, result typeFor numberVar) },
+            { assertEquals(anyType, result typeFor anyVar) },
+            { assertEquals(numberType, result typeFor inferredNumberVar) },
+            { assertEquals(anyType, result typeFor inferredAnyVar)} )
     }
 }
