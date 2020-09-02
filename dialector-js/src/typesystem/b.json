@@ -1,0 +1,322 @@
+[
+    {
+        "id": "0e71245a282bc3aa5a5cc2ec092f2fe5",
+        "name": "carbon",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "hydrocarbonPlants",
+                    "id": "c76b4100059661084315938999623c26",
+                    "ticker": "HCP",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.8,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbon",
+                    "id": "4bbcc7dc5dd16e9af90528ed04d9c6ba",
+                    "ticker": "C",
+                    "category": "ef1d03e7ef924395c2173fc4e4ee8a6f",
+                    "weight": 2.25,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 1,
+        "efficiency": 1.2137987822404637,
+        "duration": {
+            "millis": 71181485
+        },
+        "productionFeeFactor": {
+            "amount": 10,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "047658de94b91320263ac5341c8e2157",
+        "name": "carbon",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "carbohydrateMaize",
+                    "id": "a381f9434f9105a4f8179f6c6cffe007",
+                    "ticker": "MAI",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 1.3,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbon",
+                    "id": "4bbcc7dc5dd16e9af90528ed04d9c6ba",
+                    "ticker": "C",
+                    "category": "ef1d03e7ef924395c2173fc4e4ee8a6f",
+                    "weight": 2.25,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 1,
+        "efficiency": 1.2137987822404637,
+        "duration": {
+            "millis": 71181485
+        },
+        "productionFeeFactor": {
+            "amount": 10,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "b00ad0d0adae56e7f7991ef9cdd7207d",
+        "name": "carbon",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "hydrocarbonPlants",
+                    "id": "c76b4100059661084315938999623c26",
+                    "ticker": "HCP",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.8,
+                    "volume": 1
+                },
+                "factor": 4
+            },
+            {
+                "material": {
+                    "name": "carbohydrateMaize",
+                    "id": "a381f9434f9105a4f8179f6c6cffe007",
+                    "ticker": "MAI",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 1.3,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbon",
+                    "id": "4bbcc7dc5dd16e9af90528ed04d9c6ba",
+                    "ticker": "C",
+                    "category": "ef1d03e7ef924395c2173fc4e4ee8a6f",
+                    "weight": 2.25,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.66,
+        "efficiency": 1.2137987822404637,
+        "duration": {
+            "millis": 46979780
+        },
+        "productionFeeFactor": {
+            "amount": 6.6,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "20ab88b0e747dc65553a2ea44bf411d9",
+        "name": "carbon",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "carbohydrateGrains",
+                    "id": "83d83e8cf6fb9018ae7138a1b5d4b19c",
+                    "ticker": "GRN",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.9,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbon",
+                    "id": "4bbcc7dc5dd16e9af90528ed04d9c6ba",
+                    "ticker": "C",
+                    "category": "ef1d03e7ef924395c2173fc4e4ee8a6f",
+                    "weight": 2.25,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 1,
+        "efficiency": 1.2137987822404637,
+        "duration": {
+            "millis": 71181485
+        },
+        "productionFeeFactor": {
+            "amount": 10,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "82566fc69752b6dd100c32ff90fbf75b",
+        "name": "carbon",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "hydrocarbonPlants",
+                    "id": "c76b4100059661084315938999623c26",
+                    "ticker": "HCP",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.8,
+                    "volume": 1
+                },
+                "factor": 4
+            },
+            {
+                "material": {
+                    "name": "carbohydrateGrains",
+                    "id": "83d83e8cf6fb9018ae7138a1b5d4b19c",
+                    "ticker": "GRN",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.9,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbon",
+                    "id": "4bbcc7dc5dd16e9af90528ed04d9c6ba",
+                    "ticker": "C",
+                    "category": "ef1d03e7ef924395c2173fc4e4ee8a6f",
+                    "weight": 2.25,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.66,
+        "efficiency": 1.2137987822404637,
+        "duration": {
+            "millis": 46979780
+        },
+        "productionFeeFactor": {
+            "amount": 6.6,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "edac3fca7d9455a0dc99a9d795ace80e",
+        "name": "carbon",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "hydrocarbonPlants",
+                    "id": "c76b4100059661084315938999623c26",
+                    "ticker": "HCP",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.8,
+                    "volume": 1
+                },
+                "factor": 4
+            },
+            {
+                "material": {
+                    "name": "carbohydrateMaize",
+                    "id": "a381f9434f9105a4f8179f6c6cffe007",
+                    "ticker": "MAI",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 1.3,
+                    "volume": 1
+                },
+                "factor": 2
+            },
+            {
+                "material": {
+                    "name": "carbohydrateGrains",
+                    "id": "83d83e8cf6fb9018ae7138a1b5d4b19c",
+                    "ticker": "GRN",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.9,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbon",
+                    "id": "4bbcc7dc5dd16e9af90528ed04d9c6ba",
+                    "ticker": "C",
+                    "category": "ef1d03e7ef924395c2173fc4e4ee8a6f",
+                    "weight": 2.25,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.33,
+        "efficiency": 1.2137987822404637,
+        "duration": {
+            "millis": 23489890
+        },
+        "productionFeeFactor": {
+            "amount": 3.3,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    }
+]

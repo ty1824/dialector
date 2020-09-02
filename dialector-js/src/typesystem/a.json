@@ -1,0 +1,530 @@
+[
+    {
+        "id": "2ad2de6f7bb61b4ec30fb6352f296d84",
+        "name": "proteinBeans",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 1
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "proteinBeans",
+                    "id": "e97e2535fec019710299709a7462c066",
+                    "ticker": "BEA",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.8,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "effortFactor": 0.25,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 15667104
+        },
+        "productionFeeFactor": {
+            "amount": 2.5,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "e80a19ad0e49ad01f7978692fe524840",
+        "name": "proteinBeans",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 6
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "proteinBeans",
+                    "id": "e97e2535fec019710299709a7462c066",
+                    "ticker": "BEA",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.8,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.4,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 25067366
+        },
+        "productionFeeFactor": {
+            "amount": 4,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "e1dba3c799d346e6e3b58d47d82bf8b8",
+        "name": "carbohydrateGrains",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbohydrateGrains",
+                    "id": "83d83e8cf6fb9018ae7138a1b5d4b19c",
+                    "ticker": "GRN",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.9,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.375,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 23500656
+        },
+        "productionFeeFactor": {
+            "amount": 3.75,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "d76f1c9f7503d8ea5222c8bdfe8623ce",
+        "name": "carbohydrateGrains",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 1
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbohydrateGrains",
+                    "id": "83d83e8cf6fb9018ae7138a1b5d4b19c",
+                    "ticker": "GRN",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.9,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.5,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 31334208
+        },
+        "productionFeeFactor": {
+            "amount": 5,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "a00d390643b2effd6fae12d5f7f405d8",
+        "name": "hydrocarbonPlants",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "hydrocarbonPlants",
+                    "id": "c76b4100059661084315938999623c26",
+                    "ticker": "HCP",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.8,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.5,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 31334208
+        },
+        "productionFeeFactor": {
+            "amount": 5,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "ab75ffaeafef2c705c5df342f4e89337",
+        "name": "herbs",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 4
+            },
+            {
+                "material": {
+                    "name": "pesticides",
+                    "id": "fe5be65546733ffa4f619bbc76ac532d",
+                    "ticker": "DDT",
+                    "category": "9b32ea2333917ee2632ba7ae7675643f",
+                    "weight": 0.11,
+                    "volume": 0.1
+                },
+                "factor": 1
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "herbs",
+                    "id": "1a1f13b7fc3e0fb6aa292b7c28764f93",
+                    "ticker": "HER",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.4,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 2,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 125336830
+        },
+        "productionFeeFactor": {
+            "amount": 20,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "df1425f3866a158cc07388484349d054",
+        "name": "carbohydrateMaize",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "carbohydrateMaize",
+                    "id": "a381f9434f9105a4f8179f6c6cffe007",
+                    "ticker": "MAI",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 1.3,
+                    "volume": 1
+                },
+                "factor": 12
+            }
+        ],
+        "effortFactor": 1.4,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 87735781
+        },
+        "productionFeeFactor": {
+            "amount": 14,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "1af3319ae2bf54aad944804082c02279",
+        "name": "fattyNuts",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 1
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "fattyNuts",
+                    "id": "87488698340ed6d9db87e26e35360c20",
+                    "ticker": "NUT",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.9,
+                    "volume": 1
+                },
+                "factor": 12
+            }
+        ],
+        "effortFactor": 1.5,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 94002623
+        },
+        "productionFeeFactor": {
+            "amount": 15,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "15978d564171154fc04d62150c6d67c1",
+        "name": "cottonRaw",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "cottonRaw",
+                    "id": "1205efe7810a94592524a53e87c3299b",
+                    "ticker": "RCO",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.95,
+                    "volume": 1
+                },
+                "factor": 1
+            }
+        ],
+        "effortFactor": 0.6,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 37601049
+        },
+        "productionFeeFactor": {
+            "amount": 6,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "6e149f152a151f8cc720cf0547a05791",
+        "name": "cottonRaw",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "nutrientSolution",
+                    "id": "d9cfb2948188f49bfae2b6d9972837c8",
+                    "ticker": "NS",
+                    "category": "9b32ea2333917ee2632ba7ae7675643f",
+                    "weight": 0.6,
+                    "volume": 0.5
+                },
+                "factor": 4
+            },
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "cottonRaw",
+                    "id": "1205efe7810a94592524a53e87c3299b",
+                    "ticker": "RCO",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 0.95,
+                    "volume": 1
+                },
+                "factor": 2
+            }
+        ],
+        "effortFactor": 0.4,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 25067366
+        },
+        "productionFeeFactor": {
+            "amount": 4,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    },
+    {
+        "id": "de3bddc244d19462c8b70480f1ce683e",
+        "name": "fattyVegetables",
+        "inputFactors": [
+            {
+                "material": {
+                    "name": "water",
+                    "id": "ec8dbb1d3f51d89c61b6f58fdd64a7f0",
+                    "ticker": "H2O",
+                    "category": "473218d3618453bf25d2cd0b5616a72f",
+                    "weight": 1,
+                    "volume": 1
+                },
+                "factor": 3
+            }
+        ],
+        "outputFactors": [
+            {
+                "material": {
+                    "name": "fattyVegetables",
+                    "id": "cc2dcb3699225b81cf63bf3e044a4f05",
+                    "ticker": "VEG",
+                    "category": "510e7751c0eb6a51fd0fa73565365d1c",
+                    "weight": 1.1,
+                    "volume": 1
+                },
+                "factor": 4
+            }
+        ],
+        "effortFactor": 0.45,
+        "efficiency": 1.378684935775016,
+        "duration": {
+            "millis": 28200787
+        },
+        "productionFeeFactor": {
+            "amount": 4.5,
+            "currency": "ICA"
+        },
+        "productionFeeCollector": {
+            "id": "8d128c9f72a7cc694c63fb2228156b53",
+            "name": "Quinten Essentials",
+            "code": "QWNE",
+            "_type": "corporation",
+            "_proxy_key": "8d128c9f72a7cc694c63fb2228156b53"
+        }
+    }
+]
