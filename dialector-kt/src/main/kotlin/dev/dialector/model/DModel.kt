@@ -12,6 +12,14 @@ interface Node {
     fun allReferences(): List<NodeReference<*>>
 }
 
+class PropertyValue<T>(var value: T) {
+    operator fun getValue(inst: Node?, property: KProperty<*>): T = value
+    operator fun setValue(inst: Node?, property: KProperty<*>, newValue: T) {
+        value = newValue
+    }
+}
+
+
 fun Node.getRoot(): Node = parent?.getRoot() ?: this
 
 @Suppress("UNCHECKED_CAST")
@@ -44,8 +52,14 @@ interface NodeReference<T : Node> {
 @Target(AnnotationTarget.CLASS)
 annotation class NodeDefinition()
 
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.PROPERTY)
 annotation class Property()
 
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.PROPERTY)
 annotation class Child()
 
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.PROPERTY)
 annotation class Reference()

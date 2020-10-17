@@ -7,6 +7,10 @@ import kotlin.reflect.KClass
  * Represents a Type in the TypeSystem. Concrete implementations must override equals and hashCode.
  */
 interface Type {
+    /**
+     * Returns all child components of this type, e.g. type arguments for a parameterized type.
+     */
+    fun getComponents(): Sequence<Type> = sequenceOf()
     override fun equals(other: Any?): Boolean
     override fun hashCode(): Int
     override fun toString(): String

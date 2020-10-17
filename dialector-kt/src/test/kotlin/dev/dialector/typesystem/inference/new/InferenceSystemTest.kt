@@ -1,4 +1,4 @@
-package dev.dialector.typesystem.inference
+package dev.dialector.typesystem.inference.new
 
 import dev.dialector.typesystem.IdentityType
 import dev.dialector.typesystem.Type
@@ -20,29 +20,30 @@ class InferenceEngineTest {
     private val numberType = object : IdentityType("number") {}
     private val anyType = object : IdentityType("any") {}
 
-    private infix fun Map<VariableTerm, TypeResult>.typeFor(term: VariableTerm): Type = (this[term] as TypeResult.Success).type
+    //private infix fun Map<VariableTerm, TypeResult>.typeFor(term: VariableTerm): Type = (this[term] as TypeResult.Success).type
 
     @Test
     fun `simple equality inference`() {
-        val system = BaseInferenceSystem(mockk<TypeLattice>())
+        val system = BaseInferenceSystem()
 
-        val var1 = system.varTerm()
-        val var2 = system.varTerm()
-        val var3 = system.varTerm()
+        val context = BaseInferenceContext(system::createVariable, system::registerConstraint)
 
-        val boolTerm = system.asTerm(booleanType)
-        val stringTerm = system.asTerm(stringType)
+        context.apply {
+            val var1 = typeVar()
+            val var2 = typeVar()
+            val var3 = typeVar()
 
-        system.equals(var1, boolTerm)
-        system.equals(var2, var1)
-        system.equals(var3, stringTerm)
+            constraint { var1 equal booleanType }
+            constraint { var2 equal var1 }
+            constraint { var3 equal stringType }
 
-        val result = DefaultInferenceSolver.solve(system)
-        assertAll("variable results",
+            val result = system.solve(listOf(), listOf())
+            assertAll("variable results",
                 { assertEquals(booleanType, (result[var1] as TypeResult.Success).type) },
                 { assertEquals(booleanType, (result[var2] as TypeResult.Success).type) },
                 { assertEquals(stringType, (result[var3] as TypeResult.Success).type) }
-        )
+            )
+        }
     }
 
     @Test
@@ -84,7 +85,7 @@ class InferenceEngineTest {
         system.equals(var1, integerTerm)
         system.subtype(var2, var1)
 
-            val result = DefaultInferenceSolver.solve(system)
+        val result = DefaultInferenceSolver.solve(system)
 
         assertAll("variable results",
             { assertEquals(integerType, result typeFor var1) },

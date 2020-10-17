@@ -7,7 +7,7 @@ sealed class InferenceTerm {
     abstract val id: Int
 }
 
-data class TypeTerm(override val id: Int, val type: dev.dialector.typesystem.Type) : InferenceTerm()
+data class TypeTerm(override val id: Int, val type: Type) : InferenceTerm()
 
 data class VariableTerm(override val id: Int) : InferenceTerm()
 

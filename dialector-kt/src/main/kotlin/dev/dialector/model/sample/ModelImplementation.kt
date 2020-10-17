@@ -2,15 +2,8 @@ package dev.dialector.model.sample
 
 import dev.dialector.model.Node
 import dev.dialector.model.NodeReference
+import dev.dialector.model.PropertyValue
 import kotlin.reflect.KProperty
-
-data class PropertyValue<T>(var value: T) {
-    operator fun getValue(inst: Any?, property: KProperty<*>): T = value
-
-    operator fun setValue(inst: Any?, property: KProperty<*>, newValue: T) {
-        value = newValue
-    }
-}
 
 class MClassInlineImpl : MClass {
     override var name: String by PropertyValue("")
@@ -27,11 +20,13 @@ class MClassInlineImpl : MClass {
     override fun allReferences(): List<NodeReference<*>> = listOf()
 }
 
-class MFieldInlineImpl : MField {
+class MFieldInlineImpl(
+    override val parent: Node? = null,
+    name: String = "",
+    type: String = ""
+) : MField {
     override var name: String by PropertyValue("")
-    override val type: String by PropertyValue("")
-
-    override val parent: Node? = null
+    override var type: String by PropertyValue("")
 
     override val properties: Map<KProperty<*>, Any?> = mapOf(MField::name to name, MField::type to type)
     override val children: Map<KProperty<*>, List<Node>> = mapOf()

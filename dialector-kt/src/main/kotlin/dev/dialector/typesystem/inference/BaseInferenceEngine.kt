@@ -4,6 +4,17 @@ import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.lattice.TypeLattice
 import java.util.concurrent.atomic.AtomicInteger
 
+/*
+Java type inference algorithm:
+
+    Resolution:
+        
+        Given a set of variables V
+            If there are
+
+ */
+
+
 /**
  * Represents internal structure, should not be exposed without finalizing.
  */
@@ -23,6 +34,48 @@ internal class MutableInferenceGroup(
         override val typeTerms: Set<TypeTerm> = this@MutableInferenceGroup.typeTerms.toSet()
         override val upperBounds: Set<InferenceGroup> = this@MutableInferenceGroup.upperBounds.toSet()
         override val lowerBounds: Set<InferenceGroup> = this@MutableInferenceGroup.lowerBounds.toSet()
+    }
+}
+
+internal class IncrementalInferenceSystem(override val lattice: TypeLattice) : InferenceSystem {
+    override fun varTerm(): VariableTerm {
+        TODO("Not yet implemented")
+    }
+
+    override fun asTerm(type: Type): TypeTerm {
+        TODO("Not yet implemented")
+    }
+
+    override fun getInferenceGroups(): Map<VariableTerm, InferenceGroup> {
+        TODO("Not yet implemented")
+    }
+
+    override fun equals(left: InferenceTerm, right: InferenceTerm): InferenceResult {
+        TODO("Not yet implemented")
+    }
+
+    override fun equals(left: VariableTerm, right: VariableTerm): InferenceResult {
+        TODO("Not yet implemented")
+    }
+
+    override fun equals(left: VariableTerm, right: TypeTerm): InferenceResult {
+        TODO("Not yet implemented")
+    }
+
+    override fun equals(left: TypeTerm, right: VariableTerm): InferenceResult {
+        TODO("Not yet implemented")
+    }
+
+    override fun equals(left: TypeTerm, right: TypeTerm): InferenceResult {
+        TODO("Not yet implemented")
+    }
+
+    override fun subtype(left: VariableTerm, right: VariableTerm): InferenceResult {
+        TODO("Not yet implemented")
+    }
+
+    override fun supertype(left: VariableTerm, right: VariableTerm): InferenceResult {
+        TODO("Not yet implemented")
     }
 }
 
@@ -160,6 +213,19 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
     private fun TypeTerm.unify(other: TypeTerm): Boolean =
         lattice.isEquivalent(this.type, other.type)
 
+    override fun toString(): String {
+        return StringBuilder("Inference System State:\n").let { builder ->
+            var i = 0
+            this.groups.values.distinct().forEach {
+                builder.append("Group ${i++} (${it}):\n")
+                builder.append("  Type terms:${it.typeTerms}\n")
+                builder.append("  Variable terms:${it.variableTerms}\n")
+                builder.append("  Upper Bounds:${it.upperBounds}\n")
+                builder.append("  Lower Bounds:${it.lowerBounds}\n")
+            }
+            builder
+        }.toString()
+    }
 
 }
 
@@ -168,6 +234,8 @@ object DefaultInferenceSolver : InferenceSolver {
         val typeMap: MutableMap<InferenceGroup, TypeResult> = mutableMapOf()
 
         val remaining = system.getInferenceGroups().values.toMutableList()
+
+
         while (remaining.isNotEmpty()) {
             val numRemaining = remaining.size
             val iter = remaining.listIterator()
