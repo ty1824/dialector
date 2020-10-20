@@ -30,10 +30,18 @@ interface InferenceVariable : Type {
     val id: String
 }
 
-enum class TypeRelation {
-    SUBTYPE,
-    SUPERTYPE,
-    EQUIVALENT
+enum class TypeRelation(val symbol: String) {
+    SUBTYPE("<"),
+    SUPERTYPE(">"),
+    EQUIVALENT("=");
+
+    fun opposite(): TypeRelation = when (this) {
+        SUBTYPE -> SUPERTYPE
+        SUPERTYPE -> SUBTYPE
+        EQUIVALENT -> EQUIVALENT
+    }
+
+    override fun toString(): String = symbol
 }
 
 enum class VariableConstraintKind {
@@ -41,22 +49,28 @@ enum class VariableConstraintKind {
     PUSH_DOWN
 }
 
-sealed class InferenceConstraint
+interface InferenceOrigin
+
+sealed class InferenceConstraint {}
 
 data class VariableConstraint(
     val variable: InferenceVariable,
-    val kind: VariableConstraintKind) : InferenceConstraint()
+    val kind: VariableConstraintKind,
+) : InferenceConstraint()
 
 data class RelationalConstraint(
     val relation: TypeRelation,
     val left: Type,
-    val right: Type
+    val right: Type,
 ) : InferenceConstraint()
 
 interface Bound {
     val variable: InferenceVariable
     val boundingType: Type
     val relation: TypeRelation
+
+    fun lowerType(): Type = if (relation == TypeRelation.SUBTYPE || relation == TypeRelation.EQUIVALENT) variable else boundingType
+    fun upperType(): Type = if (relation == TypeRelation.SUBTYPE || relation == TypeRelation.EQUIVALENT) boundingType else variable
 }
 
 interface InferenceSystem {
@@ -91,12 +105,12 @@ interface InferenceSolver {
 }
 
 interface InferenceResult {
-    fun get(variable: InferenceVariable): List<Type>?
+    operator fun get(variable: InferenceVariable): List<Type>?
 }
 
 interface InferenceContext {
     fun typeVar(): InferenceVariable
-    fun constraint(routine: ConstraintCreator.() -> RelationalConstraint)
+    fun constraint(routine: ConstraintCreator.() -> InferenceConstraint)
 }
 
 /**
@@ -129,7 +143,7 @@ interface ConstraintCreator {
     infix fun Type.supertype(type: Type): RelationalConstraint
 }
 
-class SimpleConstraintCreator : ConstraintCreator {
+object SimpleConstraintCreator : ConstraintCreator {
     override fun pullUp(variable: InferenceVariable): VariableConstraint =
         VariableConstraint(variable, VariableConstraintKind.PULL_UP)
 

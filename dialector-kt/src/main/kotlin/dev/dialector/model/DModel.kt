@@ -2,6 +2,12 @@ package dev.dialector.model
 
 import kotlin.reflect.KProperty
 
+/*
+ * Notes:
+ *
+ * "Augmentations" kinda like Node Attributes? Slots for externally-driven additional content.
+ */
+
 interface Node {
     val parent: Node?
     val properties: Map<KProperty<*>, Any?>

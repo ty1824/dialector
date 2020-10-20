@@ -10,8 +10,7 @@ interface InferenceRule {
 
 }
 
-
-
+/*
 inline class SampleInferenceContext() : InferenceContext {
 
 }
@@ -25,3 +24,4 @@ fun foo(inferenceSystem: InferenceSystem) {
         y equal z
     }
 }
+*/
