@@ -1,11 +1,10 @@
-@header {
-    package org.xmlcml.cml.converters.antlr;
-    import java.util.HashMap;
-}
-
 parser grammar GlottonyGrammar;
 
 options { tokenVocab = GlottonyLexer; }
+
+@header {
+package dev.dialector.glottony.parser;
+}
 
 file
     : functionDeclaration

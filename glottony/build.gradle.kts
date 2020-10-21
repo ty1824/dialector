@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.4.10"
+    java
     antlr
 }
 
@@ -22,9 +23,13 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
 }
 
-//tasks.named("generateGrammarSource") {
-//    outputDirectory = new File("${project.buildDir}/generated-src/antlr/main/net/example".toString())
-//}
+tasks.named("generateGrammarSource", AntlrTask::class) {
+    outputDirectory = File("${project.projectDir}/src/gen/java/dev/dialector/glottony/parser")
+}
+
+sourceSets.getByName("main").java {
+    srcDir("src/gen/java")
+}
 
 tasks.withType<Test> {
     useJUnitPlatform()
