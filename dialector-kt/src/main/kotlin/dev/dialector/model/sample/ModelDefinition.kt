@@ -14,6 +14,7 @@ interface MClass : Node {
     val functions: List<MFunction>
 }
 
+@NodeDefinition
 interface MField : Node {
     @Property
     val name: String

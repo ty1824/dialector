@@ -1,8 +1,16 @@
 lexer grammar GlottonyLexer;
 
 FUN: 'fun';
+STRUCT: 'struct';
 LPAREN: '(';
 RPAREN: ')';
+LCURL: '{';
+RCURL: '}';
+LBRACKET: '[';
+RBRACKET: ']';
+ARROW: '->';
+LANGLE: '<';
+RANGLE: '>';
 COLON: ':';
 COMMA: ',';
 EQ: '=';

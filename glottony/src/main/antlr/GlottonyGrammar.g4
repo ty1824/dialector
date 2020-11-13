@@ -7,12 +7,30 @@ package dev.dialector.glottony.parser;
 }
 
 file
+    : NL* (topLevelConstruct NL*)* EOF
+    ;
+
+topLevelConstruct
     : functionDeclaration
+    | structDeclaration
     | expression
     ;
 
 functionDeclaration
-    : FUN IDENTIFIER LPAREN (parameterDeclaration (COMMA parameterDeclaration)*)? RPAREN COLON type EQ body
+    : FUN IDENTIFIER functionParameters COLON type EQ body
+    ;
+
+functionParameters
+    : LPAREN RPAREN
+    | LPAREN (parameterDeclaration (COMMA parameterDeclaration)*)? RPAREN
+    ;
+
+structDeclaration
+    : STRUCT IDENTIFIER LPAREN NL* (fieldDeclaration NL* (COMMA NL* fieldDeclaration NL*)*)? COMMA? NL* RPAREN
+    ;
+
+fieldDeclaration
+    : IDENTIFIER COLON type
     ;
 
 parameterDeclaration
@@ -32,13 +50,38 @@ additiveExpression
     ;
 
 multiplicativeExpression
-    : literalExpression (multiplyOperator literalExpression)*
+    : callExpression (multiplyOperator callExpression)*
     ;
 
-literalExpression
-    : numberLiteral
+callExpression
+    : primaryExpression
+    | primaryExpression argumentList+
+    ;
+
+primaryExpression
+    : simpleIdentifier
+    | numberLiteral
     | integerLiteral
     | stringLiteral
+    | lambdaLiteral
+    | block
+    ;
+
+block
+    : LCURL NL* expression* NL* RCURL
+    ;
+
+lambdaLiteral
+    : LCURL NL* lambdaParameters NL* ARROW NL* body NL* RCURL
+    ;
+
+lambdaParameters
+    : parameterDeclaration? (NL* COMMA NL* parameterDeclaration)*
+    ;
+
+argumentList
+    : LPAREN RPAREN
+    | LPAREN NL* expression? (NL* COMMA NL* expression)* NL* COMMA? NL* RPAREN
     ;
 
 numberLiteral
@@ -51,6 +94,14 @@ integerLiteral
 
 stringLiteral
     : STRING
+    ;
+
+simpleIdentifier
+    : IDENTIFIER
+    ;
+
+identifier
+    : simpleIdentifier (DOT simpleIdentifier)*
     ;
 
 addOperator
