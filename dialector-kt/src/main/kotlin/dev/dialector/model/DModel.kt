@@ -8,21 +8,22 @@ import kotlin.reflect.KProperty
  * "Augmentations" kinda like Node Attributes? Slots for externally-driven additional content.
  */
 
+
+
+
+/**
+ * Represents an element in a program graph
+ */
 interface Node {
     val parent: Node?
-    val properties: Map<KProperty<*>, Any?>
-    val children: Map<KProperty<*>, List<Node>>
-    val references: Map<KProperty<*>, List<NodeReference<*>>>
-
-    fun allChildren(): List<Node>
-    fun allReferences(): List<NodeReference<*>>
+    val properties: Map<String, Any?>
+    val children: Map<String, List<Node>>
+    val references: Map<String, NodeReference<*>>
 }
 
-class PropertyValue<T>(var value: T) {
-    operator fun getValue(inst: Node?, property: KProperty<*>): T = value
-    operator fun setValue(inst: Node?, property: KProperty<*>, newValue: T) {
-        value = newValue
-    }
+interface NodeReference<T : Node> {
+    fun source(): Node
+    fun resolve(): Node?
 }
 
 
@@ -30,24 +31,20 @@ fun Node.getRoot(): Node = parent?.getRoot() ?: this
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Node.getProperty(property: KProperty<T>): T =
-    properties[property] as T
+    properties[property.name] as T
 
 @Suppress("UNCHECKED_CAST")
-fun <T : Node> Node.getChildren(relation: KProperty<T>): List<T> =
-    children[relation] as List<T>
+fun <T : Node> Node.getChildren(child: KProperty<T>): List<T> =
+    children[child.name] as List<T>
 
 @Suppress("UNCHECKED_CAST")
 fun <T : Node> Node.getReferences(relation: KProperty<T>): List<NodeReference<T>> =
-    references[relation] as List<NodeReference<T>>
+    references[relation.name] as List<NodeReference<T>>
 
 fun Node.getAllChildren() : List<Node> = children.values.flatten()
 
-fun Node.getAllReferences() : List<NodeReference<*>> = references.values.flatten()
+fun Node.getAllReferences() : List<NodeReference<*>> = references.values.toList()
 
-interface NodeReference<T : Node> {
-    fun source(): Node
-    fun resolve(): Node?
-}
 
 
 
@@ -56,16 +53,32 @@ interface NodeReference<T : Node> {
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.CLASS)
-annotation class NodeDefinition()
+annotation class NodeDefinition(
+    val abstract: Boolean = false
+)
 
+/**
+ * Represents a non-node property of this node.
+ */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.PROPERTY)
 annotation class Property()
 
+//enum class Cardinality() {
+//    Single,
+//    Many
+//}
+
+/**
+ * Represents a child of this node.
+ */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.PROPERTY)
 annotation class Child()
 
+/**
+ * Represents a reference to another node in the model.
+ */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.PROPERTY)
 annotation class Reference()

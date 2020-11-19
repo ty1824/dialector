@@ -1,32 +1,50 @@
 package dev.dialector.genmodel
 
-import dev.dialector.model.Node
-import dev.dialector.model.sample.MClass
-import dev.dialector.model.sample.MField
-import dev.dialector.model.sample.MFunction
+import dev.dialector.model.*
+import kotlin.Any
 import kotlin.String
 import kotlin.collections.List
+import kotlin.collections.Map
 
-class MClassImpl : MClass(), Node {
-  var name: String
+@NodeDefinition
+interface ValidNode : Node {
+  companion object
 
-  val fields: List<MField>
+  @Property
+  val validProperty: String
 
-  val functions: List<MFunction>
+  @Child
+  val validChild: ValidNode
 
-  companion object {
-    fun MClass() {
-    }
-  }
+  @Reference
+  val validReference: NodeReference<ValidNode>
 }
 
-class MFieldImpl : MField(), Node {
-  var name: String
 
-  var type: String
+private class ValidNodeImpl(
+  init: ValidNodeInitializer
+) : ValidNode, Node {
+  override var validProperty: String = init.validProperty!!
 
-  companion object {
-    fun MField() {
-    }
-  }
+  override var validChild: ValidNode = init.validChild!!
+
+  override var validReference: NodeReference<ValidNode> = init.validReference!!
+
+  override var parent: Node? = null
+
+  override val properties: Map<String, Any?>
+    get() = mapOf("validProperty" to validProperty)
+  override val children: Map<String, List<Node>>
+    get() = mapOf("validChild" to listOf(validChild))
+  override val references: Map<String, NodeReference<*>>
+    get() = mapOf("validReference" to validReference)}
+
+class ValidNodeInitializer {
+  var validProperty: String? = null
+
+  var validChild: ValidNode? = null
+
+  var validReference: NodeReference<ValidNode>? = null
+
+  fun build(): ValidNode = ValidNodeImpl(this)
 }

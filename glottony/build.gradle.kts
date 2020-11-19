@@ -6,13 +6,14 @@ plugins {
 
 dependencies {
     antlr("org.antlr:antlr4:4.8")
+
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation(kotlin("reflect"))
 
     implementation("org.antlr:antlr4-runtime:4.8")
-
     implementation("com.google.guava:guava:28.2-jre")
+    implementation(project(":dialector-kt"))
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
     testImplementation("io.mockk:mockk:1.9.3")
