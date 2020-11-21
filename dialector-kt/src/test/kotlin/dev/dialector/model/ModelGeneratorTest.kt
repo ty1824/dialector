@@ -1,5 +1,7 @@
 package dev.dialector.model
 
+import dev.dialector.model.sample.MStruct
+import dev.dialector.model.sample.MStructField
 import org.junit.jupiter.api.Test
 import java.nio.file.Paths
 import kotlin.test.assertFails
@@ -36,7 +38,9 @@ class ModelGeneratorTest {
     @Test
     fun simpleTest() {
         Generator.generate(listOf(
-            ValidNode::class
+            ValidNode::class,
+            MStruct::class,
+            MStructField::class
         )).writeTo(Paths.get("./src/main/generated/"))
     }
 

@@ -10,4 +10,6 @@
 rootProject.name = "dialector"
 
 include("dialector-kt")
+include("dialector-kt-gradle")
+include("dialector-kt-plugin")
 include("glottony")
