@@ -1,35 +1,63 @@
 package dev.dialector.glottony.ast
 
-interface Node
+import dev.dialector.model.Child
+import dev.dialector.model.Node
+import dev.dialector.model.NodeDefinition
+import dev.dialector.model.NodeReference
+import dev.dialector.model.Property
+import dev.dialector.model.Reference
 
-interface Reference<T : Node>
-
+@NodeDefinition
 interface FileContent : Node
 
-class File(val contents: List<FileContent>) : Node {
-
+@NodeDefinition
+interface File : Node {
+    @Child
+    val contents: List<FileContent>
 }
 
-class StructDeclaration(val name: String /* TODO: Add more */) : Node
-
-class FunctionDeclaration(val name: String) : Node {
-
+@NodeDefinition
+interface StructDeclaration : Node {
+    @Property
+    val name: String
+    /* TODO: Add more */
 }
 
-class ParameterList(val parameters: List<Parameter>) {
-
+@NodeDefinition
+interface FunctionDeclaration : Node {
+    @Property
+    val name: String
 }
 
-class Parameter(val name: String, val type: Type) {
-
+@NodeDefinition
+interface ParameterList : Node {
+    @Child
+    val parameters: List<Parameter>
 }
 
+@NodeDefinition
+interface Parameter : Node {
+    @Property
+    val name: String
+
+    @Child
+    val type: Type
+}
+
+@NodeDefinition
 interface Type : Node
 
-class IntegerType : Type
+@NodeDefinition
+interface IntegerType : Type
 
-class NumberType : Type
+@NodeDefinition
+interface NumberType : Type
 
-class StringType : Type
+@NodeDefinition
+interface StringType : Type
 
-class StructType(val ofStruct: Reference<StructDeclaration>) : Type
+@NodeDefinition
+interface StructType : Type {
+    @Reference
+    val ofStruct: NodeReference<StructDeclaration>
+}

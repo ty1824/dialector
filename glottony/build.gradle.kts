@@ -1,7 +1,13 @@
 plugins {
+    id("symbol-processing") version "1.4.10-dev-experimental-20201120"
     kotlin("jvm") version "1.4.10"
     java
     antlr
+}
+
+repositories {
+    mavenCentral()
+    google()
 }
 
 dependencies {
@@ -14,6 +20,8 @@ dependencies {
     implementation("org.antlr:antlr4-runtime:4.8")
     implementation("com.google.guava:guava:28.2-jre")
     implementation(project(":dialector-kt"))
+    implementation(project(":dialector-kt-processor"))
+    ksp(project(":dialector-kt-processor"))
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
     testImplementation("io.mockk:mockk:1.9.3")
@@ -30,8 +38,4 @@ tasks.named("generateGrammarSource", AntlrTask::class) {
 
 sourceSets.getByName("main").java {
     srcDir("src/gen/java")
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
 }
