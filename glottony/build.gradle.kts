@@ -32,10 +32,22 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
 }
 
+gradle.taskGraph.addTaskExecutionListener(object : TaskExecutionListener {
+    var lastTimestamp: Long = 0
+    override fun beforeExecute(task: Task) {
+        lastTimestamp = System.nanoTime()
+    }
+
+    override fun afterExecute(task: Task, state: TaskState) {
+        println("Time spent: " + (System.nanoTime() - lastTimestamp)/ 1000000000.0)
+    }
+})
+
 tasks.named("generateGrammarSource", AntlrTask::class) {
     outputDirectory = File("${project.projectDir}/src/gen/java/dev/dialector/glottony/parser")
 }
 
 sourceSets.getByName("main").java {
     srcDir("src/gen/java")
+    srcDir("build/generated/ksp/main/kotlin")
 }

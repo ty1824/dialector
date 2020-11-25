@@ -1,5 +1,9 @@
 package dev.dialector.glottony.ast
 
+import dev.dialector.genmodel.FunctionDeclarationInitializer
+import dev.dialector.genmodel.IntegerTypeInitializer
+import dev.dialector.genmodel.StructDeclarationInitializer
+import dev.dialector.genmodel.StructTypeInitializer
 import dev.dialector.model.Child
 import dev.dialector.model.Node
 import dev.dialector.model.NodeDefinition
@@ -27,6 +31,16 @@ interface StructDeclaration : Node {
 interface FunctionDeclaration : Node {
     @Property
     val name: String
+
+    @Child
+    val parameters: ParameterList
+
+    @Child
+    val type: Type
+
+    // For now...
+    @Property
+    val body: String
 }
 
 @NodeDefinition

@@ -6,13 +6,8 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.google.devtools.ksp.symbol.KSVisitorVoid
 import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.ClassName
@@ -23,10 +18,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
-import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.TypeVariableName
-import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import dev.dialector.model.Child
 import dev.dialector.model.Node
@@ -62,7 +54,7 @@ class DialectorSymbolProcessor : SymbolProcessor {
                 classDeclaration.primaryConstructor!!.accept(this, data)
             }
             val newFile = codeGenerator.createNewFile(
-                    classDeclaration.packageName.getShortName(),
+                    classDeclaration.packageName.asString(),
                     "${classDeclaration.simpleName.getShortName()}Model"
             )
             val generate = Generator(resolver).generate(listOf(classDeclaration))
@@ -76,14 +68,13 @@ class DialectorSymbolProcessor : SymbolProcessor {
     }
 }
 
-typealias Mapping<K, V> = (K) -> V
-
 /*
 TODO:
 - Implement Class properties (DONE)
 - Implement builder (DONE)
 - Generate Node implementation
 - Handle inheritance
+- Mutability through change objects
  */
 
 /*
@@ -91,70 +82,6 @@ Notes:
 Look into using KAPT/creating a compiler plugin
 Incremental compilation??
  */
-
-sealed class Result<out S, out F>
-data class Success<S>(val value: S) : Result<S, Nothing>()
-data class Failure<F>(val reason: F) : Result<Nothing, F>()
-
-fun <S> Result<S, Any>.assumeSuccess(): S = when (this) {
-    is Success -> value
-    is Failure -> throw RuntimeException(reason.toString())
-}
-
-
-
-
-
-fun KSAnnotated.findAnnotations(annotationType: KClass<out Annotation>): List<KSAnnotation> =
-    this.annotations.filter {
-        it.shortName.asString() == annotationType.simpleName
-            && it.annotationType.resolve().declaration.qualifiedName?.asString() == annotationType.qualifiedName
-    }
-
-fun KSAnnotated.hasAnnotation(annotationType: KClass<out Annotation>): Boolean = this.findAnnotations(annotationType).isNotEmpty()
-
-fun KSClassDeclaration.isSubclassOf(superclass: KClass<out Any>): Boolean {
-    return this.getAllSuperTypes().any { it.declaration.qualifiedName?.asString() == superclass.qualifiedName}
-}
-
-fun KSType.isAssignableTo(type: KSType): Boolean = type.isAssignableFrom(this)
-
-internal fun KSDeclaration.getLocalQualifiedName(): List<String> =
-    if (this.parentDeclaration != null)
-        this.parentDeclaration!!.getLocalQualifiedName() + this.simpleName.asString()
-    else listOf(this.simpleName.asString())
-
-internal fun KSClassDeclaration.asClassName(): ClassName =
-    ClassName(this.packageName.asString(), this.getLocalQualifiedName())
-
-internal fun KSType.asTypeName(): TypeName {
-    return if (this.declaration is KSClassDeclaration) {
-        val declarationName = (this.declaration as KSClassDeclaration).asClassName()
-        val candidate = if (this.arguments.isNotEmpty()) {
-            declarationName.parameterizedBy(*this.arguments.map { it.type!!.resolve().asTypeName() }.toTypedArray())
-        } else declarationName
-
-        if (this.isMarkedNullable) candidate.copy(nullable = true) else candidate
-    }
-    else if (this.declaration is KSTypeParameter) {
-        val declarationName: TypeVariableName = (this.declaration as KSTypeParameter).asTypeVariableName()
-        if (this.isMarkedNullable) declarationName.copy(nullable = true) else declarationName
-    } else {
-        throw RuntimeException("Failed to create TypeName for ${this.toString()}")
-    }
-}
-
-internal fun KSTypeParameter.asTypeVariableName(): TypeVariableName {
-    return TypeVariableName.invoke(
-        name = name.asString(),
-        bounds = this.bounds.map { it.resolve().asTypeName() }.toTypedArray(),
-        variance = when (variance) {
-            Variance.INVARIANT, Variance.STAR -> null
-            Variance.CONTRAVARIANT -> KModifier.IN
-            Variance.COVARIANT -> KModifier.OUT
-        }
-    )
-}
 
 class Generator(private val resolver: Resolver) {
     fun KClass<out Any>.getClassDeclaration(): KSClassDeclaration? =
@@ -266,17 +193,6 @@ class Generator(private val resolver: Resolver) {
             // Create extension functions for the base class, too.
         }
 
-        /*
-    override val parent: Node?
-    
-    override val properties: Map<KProperty<*>, Any?>
-    
-    override val children: Map<KProperty<*>, List<Node>>
-    
-    override val references: Map<KProperty<*>, List<NodeReference<*>>>
-    
-         */
-
         fun generateImpl(model: NodeModel): TypeSpec =
             TypeSpec.classBuilder(model.nodeClass.simpleName.getShortName() + "Impl")
                 .addModifiers(KModifier.PRIVATE)
@@ -314,7 +230,7 @@ class Generator(private val resolver: Resolver) {
                                 .indent()
                                 .apply {
                                     model.properties.forEach { property ->
-                                        add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}")
+                                        add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
                                     }
                                 }
                                 .unindent()
@@ -338,9 +254,9 @@ class Generator(private val resolver: Resolver) {
                                 .apply {
                                     model.children.forEach { property ->
                                         if (property.type.resolve().isAssignableTo(nullableNodeType))
-                                            add("\"${property.simpleName.asString()}\" to listOf(${property.simpleName.asString()})")
+                                            add("\"${property.simpleName.asString()}\" to listOf(${property.simpleName.asString()}), ")
                                         else if (property.type.resolve().isAssignableTo(nodeListType))
-                                            add("\"${property.simpleName.asString()}\" to (${property.simpleName.asString()})")
+                                            add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
                                         else
                                             throw RuntimeException("Unexpected child type found: $property : ${property.type}")
                                     }
@@ -365,7 +281,7 @@ class Generator(private val resolver: Resolver) {
                                 .indent()
                                 .apply {
                                     model.references.forEach { property ->
-                                        add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}")
+                                        add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
                                     }
                                 }
                                 .unindent()
@@ -405,7 +321,13 @@ class Generator(private val resolver: Resolver) {
                         .build()
                 }
                 resolvedType.isAssignableTo(nodeListType) -> {
-                    PropertySpec.builder(child.simpleName.asString(), resolvedType.asTypeName())
+                    PropertySpec.builder(
+                        child.simpleName.asString(),
+                        ClassName("kotlin.collections", "MutableList").parameterizedBy(
+                            resolvedType.arguments.map { argument ->
+                                argument.type!!.resolve().asTypeName()
+                            }
+                        ))
                         .addModifiers(KModifier.OVERRIDE)
                         .initializer("init.${child.simpleName.asString()}.toMutableList()")
                         .build()
@@ -422,10 +344,6 @@ class Generator(private val resolver: Resolver) {
                 .addModifiers(KModifier.OVERRIDE)
                 .initializer("init.${reference}${if (!reference.type.resolve().isMarkedNullable) "!!" else ""}")
                 .build()
-
-//    internal fun generateNodeDef(model: NodeModel<out Node>): TypeSpec {
-//
-//    }
 
         /**
          * Creates the [Node] builder for the given [NodeModel]
@@ -452,10 +370,12 @@ class Generator(private val resolver: Resolver) {
                     resolvedType.isAssignableTo(nodeListType) ->
                         PropertySpec.builder(
                             it.simpleName.asString(),
-                            MutableList::class.asClassName().parameterizedBy(
-                                resolvedType.arguments.map { it.type!!.resolve().asTypeName()}
+                            ClassName("kotlin.collections", "MutableList").parameterizedBy(
+                                resolvedType.arguments.map { argument ->
+                                    argument.type!!.resolve().asTypeName()
+                                }
                             )
-                        ).mutable(true).initializer("mutableListOf()").build()
+                        ).initializer("mutableListOf()").build()
                     else -> throw RuntimeException("Unexpected child type found: $it : ${it.type}")
                 }
             })
