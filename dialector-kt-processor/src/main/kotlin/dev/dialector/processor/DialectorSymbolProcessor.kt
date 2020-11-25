@@ -9,6 +9,7 @@ import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSVisitorVoid
+import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -84,7 +85,7 @@ Incremental compilation??
  */
 
 class Generator(private val resolver: Resolver) {
-    fun KClass<out Any>.getClassDeclaration(): KSClassDeclaration? =
+    private fun KClass<out Any>.getClassDeclaration(): KSClassDeclaration? =
         resolver.getClassDeclarationByName(resolver.getKSNameFromString(this.qualifiedName!!))
 
     val nodeClass = Node::class.getClassDeclaration()!!
@@ -130,7 +131,11 @@ class Generator(private val resolver: Resolver) {
         val errors: MutableList<String> = mutableListOf()
 
         if (!nodeClass.isSubclassOf(Node::class))
-            errors += "Input classes must have Node as a superinterface"
+            errors += "Input class must have Node as a superinterface"
+
+        if (nodeClass.modifiers.contains(Modifier.FINAL) || nodeClass.modifiers.contains(Modifier.SEALED)) {
+            errors += "Input class must be extensible."
+        }
 
         properties.forEach {
             // A property may be any type besides a Node
