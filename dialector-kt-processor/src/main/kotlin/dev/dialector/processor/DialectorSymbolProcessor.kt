@@ -6,9 +6,9 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
+import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSVisitorVoid
 import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.ClassName
@@ -16,6 +16,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.LambdaTypeName
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
@@ -42,28 +43,12 @@ class DialectorSymbolProcessor : SymbolProcessor {
     }
 
     override fun process(resolver: Resolver) {
-        println("Hi")
-        val symbols = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
-        println(symbols)
-        symbols.filter { it is KSClassDeclaration }
-            .map { it.accept(Visitor(resolver), Unit) }
-    }
-
-    inner class Visitor(val resolver: Resolver) : KSVisitorVoid() {
-        override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
-            if (classDeclaration.primaryConstructor != null) {
-                classDeclaration.primaryConstructor!!.accept(this, data)
-            }
-            val newFile = codeGenerator.createNewFile(
-                    classDeclaration.packageName.asString(),
-                    "${classDeclaration.simpleName.getShortName()}Model"
-            )
-            val generate = Generator(resolver).generate(listOf(classDeclaration))
-            val out = StringBuilder()
-//            error(out.toString())
-
-            newFile.bufferedWriter().use {
-                generate.writeTo(it)
+        val symbols: List<KSAnnotated> = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
+        val nodeDefinitions = symbols.filterIsInstance<KSClassDeclaration>()
+        Generator(resolver).generate(nodeDefinitions).forEach {
+            val file = codeGenerator.createNewFile(it.packageName, it.name)
+            file.bufferedWriter().use { stream ->
+                it.writeTo(stream)
             }
         }
     }
@@ -76,6 +61,7 @@ TODO:
 - Generate Node implementation
 - Handle inheritance
 - Mutability through change objects
+- No builder if no properties
  */
 
 /*
@@ -174,7 +160,7 @@ class Generator(private val resolver: Resolver) {
             return Failure("Failed to generate classes, ${errors.size} errors found:\n" +
                 errors.joinToString("\n"))
         } else {
-            return Success(GenerationModel("dev.dialector.genmodel", nodeModels.toMap()))
+            return Success(GenerationModel("dev.dialector.glottony.ast", nodeModels.toMap()))
         }
     }
 
@@ -183,12 +169,15 @@ class Generator(private val resolver: Resolver) {
         val nodeModels: Map<KSClassDeclaration, NodeModel>
     ) {
 
-        fun generate() : FileSpec {
-            val builder = FileSpec.builder(genPackage, "file")
+        fun generate() : List<FileSpec> {
+            val files: MutableList<FileSpec> = mutableListOf<FileSpec>()
             for (model in nodeModels.values) {
+                val builder = FileSpec.builder(genPackage, "${model.nodeClass.simpleName.getShortName()}Model")
                 handleClass(model, builder)
+                files += builder.build()
             }
-            return builder.build()
+            files += generateBuilderDsl()
+            return files
         }
 
         fun handleClass(model: NodeModel, builder: FileSpec.Builder) {
@@ -196,6 +185,32 @@ class Generator(private val resolver: Resolver) {
             builder.addType(generateBuilder(model))
 
             // Create extension functions for the base class, too.
+        }
+
+        fun generateBuilderDsl(): FileSpec {
+            val builder = FileSpec.builder(genPackage, "NodeBuilders")
+            for (model in nodeModels.values) {
+                val initializerClassName = ClassName(
+                    model.nodeClass.packageName.asString(),
+                    "${model.nodeClass.simpleName.asString()}Initializer"
+                )
+                builder.addFunction(
+                    FunSpec.builder(model.nodeClass.simpleName.getShortName().let {
+                        val first = it.first()
+                        it.replaceFirst(first, first.toLowerCase())
+                    })
+                        .addParameter("init",
+                            LambdaTypeName.get(
+                                receiver = initializerClassName,
+                                returnType = Unit::class.asTypeName()
+                            )
+                        )
+                        .returns(model.nodeClass.asClassName())
+                        .addStatement("""return ${initializerClassName.canonicalName}().apply(init).build()""")
+                        .build()
+                )
+            }
+            return builder.build()
         }
 
         fun generateImpl(model: NodeModel): TypeSpec =

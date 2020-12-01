@@ -23,7 +23,6 @@ interface NodeReference<T : Node> {
     fun resolve(): Node?
 }
 
-
 fun Node.getRoot(): Node = parent?.getRoot() ?: this
 
 @Suppress("UNCHECKED_CAST")

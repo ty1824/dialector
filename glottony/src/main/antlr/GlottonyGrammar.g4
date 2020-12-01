@@ -54,8 +54,13 @@ multiplicativeExpression
     ;
 
 callExpression
+    : memberAccessExpression
+    | memberAccessExpression argumentList+
+    ;
+
+memberAccessExpression
     : primaryExpression
-    | primaryExpression argumentList+
+    | primaryExpression DOT identifier
     ;
 
 primaryExpression
@@ -118,4 +123,18 @@ type
     : NUMBER_TYPE
     | INTEGER_TYPE
     | STRING_TYPE
+    | identifier
+    ;
+
+typeConstructor
+    : identifier typeParameterList
+    ;
+
+typeParameterList
+    : LANGLE RANGLE
+    | LANGLE (typeParameterDeclaration (COMMA typeParameterDeclaration)*)? RANGLE
+    ;
+
+typeParameterDeclaration
+    : identifier (COLON type)?
     ;

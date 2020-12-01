@@ -1,9 +1,5 @@
 package dev.dialector.glottony.ast
 
-import dev.dialector.genmodel.FunctionDeclarationInitializer
-import dev.dialector.genmodel.IntegerTypeInitializer
-import dev.dialector.genmodel.StructDeclarationInitializer
-import dev.dialector.genmodel.StructTypeInitializer
 import dev.dialector.model.Child
 import dev.dialector.model.Node
 import dev.dialector.model.NodeDefinition
@@ -12,23 +8,23 @@ import dev.dialector.model.Property
 import dev.dialector.model.Reference
 
 @NodeDefinition
-interface FileContent : Node
+interface TopLevelConstruct : Node
 
 @NodeDefinition
 interface File : Node {
     @Child
-    val contents: List<FileContent>
+    val contents: List<TopLevelConstruct>
 }
 
 @NodeDefinition
-interface StructDeclaration : Node {
+interface StructDeclaration : TopLevelConstruct {
     @Property
     val name: String
     /* TODO: Add more */
 }
 
 @NodeDefinition
-interface FunctionDeclaration : Node {
+interface FunctionDeclaration : TopLevelConstruct {
     @Property
     val name: String
 

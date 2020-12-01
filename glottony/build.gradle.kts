@@ -44,10 +44,15 @@ gradle.taskGraph.addTaskExecutionListener(object : TaskExecutionListener {
 })
 
 tasks.named("generateGrammarSource", AntlrTask::class) {
-    outputDirectory = File("${project.projectDir}/src/gen/java/dev/dialector/glottony/parser")
+    arguments.addAll(listOf("-visitor"))
+    outputDirectory = File("${project.projectDir}/src/main/gen/java/dev/dialector/glottony/parser")
 }
 
 sourceSets.getByName("main").java {
-    srcDir("src/gen/java")
+    srcDir("src/main/gen/java")
     srcDir("build/generated/ksp/main/kotlin")
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

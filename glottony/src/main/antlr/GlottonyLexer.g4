@@ -1,5 +1,9 @@
 lexer grammar GlottonyLexer;
 
+@header {
+package dev.dialector.glottony.parser;
+}
+
 FUN: 'fun';
 STRUCT: 'struct';
 LPAREN: '(';
@@ -40,7 +44,7 @@ INTEGER
     ;
 
 STRING
-    : QUOTE ('a' .. 'z')* QUOTE
+    : QUOTE ~('\n' | '\r' | '"')* QUOTE
     ;
 
 IDENTIFIER
