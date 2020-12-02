@@ -1,6 +1,6 @@
 package dev.dialector.typesystem.plugin
 
-import dev.dialector.typesystem.SupertypeRelation
+import dev.dialector.typesystem.lattice.SupertypeRelation
 
 /**
  * Describes a plugin for a TypeSystem
