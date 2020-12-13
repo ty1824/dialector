@@ -44,7 +44,11 @@ INTEGER
     ;
 
 STRING
-    : QUOTE ~('\n' | '\r' | '"')* QUOTE
+    : QUOTE VALID_STRING QUOTE
+    ;
+
+fragment VALID_STRING
+    : ~('\n' | '\r' | '"')*
     ;
 
 IDENTIFIER

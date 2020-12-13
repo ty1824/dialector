@@ -34,9 +34,8 @@ interface FunctionDeclaration : TopLevelConstruct {
     @Child
     val type: Type
 
-    // For now...
-    @Property
-    val body: String
+    @Child
+    val body: Expression
 }
 
 @NodeDefinition
@@ -70,4 +69,60 @@ interface StringType : Type
 interface StructType : Type {
     @Reference
     val ofStruct: NodeReference<StructDeclaration>
+}
+
+interface Expression : Node
+
+abstract class BinaryOperator(val symbol: String)
+
+object BinaryOperators {
+    object Plus : BinaryOperator("+")
+    object Minus : BinaryOperator("-")
+    object Multiply : BinaryOperator("*")
+    object Divide : BinaryOperator("/")
+}
+
+@NodeDefinition
+interface BinaryExpression : Expression {
+    @Child
+    val left: Expression
+
+    @Property
+    val operator: BinaryOperator
+
+    @Child
+    val right: Expression
+}
+
+interface DotTarget : Node
+
+@NodeDefinition
+interface DotExpression : Expression {
+    @Child
+    val context: Expression
+
+    @Child
+    val target: DotTarget
+}
+
+interface Literal : Expression
+
+@NodeDefinition
+interface IntegerLiteral : Literal {
+    @Property
+    val value: String
+}
+
+
+@NodeDefinition
+interface NumberLiteral : Literal {
+    @Property
+    val value: String
+}
+
+
+@NodeDefinition
+interface StringLiteral : Literal {
+    @Property
+    val value: String
 }

@@ -46,7 +46,7 @@ expression
     ;
 
 additiveExpression
-    : multiplicativeExpression (addOperator expression)*
+    : multiplicativeExpression (addOperator multiplicativeExpression)*
     ;
 
 multiplicativeExpression

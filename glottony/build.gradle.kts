@@ -20,7 +20,6 @@ dependencies {
     implementation("org.antlr:antlr4-runtime:4.8")
     implementation("com.google.guava:guava:28.2-jre")
     implementation(project(":dialector-kt"))
-    implementation(project(":dialector-kt-processor"))
     ksp(project(":dialector-kt-processor"))
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
