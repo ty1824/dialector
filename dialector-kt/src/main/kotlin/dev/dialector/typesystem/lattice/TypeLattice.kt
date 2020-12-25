@@ -2,7 +2,6 @@ package dev.dialector.typesystem.lattice
 
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.TypeClause
-import dev.dialector.typesystem.invoke
 
 /**
  * Defines algorithms for resolving the supremum and infimum of some set of types.
@@ -92,6 +91,11 @@ infix fun <T : Type> TypeClause<T>.hasSupertypes(supertypeFunction: (type: T) ->
 infix fun <T : Type> TypeClause<T>.hasSupertypes(explicitSupertypes: Sequence<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
     override val isValidFor = this@hasSupertypes
     override fun supertypes(type: T): Sequence<Type> = explicitSupertypes
+}
+
+infix fun <T : Type> TypeClause<T>.hasSupertype(explicitSupertype: Type): SupertypeRelation<T> = object : SupertypeRelation<T> {
+    override val isValidFor = this@hasSupertype
+    override fun supertypes(type: T): Sequence<Type> = sequenceOf(explicitSupertype)
 }
 
 

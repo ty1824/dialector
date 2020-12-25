@@ -8,7 +8,7 @@ import dev.dialector.glottony.ast.FunctionDeclaration
 import dev.dialector.glottony.ast.Parameter
 import dev.dialector.glottony.ast.ParameterList
 import dev.dialector.glottony.ast.TopLevelConstruct
-import dev.dialector.glottony.ast.Type
+import dev.dialector.glottony.ast.GType
 import dev.dialector.glottony.ast.binaryExpression
 import dev.dialector.glottony.ast.file
 import dev.dialector.glottony.ast.functionDeclaration
@@ -62,7 +62,7 @@ class ParserVisitor : GlottonyGrammarBaseVisitor<Any>() {
         functionDeclaration {
             name = ctx.IDENTIFIER().text
             parameters = visit(ctx.functionParameters()) as ParameterList
-            type = visit(ctx.type()) as Type
+            type = visit(ctx.type()) as GType
             // TODO parse dis plz
             body = visit(ctx.body()) as Expression
         }
@@ -76,7 +76,7 @@ class ParserVisitor : GlottonyGrammarBaseVisitor<Any>() {
     override fun visitParameterDeclaration(ctx: GlottonyGrammar.ParameterDeclarationContext): Parameter {
         return parameter {
             name = ctx.IDENTIFIER().text
-            type = visit(ctx.type()) as Type
+            type = visit(ctx.type()) as GType
         }
     }
 
@@ -165,7 +165,7 @@ class ParserVisitor : GlottonyGrammarBaseVisitor<Any>() {
         else
             throw RuntimeException("Unexpected operator: $ctx")
 
-    override fun visitType(ctx: GlottonyGrammar.TypeContext): Type {
+    override fun visitType(ctx: GlottonyGrammar.TypeContext): GType {
         return if (ctx.getChild(0) is TerminalNode) {
             when ((ctx.getChild(0) as TerminalNode).symbol.type) {
                 GlottonyGrammar.INTEGER_TYPE -> integerType {}
@@ -173,7 +173,7 @@ class ParserVisitor : GlottonyGrammarBaseVisitor<Any>() {
                 GlottonyGrammar.STRING_TYPE -> stringType {}
                 else -> throw RuntimeException("Can not resolve type:$ctx")
             }
-        } else visit(ctx.getChild(0)) as Type
+        } else visit(ctx.getChild(0)) as GType
     }
 
     override fun visitSimpleIdentifier(ctx: GlottonyGrammar.SimpleIdentifierContext?): Any {

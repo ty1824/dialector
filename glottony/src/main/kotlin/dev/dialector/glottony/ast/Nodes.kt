@@ -6,6 +6,7 @@ import dev.dialector.model.NodeDefinition
 import dev.dialector.model.NodeReference
 import dev.dialector.model.Property
 import dev.dialector.model.Reference
+import dev.dialector.typesystem.Type
 
 @NodeDefinition
 interface TopLevelConstruct : Node
@@ -32,7 +33,7 @@ interface FunctionDeclaration : TopLevelConstruct {
     val parameters: ParameterList
 
     @Child
-    val type: Type
+    val type: GType
 
     @Child
     val body: Expression
@@ -50,23 +51,23 @@ interface Parameter : Node {
     val name: String
 
     @Child
-    val type: Type
+    val type: GType
 }
 
 @NodeDefinition
-interface Type : Node
+interface GType : Node
 
 @NodeDefinition
-interface IntegerType : Type
+interface IntegerType : GType
 
 @NodeDefinition
-interface NumberType : Type
+interface NumberType : GType
 
 @NodeDefinition
-interface StringType : Type
+interface StringType : GType
 
 @NodeDefinition
-interface StructType : Type {
+interface StructType : GType {
     @Reference
     val ofStruct: NodeReference<StructDeclaration>
 }

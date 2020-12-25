@@ -1,5 +1,6 @@
 package dev.dialector.model
 
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 /*
@@ -40,6 +41,31 @@ fun <T : Node> Node.getReferences(relation: KProperty<T>): List<NodeReference<T>
 fun Node.getAllChildren() : List<Node> = children.values.flatten()
 
 fun Node.getAllReferences() : List<NodeReference<*>> = references.values.toList()
+
+fun Node.getDescendants(inclusive: Boolean = false, ofType: KClass<out Node>) : Sequence<Node> = sequence {
+    val node = this@getDescendants
+    if (inclusive) { yield (node) }
+    val current: MutableList<Node> = if (inclusive) mutableListOf(node) else node.getAllChildren().toMutableList()
+    while (current.isNotEmpty()) {
+        val value = current.removeFirst()
+        yield(value)
+        current += value.getAllChildren()
+    }
+}
+
+fun Node.getAllDescendants(inclusive: Boolean = false) : Sequence<Node> = sequence {
+    val node = this@getAllDescendants
+    if (inclusive) { yield (node) }
+    val current: MutableList<Node> = if (inclusive) mutableListOf(node) else node.getAllChildren().toMutableList()
+    while (current.isNotEmpty()) {
+        val value = current.removeFirst()
+        yield(value)
+        current += value.getAllChildren()
+    }
+}
+
+inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = false) : Sequence<Node> =
+    this@getDescendants.getAllDescendants(inclusive).filterIsInstance(T::class.java)
 
 
 

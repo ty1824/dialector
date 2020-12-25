@@ -1,5 +1,7 @@
 package dev.dialector.util
 
+import kotlin.reflect.KClass
+
 typealias Cache<K, V> = MutableMap<K, V>
 
 class LeastRecentlyAddedCache<K, V>(private val capacity: Int?) : LinkedHashMap<K, V>() {
