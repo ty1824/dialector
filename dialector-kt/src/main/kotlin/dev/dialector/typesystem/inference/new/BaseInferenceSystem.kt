@@ -3,7 +3,7 @@ package dev.dialector.typesystem.inference.new
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.inference.DataGraph
 
-data class InferredUnion(val types: List<Type>) : Type {
+data class InferredGreatestLowerBound(val types: List<Type>) : Type {
     override fun getComponents(): Sequence<Type> {
         return types.asSequence()
     }
@@ -11,7 +11,7 @@ data class InferredUnion(val types: List<Type>) : Type {
     override fun toString(): String = "InferredUnion<${types.joinToString(" | ")}>"
 }
 
-data class InferredIntersection(val types: List<Type>) : Type {
+data class InferredLeastUpperBound(val types: List<Type>) : Type {
     override fun getComponents(): Sequence<Type> {
         return types.asSequence()
     }
@@ -195,7 +195,11 @@ class BoundSystemGraph {
 
         this.graph.getAllEdges().groupBy { it.data.lowerType() }.forEach { (_, value) ->
             value.forEach {
-                builder.append("\t${it.data.lowerType()} ${it.data.relation} ${it.data.upperType()}\n")
+                if (it.data.variable == it.data.lowerType()) {
+                    builder.append("\t${it.data.lowerType()} ${it.data.relation} ${it.data.upperType()}\n")
+                } else {
+                    builder.append("\t${it.data.lowerType()} ${it.data.relation.opposite()} ${it.data.upperType()}\n")
+                }
             }
         }
 
@@ -317,22 +321,20 @@ class BaseInferenceSystem : InferenceSystem {
             when (val currentConstraint = constraint) {
                 is RelationalConstraint ->
                     // Apply each rule if valid for this constraint
-                    reductionRules.forEach {
-                        it.apply {
-                            if (isValidFor(currentConstraint)) {
-                                val reductionContext = BaseReductionContext(
-                                    currentConstraint,
-                                    this,
-                                    { constraint, _ ->
-                                        constraints.add(constraint)
-                                    },
-                                    { bound, origin ->
-                                        bounds.addBound(bound, origin)
-                                    }
-                                )
-                                reductionContext.reduce(currentConstraint)
+                    reductionRules.firstOrNull {
+                        it.isValidFor(currentConstraint)
+                    }?.apply {
+                        val reductionContext = BaseReductionContext(
+                            currentConstraint,
+                            this,
+                            { constraint, _ ->
+                                constraints.add(constraint)
+                            },
+                            { bound, origin ->
+                                bounds.addBound(bound, origin)
                             }
-                        }
+                        )
+                        reductionContext.reduce(currentConstraint)
                     }
                 is VariableConstraint ->
                     bounds.setPushDown(currentConstraint.variable , currentConstraint.kind == VariableConstraintKind.PUSH_DOWN)
@@ -396,16 +398,16 @@ class BaseInferenceSystem : InferenceSystem {
             }.first()
             SimpleConstraintCreator.apply {
                 if (toSolve.pushDown) {
-                    val types: List<Type> = toSolve.lowerBounds.filter { it.first is TypeNode }.map { it.first.type }
+                    val types: List<Type> = toSolve.upperBounds.filter { it.first is TypeNode }.map { it.first.type }
                     if (types.size > 1) {
-                        constraints.add(toSolve.variable equal InferredIntersection(types))
+                        constraints.add(toSolve.variable equal InferredGreatestLowerBound(types))
                     } else {
                         constraints.add(toSolve.variable equal types.first())
                     }
                 } else {
-                    val types: List<Type> = toSolve.upperBounds.filter { it.first is TypeNode }.map { it.first.type }
+                    val types: List<Type> = toSolve.lowerBounds.filter { it.first is TypeNode }.map { it.first.type }
                     if (types.size > 1) {
-                        constraints.add(toSolve.variable equal InferredUnion(types))
+                        constraints.add(toSolve.variable equal InferredLeastUpperBound(types))
                     } else {
                         constraints.add(toSolve.variable equal types.first())
                     }

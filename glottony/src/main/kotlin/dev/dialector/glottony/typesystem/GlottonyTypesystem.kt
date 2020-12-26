@@ -5,7 +5,6 @@ import dev.dialector.glottony.ast.BinaryOperators
 import dev.dialector.glottony.ast.IntegerLiteral
 import dev.dialector.glottony.ast.NumberLiteral
 import dev.dialector.glottony.ast.StringLiteral
-import dev.dialector.glottony.ast.numberType
 import dev.dialector.model.Node
 import dev.dialector.model.getAllDescendants
 import dev.dialector.model.nodeClassClause
@@ -14,6 +13,8 @@ import dev.dialector.typesystem.IdentityType
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.inference.new.BaseInferenceSystem
 import dev.dialector.typesystem.inference.new.InferenceResult
+import dev.dialector.typesystem.inference.new.InferredLeastUpperBound
+import dev.dialector.typesystem.inference.new.InferredGreatestLowerBound
 import dev.dialector.typesystem.inference.new.leftReduction
 import dev.dialector.typesystem.inference.new.redundantElimination
 import dev.dialector.typesystem.inference.new.rightReduction
@@ -23,6 +24,7 @@ import dev.dialector.typesystem.integration.infers
 import dev.dialector.typesystem.lattice.OrType
 import dev.dialector.typesystem.lattice.SimpleTypeLattice
 import dev.dialector.typesystem.lattice.hasSupertype
+import dev.dialector.typesystem.lattice.hasSupertypes
 import dev.dialector.typesystem.typeClass
 
 /**
@@ -48,8 +50,12 @@ object StrType : IdentityType("string")
 class GlottonyTypeInferenceContext {
     val lattice: SimpleTypeLattice = SimpleTypeLattice(listOf(
         typeClass<Type>() hasSupertype AnyType,
-        typeClass<IntType>() hasSupertype NumType
+        typeClass<IntType>() hasSupertype NumType,
+        typeClass<InferredGreatestLowerBound>() hasSupertypes {
+            it.getComponents()
+        }
     ), listOf())
+    val reductionRules = listOf(redundantElimination, leftReduction, rightReduction)
     val inferenceRules: List<InferenceRule<*>> = listOf(
         nodeClassClause(StringLiteral::class) infers {
             constraint { typeOf(it) equal StrType }
@@ -61,22 +67,26 @@ class GlottonyTypeInferenceContext {
             constraint { typeOf(it) equal IntType }
         },
         nodeClause<BinaryExpression> { it.operator == BinaryOperators.Plus } infers {
-            constraint { typeOf(it) subtype NumType }
+            constraint { typeOf(it) supertype typeOf(it.left) }
+            constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype OrType(setOf(NumType, StrType)) }
             constraint { typeOf(it.right) subtype OrType(setOf(NumType, StrType)) }
         },
         nodeClause<BinaryExpression> { it.operator == BinaryOperators.Minus } infers {
-            constraint { typeOf(it) subtype NumType }
+            constraint { typeOf(it) supertype typeOf(it.left) }
+            constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype NumType }
             constraint { typeOf(it.right) subtype NumType }
         },
         nodeClause<BinaryExpression> { it.operator == BinaryOperators.Multiply } infers {
-            constraint { typeOf(it) subtype NumType }
+            constraint { typeOf(it) supertype typeOf(it.left) }
+            constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype NumType }
             constraint { typeOf(it.right) subtype NumType }
         },
         nodeClause<BinaryExpression> { it.operator == BinaryOperators.Divide } infers {
-            constraint { typeOf(it) subtype NumType }
+            constraint { typeOf(it) supertype typeOf(it.left) }
+            constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype NumType }
             constraint { typeOf(it.right) subtype NumType }
         }
@@ -94,10 +104,17 @@ class GlottonyTypeInferenceContext {
             }
         }
 
-        val inferenceSolution = system.solve(listOf(redundantElimination, leftReduction, rightReduction))
+        val inferenceSolution = system.solve(reductionRules)
 
         return context.nodeVariables.mapValues { (_, value) ->
-            lattice.leastCommonSupertype(inferenceSolution[value]!!.toSet())
+            // Break intersections down into their components
+            lattice.greatestCommonSubtype(inferenceSolution[value]!!.map {
+                when (it) {
+                    is InferredLeastUpperBound -> lattice.leastCommonSupertype(it.types)
+                    is InferredGreatestLowerBound -> lattice.greatestCommonSubtype(it.types)
+                    else -> it
+                }
+            }.toSet())
         }
     }
 }

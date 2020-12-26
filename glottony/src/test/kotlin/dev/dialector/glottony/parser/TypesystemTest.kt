@@ -1,8 +1,10 @@
 package dev.dialector.glottony.parser
 
 import dev.dialector.glottony.ast.BinaryOperators
+import dev.dialector.glottony.ast.NumberType
 import dev.dialector.glottony.ast.binaryExpression
 import dev.dialector.glottony.ast.integerLiteral
+import dev.dialector.glottony.ast.numberLiteral
 import dev.dialector.glottony.ast.numberType
 import dev.dialector.glottony.typesystem.GlottonyTypeInferenceContext
 import dev.dialector.glottony.typesystem.IntType
@@ -22,8 +24,32 @@ class TypesystemTest {
         val inferenceContext = GlottonyTypeInferenceContext()
         val result = inferenceContext.inferTypes(node)
 
-        assertEquals(NumType, result[node])
+        assertEquals(IntType, result[node])
         assertEquals(IntType, result[node.left])
         assertEquals(IntType, result[node.right])
+    }
+
+    @Test
+    fun nestedExpressionTest() {
+        val node = binaryExpression {
+            left = binaryExpression {
+                left = integerLiteral { value = "1" }
+                operator = BinaryOperators.Minus
+                right = integerLiteral { value = "2" }
+            }
+            operator = BinaryOperators.Minus
+            right = binaryExpression {
+                left = integerLiteral { value = "5"}
+                operator = BinaryOperators.Multiply
+                right = numberLiteral { value = "10.5"}
+            }
+        }
+
+        val inferenceContext = GlottonyTypeInferenceContext()
+        val result = inferenceContext.inferTypes(node)
+
+        assertEquals(NumType, result[node])
+        assertEquals(IntType, result[node.left])
+        assertEquals(NumType, result[node.right])
     }
 }
