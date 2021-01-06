@@ -13,6 +13,8 @@ include("dialector-kt")
 include("dialector-kt-gradle")
 include("dialector-kt-processor")
 include("glottony")
+include("glottony:server")
+include("glottony:client")
 
 pluginManagement {
     resolutionStrategy {

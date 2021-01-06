@@ -1,7 +1,7 @@
 plugins {
     id("java-gradle-plugin")
-    kotlin("jvm") version "1.4.10"
-    kotlin("kapt") version "1.4.10"
+    kotlin("jvm")
+    kotlin("kapt")
 }
 
 gradlePlugin {

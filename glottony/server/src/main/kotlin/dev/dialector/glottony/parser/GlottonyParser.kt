@@ -20,28 +20,47 @@ import dev.dialector.glottony.ast.parameter
 import dev.dialector.glottony.ast.parameterList
 import dev.dialector.glottony.ast.stringLiteral
 import dev.dialector.glottony.ast.stringType
+import dev.dialector.glottony.ast.structDeclaration
 import dev.dialector.model.Node
 import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import java.nio.file.Path
 
 object GlottonyParser {
     fun parseFile(path: Path): File = parseFile(CharStreams.fromPath(path))
 
-
     fun parseString(string: String): File = parseFile(CharStreams.fromString(string))
-
 
     private fun parseFile(charStream: CharStream): File {
         val tokens = CommonTokenStream(GlottonyLexer(charStream))
-        val grammar = GlottonyGrammar(tokens)
         return ParserVisitor().visit(GlottonyGrammar(tokens).file()) as File
+    }
+
+    fun parseStringWithSourceMap(string: String): Pair<File, Map<Any, ParserRuleContext>> =
+        parseFileWithSourceMap(CharStreams.fromString(string))
+
+    private fun parseFileWithSourceMap(charStream: CharStream): Pair<File, Map<Any, ParserRuleContext>> {
+        val tokens = CommonTokenStream(GlottonyLexer(charStream))
+        val mappingVisitor = MappingVisitor()
+        val result = mappingVisitor.visit(GlottonyGrammar(tokens).file()) as File
+        return result to mappingVisitor.sourceMap.toMap()
     }
 }
 
-class ParserVisitor : GlottonyGrammarBaseVisitor<Any>() {
+class MappingVisitor : ParserVisitor() {
+    val sourceMap: MutableMap<Node, ParserRuleContext> = mutableMapOf()
+    override fun visit(tree: ParseTree): Any? {
+        val result = super.visit(tree)
+        if (result is Node && tree is ParserRuleContext) sourceMap[result] = tree
+        return result
+    }
+}
+
+open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     override fun visitFile(ctx: GlottonyGrammar.FileContext): File =
         file {
             contents += ctx.topLevelConstruct().map { visit(it) as TopLevelConstruct }
@@ -50,11 +69,12 @@ class ParserVisitor : GlottonyGrammarBaseVisitor<Any>() {
     override fun visitTopLevelConstruct(ctx: GlottonyGrammar.TopLevelConstructContext): TopLevelConstruct =
         visit(ctx.getChild(0)) as TopLevelConstruct
 
-    override fun visitStructDeclaration(ctx: GlottonyGrammar.StructDeclarationContext): Any {
-        return super.visitStructDeclaration(ctx)
-    }
+    override fun visitStructDeclaration(ctx: GlottonyGrammar.StructDeclarationContext): Any? =
+        structDeclaration {
+            name = ctx.IDENTIFIER().text
+        }
 
-    override fun visitFieldDeclaration(ctx: GlottonyGrammar.FieldDeclarationContext): Any {
+    override fun visitFieldDeclaration(ctx: GlottonyGrammar.FieldDeclarationContext): Any? {
         return super.visitFieldDeclaration(ctx)
     }
 
