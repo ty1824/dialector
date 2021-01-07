@@ -303,7 +303,7 @@ class BaseInferenceSystem : InferenceSystem {
             println(bounds)
             resolve(constraints, bounds)
         }
-
+        // TODO: Verify initial constraints are satisfied by the solution
         return object : InferenceResult {
             val resultTable = bounds.variableNodes.map { (key, value) ->
                 key to value.equivalentTo.filter { it.first is TypeNode }.map { it.first.type }.toList()

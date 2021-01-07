@@ -72,8 +72,21 @@ primaryExpression
     | block
     ;
 
+statement
+    : valStatement
+    | returnStatement
+    ;
+
+valStatement
+    : VAL IDENTIFIER (COLON type)? EQ expression
+    ;
+
+returnStatement
+    : RETURN expression
+    ;
+
 block
-    : LCURL NL* expression* NL* RCURL
+    : LCURL NL* (statement NL* (statement NL*)*)? RCURL
     ;
 
 lambdaLiteral

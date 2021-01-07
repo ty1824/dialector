@@ -20,8 +20,7 @@ interface InferenceRule<T : Node> {
     val isValidFor: NodeClause<T>
     val infer: ProgramInferenceContext.(node: T) -> Unit
 
-    @Contract
-    operator fun invoke(context: ProgramInferenceContext, node: Node): Unit {
+    operator fun invoke(context: ProgramInferenceContext, node: Node) {
         if (isValidFor(node)) context.infer(node as T)
     }
 }

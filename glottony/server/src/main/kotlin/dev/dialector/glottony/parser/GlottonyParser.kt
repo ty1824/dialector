@@ -2,6 +2,7 @@ package dev.dialector.glottony.parser
 
 import dev.dialector.glottony.ast.BinaryOperator
 import dev.dialector.glottony.ast.BinaryOperators
+import dev.dialector.glottony.ast.BlockExpression
 import dev.dialector.glottony.ast.Expression
 import dev.dialector.glottony.ast.File
 import dev.dialector.glottony.ast.FunctionDeclaration
@@ -9,7 +10,12 @@ import dev.dialector.glottony.ast.Parameter
 import dev.dialector.glottony.ast.ParameterList
 import dev.dialector.glottony.ast.TopLevelConstruct
 import dev.dialector.glottony.ast.GType
+import dev.dialector.glottony.ast.ReturnStatement
+import dev.dialector.glottony.ast.Statement
+import dev.dialector.glottony.ast.ValStatement
 import dev.dialector.glottony.ast.binaryExpression
+import dev.dialector.glottony.ast.block
+import dev.dialector.glottony.ast.blockExpression
 import dev.dialector.glottony.ast.file
 import dev.dialector.glottony.ast.functionDeclaration
 import dev.dialector.glottony.ast.integerLiteral
@@ -18,10 +24,13 @@ import dev.dialector.glottony.ast.numberLiteral
 import dev.dialector.glottony.ast.numberType
 import dev.dialector.glottony.ast.parameter
 import dev.dialector.glottony.ast.parameterList
+import dev.dialector.glottony.ast.returnStatement
 import dev.dialector.glottony.ast.stringLiteral
 import dev.dialector.glottony.ast.stringType
 import dev.dialector.glottony.ast.structDeclaration
+import dev.dialector.glottony.ast.valStatement
 import dev.dialector.model.Node
+import dev.dialector.model.NodeReference
 import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -40,10 +49,10 @@ object GlottonyParser {
         return ParserVisitor().visit(GlottonyGrammar(tokens).file()) as File
     }
 
-    fun parseStringWithSourceMap(string: String): Pair<File, Map<Any, ParserRuleContext>> =
+    fun parseStringWithSourceMap(string: String): Pair<File, Map<Node, ParserRuleContext>> =
         parseFileWithSourceMap(CharStreams.fromString(string))
 
-    private fun parseFileWithSourceMap(charStream: CharStream): Pair<File, Map<Any, ParserRuleContext>> {
+    private fun parseFileWithSourceMap(charStream: CharStream): Pair<File, Map<Node, ParserRuleContext>> {
         val tokens = CommonTokenStream(GlottonyLexer(charStream))
         val mappingVisitor = MappingVisitor()
         val result = mappingVisitor.visit(GlottonyGrammar(tokens).file()) as File
@@ -53,7 +62,7 @@ object GlottonyParser {
 
 class MappingVisitor : ParserVisitor() {
     val sourceMap: MutableMap<Node, ParserRuleContext> = mutableMapOf()
-    override fun visit(tree: ParseTree): Any? {
+    override fun visit(tree: ParseTree?): Any? {
         val result = super.visit(tree)
         if (result is Node && tree is ParserRuleContext) sourceMap[result] = tree
         return result
@@ -140,9 +149,23 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
         return visit(ctx.getChild(0)) as Expression
     }
 
-    override fun visitBlock(ctx: GlottonyGrammar.BlockContext): Expression {
-        // TODO: Implement
-        return visit(ctx.expression(0)) as Expression
+    override fun visitBlock(ctx: GlottonyGrammar.BlockContext): BlockExpression = blockExpression {
+        block = block {
+            statements += ctx.statement().map { visit(it) as Statement }
+        }
+    }
+
+    override fun visitStatement(ctx: GlottonyGrammar.StatementContext): Statement =
+        visit(ctx.getChild(0)) as Statement
+
+    override fun visitValStatement(ctx: GlottonyGrammar.ValStatementContext): ValStatement = valStatement {
+        name = ctx.IDENTIFIER().text
+        type = if (ctx.type() != null && !ctx.type().isEmpty) visit(ctx.type()) as GType else null
+        expression = visit(ctx.expression()) as Expression
+    }
+
+    override fun visitReturnStatement(ctx: GlottonyGrammar.ReturnStatementContext): ReturnStatement = returnStatement {
+         expression = visit(ctx.expression()) as Expression
     }
 
     override fun visitLambdaLiteral(ctx: GlottonyGrammar.LambdaLiteralContext): Expression {

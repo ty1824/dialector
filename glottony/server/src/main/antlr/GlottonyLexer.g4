@@ -12,6 +12,8 @@ LCURL: '{';
 RCURL: '}';
 LBRACKET: '[';
 RBRACKET: ']';
+VAL: 'val';
+RETURN: 'return';
 ARROW: '->';
 LANGLE: '<';
 RANGLE: '>';
@@ -30,7 +32,7 @@ STRING_TYPE: 'string';
 
 WS
     : [\u0020\u0009\u000C]
-      -> skip
+      -> channel(HIDDEN)
     ;
 
 NL: '\u000A' | '\u000D' '\u000A' ;

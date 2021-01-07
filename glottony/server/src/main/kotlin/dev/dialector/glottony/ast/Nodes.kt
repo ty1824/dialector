@@ -74,6 +74,41 @@ interface StructType : GType {
 
 interface Expression : Node
 
+/**
+ * Represents a Statement inside a [Block]
+ */
+interface Statement : Node
+
+@NodeDefinition
+interface Block : Node {
+    @Child
+    val statements: List<Statement>
+}
+
+@NodeDefinition
+interface ValStatement : Statement {
+    @Property
+    val name: String
+
+    @Child
+    val expression: Expression
+
+    @Child
+    val type: GType?
+}
+
+@NodeDefinition
+interface ReturnStatement : Statement {
+    @Child
+    val expression: Expression
+}
+
+@NodeDefinition
+interface BlockExpression : Expression {
+    @Child
+    val block: Block
+}
+
 abstract class BinaryOperator(val symbol: String)
 
 object BinaryOperators {

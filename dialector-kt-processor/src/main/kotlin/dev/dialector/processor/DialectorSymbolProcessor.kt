@@ -274,7 +274,7 @@ class Generator(private val resolver: Resolver) {
                                 .apply {
                                     model.children.forEach { property ->
                                         if (property.type.resolve().isAssignableTo(nullableNodeType))
-                                            add("\"${property.simpleName.asString()}\" to listOf(${property.simpleName.asString()}), ")
+                                            add("\"${property.simpleName.asString()}\" to listOfNotNull(${property.simpleName.asString()}), ")
                                         else if (property.type.resolve().isAssignableTo(nodeListType))
                                             add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
                                         else

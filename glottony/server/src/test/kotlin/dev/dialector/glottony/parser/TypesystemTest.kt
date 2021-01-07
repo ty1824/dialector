@@ -1,14 +1,22 @@
 package dev.dialector.glottony.parser
 
 import dev.dialector.glottony.ast.BinaryOperators
-import dev.dialector.glottony.ast.NumberType
+import dev.dialector.glottony.ast.BlockExpression
 import dev.dialector.glottony.ast.binaryExpression
+import dev.dialector.glottony.ast.block
+import dev.dialector.glottony.ast.blockExpression
+import dev.dialector.glottony.ast.functionDeclaration
 import dev.dialector.glottony.ast.integerLiteral
 import dev.dialector.glottony.ast.numberLiteral
-import dev.dialector.glottony.ast.numberType
-import dev.dialector.glottony.typesystem.GlottonyTypeInferenceContext
+import dev.dialector.glottony.ast.parameterList
+import dev.dialector.glottony.ast.returnStatement
+import dev.dialector.glottony.ast.stringLiteral
+import dev.dialector.glottony.ast.stringType
+import dev.dialector.glottony.ast.valStatement
+import dev.dialector.glottony.typesystem.GlottonyTypesystemContext
 import dev.dialector.glottony.typesystem.IntType
 import dev.dialector.glottony.typesystem.NumType
+import dev.dialector.glottony.typesystem.StrType
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
@@ -21,7 +29,7 @@ class TypesystemTest {
             right = integerLiteral { value = "10" }
         }
 
-        val inferenceContext = GlottonyTypeInferenceContext()
+        val inferenceContext = GlottonyTypesystemContext()
         val result = inferenceContext.inferTypes(node)
 
         assertEquals(IntType, result[node])
@@ -45,11 +53,63 @@ class TypesystemTest {
             }
         }
 
-        val inferenceContext = GlottonyTypeInferenceContext()
+        val inferenceContext = GlottonyTypesystemContext()
         val result = inferenceContext.inferTypes(node)
 
         assertEquals(NumType, result[node])
         assertEquals(IntType, result[node.left])
         assertEquals(NumType, result[node.right])
+    }
+
+    @Test
+    fun functionTypeInferenceTest() {
+        val node = functionDeclaration {
+            name = "foo"
+            parameters = parameterList {  }
+            type = stringType {  }
+            body = blockExpression { block = block {
+                statements += valStatement {
+                    name = "v"
+                    type = stringType { }
+                    expression = stringLiteral { value = "abc" }
+                }
+                statements += returnStatement {
+                    expression = stringLiteral { value = "def" }
+                }
+            } }
+        }
+
+        val inferenceContext = GlottonyTypesystemContext()
+        val result = inferenceContext.inferTypes(node)
+
+        val block = (node.body as BlockExpression).block
+        assertEquals(StrType, result[node.body])
+        assertEquals(StrType, result[block.statements[0]])
+    }
+
+    @Test
+    fun functionInvalidReturnTypeTest() {
+        val node = functionDeclaration {
+            name = "foo"
+            parameters = parameterList {  }
+            type = stringType {  }
+            body = blockExpression { block = block {
+                statements += valStatement {
+                    name = "v"
+                    type = stringType { }
+                    expression = stringLiteral { value = "abc" }
+                }
+                statements += returnStatement {
+                    expression = numberLiteral { value = "123" }
+                }
+            } }
+        }
+
+        val inferenceContext = GlottonyTypesystemContext()
+        val result = inferenceContext.inferTypes(node)
+
+        val block = (node.body as BlockExpression).block
+        assertEquals(NumType, result[node.body])
+        assertEquals(NumType, result[block.statements[0]])
     }
 }

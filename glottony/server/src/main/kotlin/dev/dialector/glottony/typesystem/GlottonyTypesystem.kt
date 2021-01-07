@@ -2,13 +2,20 @@ package dev.dialector.glottony.typesystem
 
 import dev.dialector.glottony.ast.BinaryExpression
 import dev.dialector.glottony.ast.BinaryOperators
+import dev.dialector.glottony.ast.BlockExpression
+import dev.dialector.glottony.ast.FunctionDeclaration
+import dev.dialector.glottony.ast.GType
 import dev.dialector.glottony.ast.IntegerLiteral
+import dev.dialector.glottony.ast.IntegerType
 import dev.dialector.glottony.ast.NumberLiteral
+import dev.dialector.glottony.ast.NumberType
+import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.StringLiteral
+import dev.dialector.glottony.ast.StringType
+import dev.dialector.glottony.ast.ValStatement
 import dev.dialector.model.Node
 import dev.dialector.model.getAllDescendants
-import dev.dialector.model.nodeClassClause
-import dev.dialector.model.nodeClause
+import dev.dialector.model.givenNode
 import dev.dialector.typesystem.IdentityType
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.inference.new.BaseInferenceSystem
@@ -47,7 +54,14 @@ object IntType : IdentityType("integer")
 object NumType : IdentityType("number")
 object StrType : IdentityType("string")
 
-class GlottonyTypeInferenceContext {
+fun GType.asType(): Type = when (this) {
+    is IntegerType -> IntType
+    is NumberType -> NumType
+    is StringType -> StrType
+    else -> throw RuntimeException("Could not derive typesystem type for node: $this")
+}
+
+class GlottonyTypesystemContext {
     val lattice: SimpleTypeLattice = SimpleTypeLattice(listOf(
         typeClass<Type>() hasSupertype AnyType,
         typeClass<IntType>() hasSupertype NumType,
@@ -57,38 +71,57 @@ class GlottonyTypeInferenceContext {
     ), listOf())
     val reductionRules = listOf(redundantElimination, leftReduction, rightReduction)
     val inferenceRules: List<InferenceRule<*>> = listOf(
-        nodeClassClause(StringLiteral::class) infers {
+        givenNode<StringLiteral>() infers {
             constraint { typeOf(it) equal StrType }
         },
-        nodeClassClause(NumberLiteral::class) infers {
+        givenNode<NumberLiteral>() infers {
             constraint { typeOf(it) equal NumType }
         },
-        nodeClassClause(IntegerLiteral::class) infers {
+        givenNode<IntegerLiteral>() infers {
             constraint { typeOf(it) equal IntType }
         },
-        nodeClause<BinaryExpression> { it.operator == BinaryOperators.Plus } infers {
+        givenNode<BinaryExpression> { it.operator == BinaryOperators.Plus } infers {
             constraint { typeOf(it) supertype typeOf(it.left) }
             constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype OrType(setOf(NumType, StrType)) }
             constraint { typeOf(it.right) subtype OrType(setOf(NumType, StrType)) }
         },
-        nodeClause<BinaryExpression> { it.operator == BinaryOperators.Minus } infers {
+        givenNode<BinaryExpression> { it.operator == BinaryOperators.Minus } infers {
             constraint { typeOf(it) supertype typeOf(it.left) }
             constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype NumType }
             constraint { typeOf(it.right) subtype NumType }
         },
-        nodeClause<BinaryExpression> { it.operator == BinaryOperators.Multiply } infers {
+        givenNode<BinaryExpression> { it.operator == BinaryOperators.Multiply } infers {
             constraint { typeOf(it) supertype typeOf(it.left) }
             constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype NumType }
             constraint { typeOf(it.right) subtype NumType }
         },
-        nodeClause<BinaryExpression> { it.operator == BinaryOperators.Divide } infers {
+        givenNode<BinaryExpression> { it.operator == BinaryOperators.Divide } infers {
             constraint { typeOf(it) supertype typeOf(it.left) }
             constraint { typeOf(it) supertype typeOf(it.right) }
             constraint { typeOf(it.left) subtype NumType }
             constraint { typeOf(it.right) subtype NumType }
+        },
+        givenNode<BlockExpression>() infers {
+            constraint { typeOf(it) equal typeOf(it.block.statements.last { statement -> statement is ReturnStatement }) }
+        },
+        givenNode<ValStatement>() infers {
+            val type = it.type
+            if (type != null) {
+                val asType = type.asType()
+                constraint { typeOf(it) equal asType }
+                constraint { typeOf(it.expression) subtype asType }
+            } else {
+                constraint { typeOf(it) equal typeOf(it.expression) }
+            }
+        },
+        givenNode<ReturnStatement>() infers {
+            constraint { typeOf(it) equal typeOf(it.expression) }
+        },
+        givenNode<FunctionDeclaration>() infers {
+            constraint { typeOf(it.body) subtype it.type.asType() }
         }
     )
 
@@ -102,6 +135,9 @@ class GlottonyTypeInferenceContext {
                     rule(this, node)
                 }
             }
+        }
+        context.nodeVariables.forEach {
+            println("Node: ${it.key} bound to ${it.value}")
         }
 
         val inferenceSolution = system.solve(reductionRules)

@@ -1,6 +1,10 @@
 package dev.dialector.glottony.server
 
+import dev.dialector.glottony.diagnostics.GlottonyDiagnosticProvider
+import dev.dialector.glottony.diagnostics.ModelDiagnostic
 import dev.dialector.glottony.parser.GlottonyParser
+import dev.dialector.glottony.typesystem.GlottonyTypesystemContext
+import dev.dialector.model.Node
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
 import org.eclipse.lsp4j.Diagnostic
@@ -19,7 +23,6 @@ import org.eclipse.lsp4j.SaveOptions
 import org.eclipse.lsp4j.ServerCapabilities
 import org.eclipse.lsp4j.TextDocumentSyncKind
 import org.eclipse.lsp4j.TextDocumentSyncOptions
-import org.eclipse.lsp4j.WorkspaceServerCapabilities
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.eclipse.lsp4j.services.LanguageClient
@@ -28,7 +31,7 @@ import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.services.WorkspaceService
 import java.util.concurrent.CompletableFuture
-import kotlin.system.exitProcess
+
 class GlottonyLanguageServer : LanguageServer, LanguageClientAware {
     val workspaceService: GlottonyWorkspaceService = GlottonyWorkspaceService()
     val textDocumentService: GlottonyDocumentService = GlottonyDocumentService(this)
@@ -76,8 +79,14 @@ class GlottonyLanguageServer : LanguageServer, LanguageClientAware {
     }
 }
 
+fun ModelDiagnostic.toDiagnostic(sourceMap: Map<Node, ParserRuleContext>): Diagnostic? {
+    val rule = sourceMap[this.target]
+    return if (rule != null) {
+        Diagnostic(Range(rule.start.toPosition(), rule.stop.toPosition()), this.message)
+    } else null
+}
 
-fun Token.toPosition(): Position = Position(this.line, this.charPositionInLine)
+fun Token.toPosition(): Position = Position(this.line-1, this.charPositionInLine)
 
 class GlottonyDocumentService(val server: GlottonyLanguageServer) : TextDocumentService {
     override fun didOpen(params: DidOpenTextDocumentParams) {
@@ -86,29 +95,24 @@ class GlottonyDocumentService(val server: GlottonyLanguageServer) : TextDocument
         println(params.textDocument.text)
         val (file, sourceMap) = GlottonyParser.parseStringWithSourceMap(params.textDocument.text)
 
-        val firstContent = file.contents.firstOrNull()
-        if (firstContent != null) {
-            val contentRule = sourceMap[firstContent]
-            if (contentRule != null) {
-                server.client.publishDiagnostics(PublishDiagnosticsParams(params.textDocument.uri, listOf(
-                    Diagnostic(Range(contentRule.start.toPosition(), contentRule.stop.toPosition()), "A message!")
-                )))
-            }
-        }
+        val diagnostics = GlottonyDiagnosticProvider(GlottonyTypesystemContext()).evaluate(file)
+        println(diagnostics)
+        server.client.publishDiagnostics(PublishDiagnosticsParams(
+            params.textDocument.uri,
+            diagnostics.map { it.toDiagnostic(sourceMap) }
+        ))
     }
 
     override fun didChange(params: DidChangeTextDocumentParams) {
         println(params.textDocument.uri)
         val (file, sourceMap) = GlottonyParser.parseStringWithSourceMap(params.contentChanges[0].text)
 
-        val firstContent = file.contents.firstOrNull()
-
-        if (firstContent != null) {
-            val contentRule = sourceMap[firstContent]
-            server.client.publishDiagnostics(PublishDiagnosticsParams(params.textDocument.uri, listOf(
-                Diagnostic(Range(contentRule!!.start.toPosition(), contentRule!!.stop.toPosition()), "A message!")
-            )))
-        }
+        val diagnostics = GlottonyDiagnosticProvider(GlottonyTypesystemContext()).evaluate(file)
+        println(diagnostics)
+        server.client.publishDiagnostics(PublishDiagnosticsParams(
+            params.textDocument.uri,
+            diagnostics.map { it.toDiagnostic(sourceMap) }
+        ))
     }
 
     override fun didClose(params: DidCloseTextDocumentParams) {
