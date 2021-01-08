@@ -17,7 +17,7 @@ interface NodeClause<T : Node> : TypesafeClause<T> {
 /**
  * Creates a Clause that matches against a specific [Node].
  */
-fun <T : Node> givenNode(forNode: T): NodeClause<T> =
+fun <T : Node> given(forNode: T): NodeClause<T> =
     object : InstanceClause<T>(forNode), NodeClause<T> {
         override fun invoke(candidate: Node): Boolean = forNode == candidate
     }
@@ -25,7 +25,7 @@ fun <T : Node> givenNode(forNode: T): NodeClause<T> =
 /**
  * Creates a Clause that matches against a specific Node class.
  */
-inline fun <reified T : Node> givenNode(): NodeClause<T> =
+inline fun <reified T : Node> given(): NodeClause<T> =
     object : ClassifierClause<T>(T::class), NodeClause<T> {
         override fun invoke(candidate: Node): Boolean = clauseClass.isInstance(candidate)
     }
@@ -33,7 +33,7 @@ inline fun <reified T : Node> givenNode(): NodeClause<T> =
 /**
  * Creates a Clause that matches nodes against a given predicate.
  */
-inline fun <reified T : Node> givenNode(crossinline predicate: (T) -> Boolean) = object : NodeClause<T> {
+inline fun <reified T : Node> given(crossinline predicate: (T) -> Boolean) = object : NodeClause<T> {
     override val clauseClass = T::class
     override fun constraint(candidate: T): Boolean = predicate(candidate)
 }

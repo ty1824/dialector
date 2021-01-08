@@ -2,12 +2,6 @@ package dev.dialector.typesystem.integration
 
 import dev.dialector.model.Node
 import dev.dialector.model.NodeClause
-import dev.dialector.typesystem.inference.new.InferenceContext
-import dev.dialector.util.ClassifierClause
-import dev.dialector.util.InstanceClause
-import dev.dialector.util.TypesafeClause
-import org.jetbrains.annotations.Contract
-import kotlin.reflect.KClass
 
 interface BoundsContext {
 
@@ -25,9 +19,9 @@ interface InferenceRule<T : Node> {
     }
 }
 
-infix fun <T : Node> NodeClause<T>.infers(infer: ProgramInferenceContext.(node: T) -> Unit): InferenceRule<T> =
+infix fun <T : Node> NodeClause<T>.infer(infer: ProgramInferenceContext.(node: T) -> Unit): InferenceRule<T> =
     object : InferenceRule<T> {
-        override val isValidFor: NodeClause<T> = this@infers
+        override val isValidFor: NodeClause<T> = this@infer
         override val infer: ProgramInferenceContext.(node: T) -> Unit = infer
     }
 

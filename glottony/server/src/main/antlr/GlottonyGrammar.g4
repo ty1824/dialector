@@ -17,7 +17,7 @@ topLevelConstruct
     ;
 
 functionDeclaration
-    : FUN IDENTIFIER functionParameters COLON type EQ body
+    : FUN name=IDENTIFIER parameters=functionParameters COLON returnType=type EQ body
     ;
 
 functionParameters
@@ -26,15 +26,15 @@ functionParameters
     ;
 
 structDeclaration
-    : STRUCT IDENTIFIER LPAREN NL* (fieldDeclaration NL* (COMMA NL* fieldDeclaration NL*)*)? COMMA? NL* RPAREN
+    : STRUCT name=IDENTIFIER LPAREN NL* (fieldDeclaration NL* (COMMA NL* fieldDeclaration NL*)*)? COMMA? NL* RPAREN
     ;
 
 fieldDeclaration
-    : IDENTIFIER COLON type
+    : name=IDENTIFIER COLON type
     ;
 
 parameterDeclaration
-    : IDENTIFIER COLON type
+    : name=IDENTIFIER (COLON type)?
     ;
 
 body
@@ -78,7 +78,7 @@ statement
     ;
 
 valStatement
-    : VAL IDENTIFIER (COLON type)? EQ expression
+    : VAL name=IDENTIFIER (COLON type)? EQ expression
     ;
 
 returnStatement
@@ -90,11 +90,11 @@ block
     ;
 
 lambdaLiteral
-    : LCURL NL* lambdaParameters NL* ARROW NL* body NL* RCURL
+    : LCURL NL* (lambdaParameters NL* ARROW NL*)? body NL* RCURL
     ;
 
 lambdaParameters
-    : parameterDeclaration? (NL* COMMA NL* parameterDeclaration)*
+    : parameterDeclaration (NL* COMMA NL* parameterDeclaration)*
     ;
 
 argumentList
@@ -103,19 +103,19 @@ argumentList
     ;
 
 numberLiteral
-    : NUMBER
+    : value=NUMBER
     ;
 
 integerLiteral
-    : INTEGER
+    : value=INTEGER
     ;
 
 stringLiteral
-    : STRING
+    : value=STRING
     ;
 
 simpleIdentifier
-    : IDENTIFIER
+    : referent=IDENTIFIER
     ;
 
 identifier
@@ -136,11 +136,25 @@ type
     : NUMBER_TYPE
     | INTEGER_TYPE
     | STRING_TYPE
+    | functionType
     | identifier
     ;
 
+functionTypeParameterList
+    : LPAREN RPAREN
+    | LPAREN (functionTypeParameterDefinition (COMMA functionTypeParameterDefinition)*)? RPAREN
+    ;
+
+functionTypeParameterDefinition
+    : (name=identifier COLON)? type
+    ;
+
+functionType
+    : functionTypeParameterList ARROW returnType=type
+    ;
+
 typeConstructor
-    : identifier typeParameterList
+    : referent=identifier typeParameterList
     ;
 
 typeParameterList
@@ -149,5 +163,5 @@ typeParameterList
     ;
 
 typeParameterDeclaration
-    : identifier (COLON type)?
+    : name=identifier (COLON type)?
     ;

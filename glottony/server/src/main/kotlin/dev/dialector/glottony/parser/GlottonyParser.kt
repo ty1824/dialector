@@ -1,29 +1,38 @@
 package dev.dialector.glottony.parser
 
+import dev.dialector.glottony.ast.ArgumentList
 import dev.dialector.glottony.ast.BinaryOperator
 import dev.dialector.glottony.ast.BinaryOperators
 import dev.dialector.glottony.ast.BlockExpression
 import dev.dialector.glottony.ast.Expression
 import dev.dialector.glottony.ast.File
 import dev.dialector.glottony.ast.FunctionDeclaration
+import dev.dialector.glottony.ast.FunctionType
 import dev.dialector.glottony.ast.Parameter
 import dev.dialector.glottony.ast.ParameterList
 import dev.dialector.glottony.ast.TopLevelConstruct
 import dev.dialector.glottony.ast.GType
+import dev.dialector.glottony.ast.LambdaLiteral
+import dev.dialector.glottony.ast.ParameterTypeDeclaration
 import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.Statement
 import dev.dialector.glottony.ast.ValStatement
+import dev.dialector.glottony.ast.argument
+import dev.dialector.glottony.ast.argumentList
 import dev.dialector.glottony.ast.binaryExpression
 import dev.dialector.glottony.ast.block
 import dev.dialector.glottony.ast.blockExpression
 import dev.dialector.glottony.ast.file
 import dev.dialector.glottony.ast.functionDeclaration
+import dev.dialector.glottony.ast.functionType
 import dev.dialector.glottony.ast.integerLiteral
 import dev.dialector.glottony.ast.integerType
+import dev.dialector.glottony.ast.lambdaLiteral
 import dev.dialector.glottony.ast.numberLiteral
 import dev.dialector.glottony.ast.numberType
 import dev.dialector.glottony.ast.parameter
 import dev.dialector.glottony.ast.parameterList
+import dev.dialector.glottony.ast.parameterTypeDeclaration
 import dev.dialector.glottony.ast.returnStatement
 import dev.dialector.glottony.ast.stringLiteral
 import dev.dialector.glottony.ast.stringType
@@ -89,9 +98,9 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
 
     override fun visitFunctionDeclaration(ctx: GlottonyGrammar.FunctionDeclarationContext): FunctionDeclaration =
         functionDeclaration {
-            name = ctx.IDENTIFIER().text
-            parameters = visit(ctx.functionParameters()) as ParameterList
-            type = visit(ctx.type()) as GType
+            name = ctx.name.text
+            parameters = visit(ctx.parameters) as ParameterList
+            type = visit(ctx.returnType) as GType
             // TODO parse dis plz
             body = visit(ctx.body()) as Expression
         }
@@ -104,7 +113,7 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
 
     override fun visitParameterDeclaration(ctx: GlottonyGrammar.ParameterDeclarationContext): Parameter {
         return parameter {
-            name = ctx.IDENTIFIER().text
+            name = ctx.name.text
             type = visit(ctx.type()) as GType
         }
     }
@@ -159,7 +168,7 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
         visit(ctx.getChild(0)) as Statement
 
     override fun visitValStatement(ctx: GlottonyGrammar.ValStatementContext): ValStatement = valStatement {
-        name = ctx.IDENTIFIER().text
+        name = ctx.name.text
         type = if (ctx.type() != null && !ctx.type().isEmpty) visit(ctx.type()) as GType else null
         expression = visit(ctx.expression()) as Expression
     }
@@ -168,16 +177,16 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
          expression = visit(ctx.expression()) as Expression
     }
 
-    override fun visitLambdaLiteral(ctx: GlottonyGrammar.LambdaLiteralContext): Expression {
-        TODO("Implement")
+    override fun visitLambdaLiteral(ctx: GlottonyGrammar.LambdaLiteralContext): LambdaLiteral = lambdaLiteral {
+        parameters = visit(ctx.lambdaParameters()) as ParameterList
     }
 
-    override fun visitLambdaParameters(ctx: GlottonyGrammar.LambdaParametersContext): Node {
-        TODO("Implement")
+    override fun visitLambdaParameters(ctx: GlottonyGrammar.LambdaParametersContext): ParameterList = parameterList {
+        parameters += ctx.parameterDeclaration().map { visit(it) as Parameter }
     }
 
-    override fun visitArgumentList(ctx: GlottonyGrammar.ArgumentListContext): Node {
-        TODO("Implement")
+    override fun visitArgumentList(ctx: GlottonyGrammar.ArgumentListContext): ArgumentList = argumentList {
+        arguments += ctx.expression().map { argument { value = visit(it) as Expression }}
     }
 
     override fun visitNumberLiteral(ctx: GlottonyGrammar.NumberLiteralContext): Expression {
@@ -227,5 +236,33 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
         throw RuntimeException("Identifier not implemented")
     }
 
+    override fun visitMemberAccessExpression(ctx: GlottonyGrammar.MemberAccessExpressionContext?): Any? {
+        throw RuntimeException("Member access not implemented")
+    }
 
+    override fun visitFunctionTypeParameterList(ctx: GlottonyGrammar.FunctionTypeParameterListContext): List<ParameterTypeDeclaration> =
+        ctx.functionTypeParameterDefinition().map { visit(it) as ParameterTypeDeclaration }
+
+    override fun visitFunctionTypeParameterDefinition(ctx: GlottonyGrammar.FunctionTypeParameterDefinitionContext): ParameterTypeDeclaration =
+        parameterTypeDeclaration {
+            name = ctx.name?.text
+            type = visit(ctx.type()) as GType
+        }
+
+    override fun visitFunctionType(ctx: GlottonyGrammar.FunctionTypeContext): FunctionType = functionType {
+        parameterTypes += visit(ctx.functionTypeParameterList()) as List<ParameterTypeDeclaration>
+        returnType = visit(ctx.returnType) as GType
+    }
+
+    override fun visitTypeConstructor(ctx: GlottonyGrammar.TypeConstructorContext?): Any? {
+        return super.visitTypeConstructor(ctx)
+    }
+
+    override fun visitTypeParameterList(ctx: GlottonyGrammar.TypeParameterListContext?): Any? {
+        return super.visitTypeParameterList(ctx)
+    }
+
+    override fun visitTypeParameterDeclaration(ctx: GlottonyGrammar.TypeParameterDeclarationContext?): Any? {
+        return super.visitTypeParameterDeclaration(ctx)
+    }
 }

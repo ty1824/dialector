@@ -2,12 +2,11 @@ package dev.dialector.glottony.diagnostics
 
 import dev.dialector.glottony.ast.FunctionDeclaration
 import dev.dialector.glottony.ast.ValStatement
-import dev.dialector.glottony.typesystem.GlottonyTypesystem
 import dev.dialector.glottony.typesystem.GlottonyTypesystemContext
 import dev.dialector.glottony.typesystem.asType
 import dev.dialector.model.Node
 import dev.dialector.model.getAllDescendants
-import dev.dialector.model.givenNode
+import dev.dialector.model.given
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.lattice.TypeLattice
 
@@ -42,12 +41,12 @@ fun DiagnosticEvaluationContext.checkAssignability(candidate: Type, expected: Ty
 
 class GlottonyDiagnosticProvider(private val typesystemContext: GlottonyTypesystemContext) {
     val diagnosticRules: List<DiagnosticRule<*>> = listOf(
-        givenNode<FunctionDeclaration>() check {
+        given<FunctionDeclaration>() check {
             val bodyType = getTypeOf(it.body)
             val expectedType = it.type.asType()
             if (bodyType != null) checkAssignability(bodyType, expectedType, it.body)
         },
-        givenNode<ValStatement>() check {
+        given<ValStatement>() check {
             val expectedType = it.type
             if (expectedType != null) {
                 val actualType = getTypeOf(it.expression)

@@ -10,6 +10,8 @@ LPAREN: '(';
 RPAREN: ')';
 LCURL: '{';
 RCURL: '}';
+DOUBLELCURL: '{{';
+DOUBLERCURL: '}}';
 LBRACKET: '[';
 RBRACKET: ']';
 VAL: 'val';

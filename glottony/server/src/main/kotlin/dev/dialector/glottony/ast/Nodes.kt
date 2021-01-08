@@ -6,7 +6,6 @@ import dev.dialector.model.NodeDefinition
 import dev.dialector.model.NodeReference
 import dev.dialector.model.Property
 import dev.dialector.model.Reference
-import dev.dialector.typesystem.Type
 
 @NodeDefinition
 interface TopLevelConstruct : Node
@@ -22,6 +21,15 @@ interface StructDeclaration : TopLevelConstruct {
     @Property
     val name: String
     /* TODO: Add more */
+}
+
+@NodeDefinition
+interface StructField : Node {
+    @Property
+    val name: String
+
+    @Child
+    val type: GType
 }
 
 @NodeDefinition
@@ -51,7 +59,7 @@ interface Parameter : Node {
     val name: String
 
     @Child
-    val type: GType
+    val type: GType?
 }
 
 @NodeDefinition
@@ -70,6 +78,24 @@ interface StringType : GType
 interface StructType : GType {
     @Reference
     val ofStruct: NodeReference<StructDeclaration>
+}
+
+@NodeDefinition
+interface ParameterTypeDeclaration : Node {
+    @Property
+    val name: String?
+
+    @Child
+    val type: GType
+}
+
+@NodeDefinition
+interface FunctionType : GType {
+    @Child
+    val parameterTypes: List<ParameterTypeDeclaration>
+
+    @Child
+    val returnType: GType
 }
 
 interface Expression : Node
@@ -130,6 +156,27 @@ interface BinaryExpression : Expression {
     val right: Expression
 }
 
+@NodeDefinition
+interface ArgumentList : Node {
+    @Child
+    val arguments: List<Argument>
+}
+
+@NodeDefinition
+interface Argument : Node {
+    @Child
+    val value: Expression
+}
+
+@NodeDefinition
+interface FunctionCall : Expression {
+    @Child
+    val functionExpression: Expression
+
+    @Child
+    val arguments: ArgumentList
+}
+
 interface DotTarget : Node
 
 @NodeDefinition
@@ -161,4 +208,14 @@ interface NumberLiteral : Literal {
 interface StringLiteral : Literal {
     @Property
     val value: String
+}
+
+@NodeDefinition
+interface LambdaLiteral : Expression {
+    @Child
+    val parameters: ParameterList
+
+    @Child
+    val body: Expression
+
 }

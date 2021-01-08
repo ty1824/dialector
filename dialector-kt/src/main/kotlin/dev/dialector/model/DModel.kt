@@ -21,7 +21,7 @@ interface Node {
 
 interface NodeReference<T : Node> {
     fun source(): Node
-    fun resolve(): Node?
+    fun resolve(): T?
 }
 
 fun Node.getRoot(): Node = parent?.getRoot() ?: this

@@ -54,7 +54,6 @@ class GlottonyLanguageServer : LanguageServer, LanguageClientAware {
     }
 
     override fun getTextDocumentService(): TextDocumentService {
-        println("getting text doc service")
         return textDocumentService
     }
 
