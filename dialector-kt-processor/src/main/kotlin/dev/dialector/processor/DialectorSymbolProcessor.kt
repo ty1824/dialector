@@ -3,6 +3,7 @@ package dev.dialector.processor
 import com.google.auto.service.AutoService
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
@@ -45,10 +46,10 @@ class DialectorSymbolProcessor : SymbolProcessor {
     override fun process(resolver: Resolver) {
         val symbols: List<KSAnnotated> = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
         val nodeDefinitions = symbols.filterIsInstance<KSClassDeclaration>()
-        Generator(resolver).generate(nodeDefinitions).forEach {
-            val file = codeGenerator.createNewFile(it.packageName, it.name)
+        Generator(resolver).generate(nodeDefinitions).forEach { (fileSpec, ksClasses) ->
+            val file = codeGenerator.createNewFile(Dependencies(true, *(ksClasses.mapNotNull { it.containingFile }.distinct().toTypedArray())), fileSpec.packageName, fileSpec.name)
             file.bufferedWriter().use { stream ->
-                it.writeTo(stream)
+                fileSpec.writeTo(stream)
             }
         }
     }
@@ -169,48 +170,43 @@ class Generator(private val resolver: Resolver) {
         val nodeModels: Map<KSClassDeclaration, NodeModel>
     ) {
 
-        fun generate() : List<FileSpec> {
-            val files: MutableList<FileSpec> = mutableListOf<FileSpec>()
+        fun generate() : List<Pair<FileSpec, List<KSClassDeclaration>>> {
+            val files: MutableList<Pair<FileSpec, List<KSClassDeclaration>>> = mutableListOf()
             for (model in nodeModels.values) {
                 val builder = FileSpec.builder(genPackage, "${model.nodeClass.simpleName.getShortName()}Model")
                 handleClass(model, builder)
-                files += builder.build()
+                files += builder.build() to model.inheritedNodes + model.nodeClass
             }
-            files += generateBuilderDsl()
-            return files
+            return files.toList()
         }
 
         fun handleClass(model: NodeModel, builder: FileSpec.Builder) {
             builder.addType(generateImpl(model))
             builder.addType(generateBuilder(model))
+            builder.addFunction(generateBuilderDsl(model))
 
             // Create extension functions for the base class, too.
         }
 
-        fun generateBuilderDsl(): FileSpec {
-            val builder = FileSpec.builder(genPackage, "NodeBuilders")
-            for (model in nodeModels.values) {
-                val initializerClassName = ClassName(
-                    model.nodeClass.packageName.asString(),
-                    "${model.nodeClass.simpleName.asString()}Initializer"
+        fun generateBuilderDsl(model: NodeModel): FunSpec {
+            val initializerClassName = ClassName(
+                model.nodeClass.packageName.asString(),
+                "${model.nodeClass.simpleName.asString()}Initializer"
+            )
+            return FunSpec.builder(
+                model.nodeClass.simpleName.getShortName().let {
+                    val first = it.first()
+                    it.replaceFirst(first, first.toLowerCase())
+                })
+                .addParameter("init",
+                    LambdaTypeName.get(
+                        receiver = initializerClassName,
+                        returnType = Unit::class.asTypeName()
+                    )
                 )
-                builder.addFunction(
-                    FunSpec.builder(model.nodeClass.simpleName.getShortName().let {
-                        val first = it.first()
-                        it.replaceFirst(first, first.toLowerCase())
-                    })
-                        .addParameter("init",
-                            LambdaTypeName.get(
-                                receiver = initializerClassName,
-                                returnType = Unit::class.asTypeName()
-                            )
-                        )
-                        .returns(model.nodeClass.asClassName())
-                        .addStatement("""return ${initializerClassName.canonicalName}().apply(init).build()""")
-                        .build()
-                )
-            }
-            return builder.build()
+                .returns(model.nodeClass.asClassName())
+                .addStatement("""return ${initializerClassName.canonicalName}().apply(init).build()""")
+                .build()
         }
 
         fun generateImpl(model: NodeModel): TypeSpec =

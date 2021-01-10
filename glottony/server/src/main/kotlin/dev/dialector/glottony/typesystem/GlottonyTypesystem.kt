@@ -1,5 +1,6 @@
 package dev.dialector.glottony.typesystem
 
+import dev.dialector.glottony.GlottonyRoot
 import dev.dialector.glottony.ast.BinaryExpression
 import dev.dialector.glottony.ast.BinaryOperators
 import dev.dialector.glottony.ast.BlockExpression
@@ -25,7 +26,6 @@ import dev.dialector.typesystem.inference.new.BaseInferenceSystem
 import dev.dialector.typesystem.inference.new.InferenceResult
 import dev.dialector.typesystem.inference.new.InferredLeastUpperBound
 import dev.dialector.typesystem.inference.new.InferredGreatestLowerBound
-import dev.dialector.typesystem.inference.new.SimpleConstraintCreator.equal
 import dev.dialector.typesystem.inference.new.leftReduction
 import dev.dialector.typesystem.inference.new.redundantElimination
 import dev.dialector.typesystem.inference.new.rightReduction
@@ -37,6 +37,8 @@ import dev.dialector.typesystem.lattice.SimpleTypeLattice
 import dev.dialector.typesystem.lattice.hasSupertype
 import dev.dialector.typesystem.lattice.hasSupertypes
 import dev.dialector.typesystem.typeClass
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * Glottony's type system is hierarchically organized. Given that most of the program will remain constant in normal
@@ -50,32 +52,6 @@ import dev.dialector.typesystem.typeClass
  * 2)
  */
 class GlottonyTypesystem {
-    private val lastInferenceResult: InferenceResult? = null
-}
-
-object AnyType : IdentityType("any")
-object IntType : IdentityType("integer")
-object NumType : IdentityType("number")
-object StrType : IdentityType("string")
-
-data class ParameterType(val type: Type, val hint: String? = null)
-
-data class FunType(val parameterTypes: List<ParameterType>, val returnType: Type) : Type {
-    override fun getComponents(): Sequence<Type> = sequence {
-        yieldAll(parameterTypes.map { it.type })
-        yield(returnType)
-    }
-}
-
-fun GType.asType(): Type = when (this) {
-    is IntegerType -> IntType
-    is NumberType -> NumType
-    is StringType -> StrType
-    is FunctionType -> FunType(this.parameterTypes.map { ParameterType(it.type.asType(), it.name)}, this.returnType.asType())
-    else -> throw RuntimeException("Could not derive typesystem type for node: $this")
-}
-
-class GlottonyTypesystemContext {
     val lattice: SimpleTypeLattice = SimpleTypeLattice(listOf(
         typeClass<Type>() hasSupertype AnyType,
         typeClass<IntType>() hasSupertype NumType,
@@ -144,17 +120,28 @@ class GlottonyTypesystemContext {
             }
         },
         given<LambdaLiteral>() infer {
-            val parameterTypes = it.parameters.map { parameter -> typeOf(parameter) }
+            val parameterTypes = it.parameters.parameters.map {
+                parameter -> ParameterType(typeOf(parameter), parameter.name)
+            }
             constraint { typeOf(it) equal FunType(parameterTypes, typeOf(it.body)) }
         }
     )
 
-    fun inferTypes(program: Node): Map<Node, Type> {
+    private val rootInferenceResults: MutableMap<GlottonyRoot, Map<Node, Type>> = mutableMapOf()
+
+    suspend fun requestInferenceResult(root: GlottonyRoot): Map<Node, Type> {
+        return rootInferenceResults[root] ?: suspendCoroutine { continuation ->
+            continuation.resume(inferTypes(root))
+        }
+
+    }
+
+    private fun inferTypes(root: GlottonyRoot): Map<Node, Type> {
         val system = BaseInferenceSystem()
         val context = BaseProgramInferenceContext(system::createVariable, system::registerConstraint)
 
         context.apply {
-            for (node in program.getAllDescendants(true)) {
+            for (node in root.rootNode.getAllDescendants(true)) {
                 for (rule in inferenceRules) {
                     rule(this, node)
                 }
@@ -163,9 +150,9 @@ class GlottonyTypesystemContext {
         context.nodeVariables.forEach {
             println("Node: ${it.key} bound to ${it.value}")
         }
-
+        println("Starting solver")
         val inferenceSolution = system.solve(reductionRules)
-
+        println("Solver completed")
         return context.nodeVariables.mapValues { (_, value) ->
             // Break intersections down into their components
             lattice.greatestCommonSubtype(inferenceSolution[value]!!.map {
@@ -179,3 +166,28 @@ class GlottonyTypesystemContext {
     }
 }
 
+object AnyType : IdentityType("any")
+object IntType : IdentityType("integer")
+object NumType : IdentityType("number")
+object StrType : IdentityType("string")
+
+data class ParameterType(val type: Type, val hint: String? = null)
+
+data class FunType(val parameterTypes: List<ParameterType>, val returnType: Type) : Type {
+    override fun getComponents(): Sequence<Type> = sequence {
+        yieldAll(parameterTypes.map { it.type })
+        yield(returnType)
+    }
+}
+
+fun GType.asType(): Type = when (this) {
+    is IntegerType -> IntType
+    is NumberType -> NumType
+    is StringType -> StrType
+    is FunctionType -> FunType(this.parameterTypes.map { ParameterType(it.type.asType(), it.name)}, this.returnType.asType())
+    else -> throw RuntimeException("Could not derive typesystem type for node: $this")
+}
+
+interface TypesystemContext {
+    fun inferTypes(program: Node): Map<Node, Type>
+}

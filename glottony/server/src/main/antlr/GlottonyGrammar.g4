@@ -64,7 +64,7 @@ memberAccessExpression
     ;
 
 primaryExpression
-    : simpleIdentifier
+    : identifierExpression
     | numberLiteral
     | integerLiteral
     | stringLiteral
@@ -112,6 +112,10 @@ integerLiteral
 
 stringLiteral
     : value=STRING
+    ;
+
+identifierExpression
+    : referent=IDENTIFIER
     ;
 
 simpleIdentifier

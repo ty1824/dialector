@@ -1,14 +1,18 @@
 package dev.dialector.glottony.diagnostics
 
+import dev.dialector.glottony.GlottonyRoot
 import dev.dialector.glottony.ast.FunctionDeclaration
 import dev.dialector.glottony.ast.ValStatement
-import dev.dialector.glottony.typesystem.GlottonyTypesystemContext
+import dev.dialector.glottony.typesystem.GlottonyTypesystem
 import dev.dialector.glottony.typesystem.asType
 import dev.dialector.model.Node
 import dev.dialector.model.getAllDescendants
 import dev.dialector.model.given
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.lattice.TypeLattice
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
+import kotlin.coroutines.suspendCoroutine
 
 interface ModelDiagnostic {
     /**
@@ -39,7 +43,7 @@ fun DiagnosticEvaluationContext.checkAssignability(candidate: Type, expected: Ty
     }
 }
 
-class GlottonyDiagnosticProvider(private val typesystemContext: GlottonyTypesystemContext) {
+class GlottonyDiagnosticProvider(private val typesystem: GlottonyTypesystem) {
     val diagnosticRules: List<DiagnosticRule<*>> = listOf(
         given<FunctionDeclaration>() check {
             val bodyType = getTypeOf(it.body)
@@ -55,12 +59,14 @@ class GlottonyDiagnosticProvider(private val typesystemContext: GlottonyTypesyst
         }
     )
 
-    fun evaluate(root: Node): List<ModelDiagnostic> {
+    suspend fun evaluate(root: GlottonyRoot): List<ModelDiagnostic> {
         val diagnostics = mutableListOf<ModelDiagnostic>()
+        println("Computing types")
+        val resolvedTypes = typesystem.requestInferenceResult(root)
+
         val context = object : DiagnosticEvaluationContext {
-            override val typeLattice: TypeLattice = typesystemContext.lattice
-            val resolvedTypes = typesystemContext.inferTypes(root)
-            var currentNode: Node = root
+            override val typeLattice: TypeLattice = typesystem.lattice
+            var currentNode: Node = root.rootNode
 
             override fun getTypeOf(node: Node): Type? = resolvedTypes[node]
 
@@ -69,13 +75,20 @@ class GlottonyDiagnosticProvider(private val typesystemContext: GlottonyTypesyst
             }
 
         }
-        context.apply {
-            for (node in root.getAllDescendants(true)) {
-                context.currentNode = node
-                for (rule in diagnosticRules) {
-                    rule(this, node)
+        try {
+            println("Computing diagnostics")
+            context.apply {
+                for (node in root.rootNode.getAllDescendants(true)) {
+                    context.currentNode = node
+                    for (rule in diagnosticRules) {
+                        rule(this, node)
+                    }
                 }
             }
+            println("Computed diagnostics")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
         }
         return diagnostics.toList()
     }

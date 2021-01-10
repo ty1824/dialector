@@ -1,5 +1,5 @@
 plugins {
-    id("symbol-processing") version "1.4.10-dev-experimental-20201120"
+    id("symbol-processing") version "1.4.20-dev-experimental-20201222"
     kotlin("jvm")
     java
     antlr
@@ -17,6 +17,7 @@ dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation(kotlin("reflect"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
 
     implementation("org.antlr:antlr4-runtime:4.8")
     implementation("com.google.guava:guava:28.2-jre")

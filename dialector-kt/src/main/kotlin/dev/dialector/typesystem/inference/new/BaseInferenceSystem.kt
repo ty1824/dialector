@@ -303,6 +303,7 @@ class BaseInferenceSystem : InferenceSystem {
             println(bounds)
             resolve(constraints, bounds)
         }
+        println("Solving complete")
         // TODO: Verify initial constraints are satisfied by the solution
         return object : InferenceResult {
             val resultTable = bounds.variableNodes.map { (key, value) ->

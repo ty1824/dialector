@@ -188,6 +188,12 @@ interface DotExpression : Expression {
     val target: DotTarget
 }
 
+@NodeDefinition
+interface ReferenceExpression : Node {
+    @Reference
+    val target: NodeReference<Node>
+}
+
 interface Literal : Expression
 
 @NodeDefinition

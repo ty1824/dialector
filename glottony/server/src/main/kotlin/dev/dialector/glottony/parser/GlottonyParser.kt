@@ -14,6 +14,7 @@ import dev.dialector.glottony.ast.TopLevelConstruct
 import dev.dialector.glottony.ast.GType
 import dev.dialector.glottony.ast.LambdaLiteral
 import dev.dialector.glottony.ast.ParameterTypeDeclaration
+import dev.dialector.glottony.ast.ReferenceExpression
 import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.Statement
 import dev.dialector.glottony.ast.ValStatement
@@ -33,11 +34,13 @@ import dev.dialector.glottony.ast.numberType
 import dev.dialector.glottony.ast.parameter
 import dev.dialector.glottony.ast.parameterList
 import dev.dialector.glottony.ast.parameterTypeDeclaration
+import dev.dialector.glottony.ast.referenceExpression
 import dev.dialector.glottony.ast.returnStatement
 import dev.dialector.glottony.ast.stringLiteral
 import dev.dialector.glottony.ast.stringType
 import dev.dialector.glottony.ast.structDeclaration
 import dev.dialector.glottony.ast.valStatement
+import dev.dialector.model.LazyNodeReference
 import dev.dialector.model.Node
 import dev.dialector.model.NodeReference
 import org.antlr.v4.runtime.CharStream
@@ -228,6 +231,10 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
         } else visit(ctx.getChild(0)) as GType
     }
 
+    override fun visitIdentifierExpression(ctx: GlottonyGrammar.IdentifierExpressionContext): ReferenceExpression = referenceExpression {
+        target = LazyNodeReference(ctx.referent.text)
+    }
+
     override fun visitSimpleIdentifier(ctx: GlottonyGrammar.SimpleIdentifierContext?): Any {
         throw RuntimeException("Simple identifier not implemented")
     }
@@ -236,9 +243,9 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
         throw RuntimeException("Identifier not implemented")
     }
 
-    override fun visitMemberAccessExpression(ctx: GlottonyGrammar.MemberAccessExpressionContext?): Any? {
-        throw RuntimeException("Member access not implemented")
-    }
+//    override fun visitMemberAccessExpression(ctx: GlottonyGrammar.MemberAccessExpressionContext?): Any? {
+//        throw RuntimeException("Member access not implemented")
+//    }
 
     override fun visitFunctionTypeParameterList(ctx: GlottonyGrammar.FunctionTypeParameterListContext): List<ParameterTypeDeclaration> =
         ctx.functionTypeParameterDefinition().map { visit(it) as ParameterTypeDeclaration }

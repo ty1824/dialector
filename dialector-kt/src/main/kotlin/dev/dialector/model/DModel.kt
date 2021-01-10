@@ -19,9 +19,22 @@ interface Node {
     val references: Map<String, NodeReference<*>>
 }
 
+interface ReferenceResolver {
+    fun <T : Node> resolve(reference: NodeReference<T>): T
+}
+
 interface NodeReference<T : Node> {
-    fun source(): Node
-    fun resolve(): T?
+    fun resolve(resolver: (NodeReference<T>) -> T): T?
+}
+
+class LazyNodeReference<T : Node>(target: String) : NodeReference<T> {
+    var targetNode: T? = null
+    override fun resolve(resolver: (NodeReference<T>) -> T): T? =
+        if (targetNode == null) {
+            resolver(this)
+        } else {
+            targetNode
+        }
 }
 
 fun Node.getRoot(): Node = parent?.getRoot() ?: this
