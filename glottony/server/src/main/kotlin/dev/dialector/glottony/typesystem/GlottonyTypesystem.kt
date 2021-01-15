@@ -187,7 +187,3 @@ fun GType.asType(): Type = when (this) {
     is FunctionType -> FunType(this.parameterTypes.map { ParameterType(it.type.asType(), it.name)}, this.returnType.asType())
     else -> throw RuntimeException("Could not derive typesystem type for node: $this")
 }
-
-interface TypesystemContext {
-    fun inferTypes(program: Node): Map<Node, Type>
-}

@@ -11,6 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
+import org.eclipse.lsp4j.CompletionItem
+import org.eclipse.lsp4j.CompletionList
+import org.eclipse.lsp4j.CompletionParams
 import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DidChangeTextDocumentParams
 import org.eclipse.lsp4j.DidCloseTextDocumentParams
@@ -151,6 +154,16 @@ class GlottonyDocumentService(val server: GlottonyLanguageServer) : TextDocument
     override fun didSave(params: DidSaveTextDocumentParams?) {
         TODO("Not yet implemented")
     }
+
+//    override fun completion(position: CompletionParams?): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> {
+//        return super.completion(position)
+//    }
+//
+//    override fun resolveCompletionItem(unresolved: CompletionItem?): CompletableFuture<CompletionItem> {
+//        return super.resolveCompletionItem(unresolved)
+//    }
+
+
 }
 
 class GlottonyFileHandle() {

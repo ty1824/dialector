@@ -23,6 +23,16 @@ interface ReferenceResolver {
     fun <T : Node> resolve(reference: NodeReference<T>): T
 }
 
+/**
+ * A context that provides a resolution mechanism for [NodeReference]s
+ */
+interface ReferenceResolutionContext {
+    fun <T : Node> NodeReference<T>.resolve(): T
+}
+
+/**
+ * A reference to another [Node]. References must be resolved by an external resolver.
+ */
 interface NodeReference<T : Node> {
     fun resolve(resolver: (NodeReference<T>) -> T): T?
 }
