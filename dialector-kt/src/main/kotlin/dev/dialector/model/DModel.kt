@@ -34,10 +34,15 @@ interface ReferenceResolutionContext {
  * A reference to another [Node]. References must be resolved by an external resolver.
  */
 interface NodeReference<T : Node> {
+    val sourceNode: T
+
+    val targetIdentifier: String
+
     fun resolve(resolver: (NodeReference<T>) -> T): T?
 }
 
-class LazyNodeReference<T : Node>(target: String) : NodeReference<T> {
+class LazyNodeReference<T : Node>(override val targetIdentifier: String) : NodeReference<T> {
+    override lateinit var sourceNode: T
     var targetNode: T? = null
     override fun resolve(resolver: (NodeReference<T>) -> T): T? =
         if (targetNode == null) {
