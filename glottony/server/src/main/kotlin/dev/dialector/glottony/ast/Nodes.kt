@@ -38,19 +38,13 @@ interface FunctionDeclaration : TopLevelConstruct {
     val name: String
 
     @Child
-    val parameters: ParameterList
+    val parameters: List<Parameter>
 
     @Child
     val type: GType
 
     @Child
     val body: Expression
-}
-
-@NodeDefinition
-interface ParameterList : Node {
-    @Child
-    val parameters: List<Parameter>
 }
 
 @NodeDefinition
@@ -219,7 +213,7 @@ interface StringLiteral : Literal {
 @NodeDefinition
 interface LambdaLiteral : Expression {
     @Child
-    val parameters: ParameterList
+    val parameters: List<Parameter>
 
     @Child
     val body: Expression

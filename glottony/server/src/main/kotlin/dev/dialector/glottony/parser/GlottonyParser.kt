@@ -9,7 +9,6 @@ import dev.dialector.glottony.ast.File
 import dev.dialector.glottony.ast.FunctionDeclaration
 import dev.dialector.glottony.ast.FunctionType
 import dev.dialector.glottony.ast.Parameter
-import dev.dialector.glottony.ast.ParameterList
 import dev.dialector.glottony.ast.TopLevelConstruct
 import dev.dialector.glottony.ast.GType
 import dev.dialector.glottony.ast.LambdaLiteral
@@ -32,7 +31,6 @@ import dev.dialector.glottony.ast.lambdaLiteral
 import dev.dialector.glottony.ast.numberLiteral
 import dev.dialector.glottony.ast.numberType
 import dev.dialector.glottony.ast.parameter
-import dev.dialector.glottony.ast.parameterList
 import dev.dialector.glottony.ast.parameterTypeDeclaration
 import dev.dialector.glottony.ast.referenceExpression
 import dev.dialector.glottony.ast.returnStatement
@@ -102,16 +100,14 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     override fun visitFunctionDeclaration(ctx: GlottonyGrammar.FunctionDeclarationContext): FunctionDeclaration =
         functionDeclaration {
             name = ctx.name.text
-            parameters = visit(ctx.parameters) as ParameterList
+            parameters = visit(ctx.parameters) as List<Parameter>
             type = visit(ctx.returnType) as GType
             // TODO parse dis plz
             body = visit(ctx.body()) as Expression
         }
 
-    override fun visitFunctionParameters(ctx: GlottonyGrammar.FunctionParametersContext): ParameterList {
-        return parameterList {
-            parameters += ctx.parameterDeclaration().map { visit(it) as Parameter}
-        }
+    override fun visitFunctionParameters(ctx: GlottonyGrammar.FunctionParametersContext): List<Parameter> {
+        return ctx.parameterDeclaration().map { visit(it) as Parameter}
     }
 
     override fun visitParameterDeclaration(ctx: GlottonyGrammar.ParameterDeclarationContext): Parameter {
@@ -181,12 +177,11 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     }
 
     override fun visitLambdaLiteral(ctx: GlottonyGrammar.LambdaLiteralContext): LambdaLiteral = lambdaLiteral {
-        parameters = visit(ctx.lambdaParameters()) as ParameterList
+        parameters = visit(ctx.lambdaParameters()) as List<Parameter>
     }
 
-    override fun visitLambdaParameters(ctx: GlottonyGrammar.LambdaParametersContext): ParameterList = parameterList {
-        parameters += ctx.parameterDeclaration().map { visit(it) as Parameter }
-    }
+    override fun visitLambdaParameters(ctx: GlottonyGrammar.LambdaParametersContext): List<Parameter> =
+        ctx.parameterDeclaration().map { visit(it) as Parameter }
 
     override fun visitArgumentList(ctx: GlottonyGrammar.ArgumentListContext): ArgumentList = argumentList {
         arguments += ctx.expression().map { argument { value = visit(it) as Expression }}

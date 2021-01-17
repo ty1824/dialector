@@ -34,12 +34,12 @@ interface ScopeDescriptor {
      *
      * Aliases are additional names that represent the same target.
      */
-    fun alias(namespace: Namespace, element: Node, alias: String)
+    fun alias(namespace: Namespace, identifier: String, aliasNamespace: Namespace, alias: String)
 
     /**
      * Declares a NodeReference target as a given identifier.
      */
-    fun ScopeDescriptor.reference(namespace: Namespace, reference: NodeReference<out Node>, targetIdentifier: String)
+    fun reference(namespace: Namespace, reference: NodeReference<out Node>, targetIdentifier: String)
 
 }
 
@@ -59,11 +59,6 @@ interface ScopeTraversalContext {
     fun newScope(): ScopeDescriptor
 
     /**
-     * Evaluates the block with this scope as the context scope.
-     */
-    suspend fun within(scope: ScopeDescriptor, evaluate: suspend ScopeTraversalContext.(scope: ScopeDescriptor) -> Unit)
-
-    /**
      * Traverses to the given node to continue evaluating scope.
      *
      * WARNING: This should generally be used with direct children of the current node. Use otherwise may cause
@@ -76,16 +71,26 @@ interface ScopeTraversalContext {
  * Defines a rule that modifies how the AST is traversed to produce a scope.
  */
 interface ScopeTraversalRule<T : Node> {
+    val label: String
     val isValidFor: NodeClause<T>
-    val traverse: suspend ScopeTraversalContext.(node: T, scope: ScopeDescriptor) -> Unit
+    val traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit
 }
+
+
+fun <T : Node> NodeClause<T>.produceScope(label: String, traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit) =
+    object : ScopeTraversalRule<T> {
+        override val label: String = label
+        override val isValidFor: NodeClause<T> = this@produceScope
+        override val traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit = traversal
+
+    }
 
 interface ScopeResolver {
     fun getResolvedTarget(reference: NodeReference<*>): Node?
     fun getVisibleDeclarations(node: Node): Sequence<Pair<Node, String>>
 }
 
-class SingleRootScopeGraph(val root: Node) : ScopeResolver {
+class SingleRootScopeGraph(val root: Node, val rules: List<ScopeTraversalRule<out Node>>) : ScopeResolver {
     val targets: Map<NodeReference<*>, Node>
     init {
         val targetsInit = mutableMapOf<NodeReference<out Node>, Node>()
@@ -118,11 +123,15 @@ class SimpleScopeDescriptor : ScopeDescriptor {
         declarations.computeIfAbsent(namespace) { mutableListOf() } += elements
     }
 
-    override fun alias(namespace: Namespace, element: Node, alias: String) {
-        TODO("Not yet implemented")
+    override fun alias(namespace: Namespace, identifier: String, aliasNamespace: Namespace, alias: String) {
+        val element = findElement(namespace, identifier)
+        if (element != null) {
+            declare(aliasNamespace, element, alias)
+        }
+
     }
 
-    override fun ScopeDescriptor.reference(namespace: Namespace, reference: NodeReference<out Node>, targetIdentifier: String) {
+    override fun reference(namespace: Namespace, reference: NodeReference<out Node>, targetIdentifier: String) {
         // If the reference exists, ignore.
         if (!references.contains(reference)) {
             val element = findElement(namespace, targetIdentifier)
@@ -142,28 +151,23 @@ class SimpleScopeDescriptor : ScopeDescriptor {
         }.firstOrNull { (_, string) -> string == identifier}?.first
 }
 
-class SimpleScopeTraversalContext(val rules: List<ScopeTraversalRule<Node>>) : ScopeTraversalContext {
+class SimpleScopeTraversalContext(
+    val createScope: () -> ScopeDescriptor,
+    val onTraversal: suspend (scope: ScopeDescriptor, node: Node) -> Unit
+) : ScopeTraversalContext {
 
-    override fun newScope(): ScopeDescriptor = SimpleScopeDescriptor()
+    override fun newScope(): ScopeDescriptor = createScope()
 
-    override suspend fun within(scope: ScopeDescriptor, evaluate: suspend ScopeTraversalContext.(scope: ScopeDescriptor) -> Unit) {
-        evaluate(scope)
-    }
-
-    override suspend fun ScopeDescriptor.traverse(node: Node) {
-        for (rule in rules) with(rule) {
-            if (isValidFor(node)) traverse(node, this@traverse)
-        }
-    }
+    override suspend fun ScopeDescriptor.traverse(node: Node) = onTraversal(this, node)
 }
-
-suspend fun ScopeTraversalContext.foo(node: Node) {
-    val scopeOne = newScope()
-
-    within(newScope().inherit(scopeOne, "parent")) {
-
-    }
-
-
-
-}
+//
+//suspend fun ScopeTraversalContext.foo(node: Node) {
+//    val scopeOne = newScope()
+//
+//    with(newScope().inherit(scopeOne, "parent")) {
+//        declare(Default, node, "hi")
+//        alias(Default, "hi", Default, "bye")
+//        reference(Default, object : NodeReference<Node> {}, "hi")
+//        traverse(node)
+//    }
+//}
