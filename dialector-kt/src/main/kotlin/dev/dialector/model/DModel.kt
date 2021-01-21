@@ -20,37 +20,34 @@ interface Node {
 }
 
 interface ReferenceResolver {
-    fun <T : Node> resolve(reference: NodeReference<T>): T
+    fun <T : Node> resolve(reference: NodeReference<T>): T?
 }
 
 /**
  * A context that provides a resolution mechanism for [NodeReference]s
  */
 interface ReferenceResolutionContext {
-    fun <T : Node> NodeReference<T>.resolve(): T
+    fun <T : Node> NodeReference<T>.resolve(): T?
 }
 
 /**
  * A reference to another [Node]. References must be resolved by an external resolver.
  */
 interface NodeReference<T : Node> {
-    val sourceNode: T
+    val sourceNode: Node
 
     val targetIdentifier: String
 
-    fun resolve(resolver: (NodeReference<T>) -> T): T?
+    fun resolve(resolver: (NodeReference<T>) -> T?): T?
 }
 
-class LazyNodeReference<T : Node>(override val targetIdentifier: String) : NodeReference<T> {
-    override lateinit var sourceNode: T
-    var targetNode: T? = null
-    override fun resolve(resolver: (NodeReference<T>) -> T): T? =
-        if (targetNode == null) {
-            resolver(this)
-        } else {
-            targetNode
-        }
+internal class SimpleNodeReference<T : Node>(override val targetIdentifier: String) : NodeReference<T> {
+    override lateinit var sourceNode: Node
+
+    override fun resolve(resolver: (NodeReference<T>) -> T?): T? = resolver(this)
 }
+
+fun <T : Node> nodeReference(targetIdentifier: String): NodeReference<T> = SimpleNodeReference<T>(targetIdentifier)
 
 fun Node.getRoot(): Node = parent?.getRoot() ?: this
 

@@ -2,17 +2,20 @@ package dev.dialector.glottony.server
 
 import dev.dialector.glottony.GlottonyProgram
 import dev.dialector.glottony.GlottonyRoot
-import dev.dialector.glottony.GlottonySourceMap
 import dev.dialector.glottony.diagnostics.ModelDiagnostic
 import dev.dialector.glottony.parser.GlottonyParser
+import dev.dialector.glottony.parser.SourceLocation
+import dev.dialector.glottony.parser.SourceMap
+import dev.dialector.glottony.parser.SourceRange
 import dev.dialector.model.Node
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.antlr.v4.runtime.ParserRuleContext
-import org.antlr.v4.runtime.Token
+import kotlinx.coroutines.runBlocking
 import org.eclipse.lsp4j.CompletionItem
 import org.eclipse.lsp4j.CompletionList
+import org.eclipse.lsp4j.CompletionOptions
 import org.eclipse.lsp4j.CompletionParams
 import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DidChangeTextDocumentParams
@@ -40,6 +43,7 @@ import org.eclipse.lsp4j.services.WorkspaceService
 import java.util.concurrent.CompletableFuture
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 
 class GlottonyLanguageServer : LanguageServer, LanguageClientAware {
     val workspaceService: GlottonyWorkspaceService = GlottonyWorkspaceService()
@@ -78,6 +82,7 @@ class GlottonyLanguageServer : LanguageServer, LanguageClientAware {
                 // TODO: For now, move to Incremental when supported
                 change = TextDocumentSyncKind.Full
             })
+            completionProvider = CompletionOptions()
         }
         println("CAPABILITIES: $capabilities")
         return capabilities
@@ -88,60 +93,69 @@ class GlottonyLanguageServer : LanguageServer, LanguageClientAware {
     }
 }
 
-fun ModelDiagnostic.toDiagnostic(sourceMap: Map<Node, ParserRuleContext>): Diagnostic? {
-    val rule = sourceMap[this.target]
-    return if (rule != null) {
-        Diagnostic(Range(rule.start.toPosition(), rule.stop.toPosition()), this.message)
+fun ModelDiagnostic.toDiagnostic(sourceMap: SourceMap): Diagnostic? {
+    val range = sourceMap.getRangeForNode(target)
+    return if (range != null) {
+        Diagnostic(Range(range.start.toPosition(), range.end.toPosition()), message)
     } else null
 }
 
-fun Token.toPosition(): Position = Position(this.line-1, this.charPositionInLine)
+fun SourceLocation.toPosition(): Position = Position(line, character)
+
+fun Position.toSourceLocation(): SourceLocation = SourceLocation(line, character)
 
 class GlottonyDocumentService(val server: GlottonyLanguageServer) : TextDocumentService {
     object Scope : CoroutineScope {
         override val coroutineContext: CoroutineContext = EmptyCoroutineContext
     }
 
+    val typesystemJobs: MutableMap<String, Job> = mutableMapOf()
     override fun didOpen(params: DidOpenTextDocumentParams) {
         server.client.showMessage(MessageParams(MessageType.Info, "Opened doc"))
-        println(params.textDocument.uri)
+        val uri = params.textDocument.uri
+        println(uri)
         println(params.textDocument.text)
-        Scope.launch(Dispatchers.Default) {
+        if (typesystemJobs.contains(uri)) {
+            typesystemJobs[uri]!!.cancel(CancellationException("Starting new job"))
+            typesystemJobs.remove(uri)
+        }
+        typesystemJobs[uri] = Scope.launch(Dispatchers.Default) {
             val (file, sourceMap) = GlottonyParser.parseStringWithSourceMap(params.textDocument.text)
             val program = server.program
             program.addRoot(
-                params.textDocument.uri,
-                GlottonyRoot(file, sourceMap.mapValues {
-                    GlottonySourceMap(it.value.start.toPosition(), it.value.stop.toPosition())
-                })
+                uri,
+                GlottonyRoot(file, sourceMap)
             )
-            val diagnostics = program.diagnostics.evaluate(program.getRoot(params.textDocument.uri)!!)
+            val diagnostics = program.diagnostics.evaluate(program.getRoot(uri)!!)
             println(diagnostics)
             server.client.publishDiagnostics(PublishDiagnosticsParams(
-                params.textDocument.uri,
+                uri,
                 diagnostics.map { it.toDiagnostic(sourceMap) }
             ))
         }
     }
 
     override fun didChange(params: DidChangeTextDocumentParams) {
-        println(params.textDocument.uri)
-        Scope.launch(Dispatchers.Default) {
+        val uri = params.textDocument.uri
+        println(uri)
+        if (typesystemJobs.contains(uri)) {
+            typesystemJobs[uri]!!.cancel(CancellationException("Starting new job"))
+            typesystemJobs.remove(uri)
+        }
+        typesystemJobs[uri] = Scope.launch(Dispatchers.Default) {
             println("Parsing")
             val program = server.program
             val (file, sourceMap) = GlottonyParser.parseStringWithSourceMap(params.contentChanges[0].text)
             program.addRoot(
-                params.textDocument.uri,
-                GlottonyRoot(file, sourceMap.mapValues {
-                    GlottonySourceMap(it.value.start.toPosition(), it.value.stop.toPosition())
-                })
+                uri,
+                GlottonyRoot(file, sourceMap)
             )
             println("Starting diagnostics")
-            val diagnostics = program.diagnostics.evaluate(program.getRoot(params.textDocument.uri)!!)
+            val diagnostics = program.diagnostics.evaluate(program.getRoot(uri)!!)
             println(diagnostics)
             println("Publishing diagnostics")
             server.client.publishDiagnostics(PublishDiagnosticsParams(
-                params.textDocument.uri,
+                uri,
                 diagnostics.map { it.toDiagnostic(sourceMap) }
             ))
         }
@@ -155,9 +169,29 @@ class GlottonyDocumentService(val server: GlottonyLanguageServer) : TextDocument
         TODO("Not yet implemented")
     }
 
-//    override fun completion(position: CompletionParams?): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> {
-//        return super.completion(position)
-//    }
+    // TODO: Map position into node tree to find the current reference.
+    override fun completion(position: CompletionParams): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> = CompletableFuture.supplyAsync {
+        println(position.position)
+        val v: Either<MutableList<CompletionItem>, CompletionList> = runBlocking {
+            val program = server.program
+            println(position.textDocument.uri)
+            val root = program.getRoot(position.textDocument.uri)!!
+            val scopeGraph = program.scopeGraph.resolveRoot(root)
+            val context = root.sourceMap.getNodeAtLocation(position.position.toSourceLocation())
+                ?.references
+                ?.asSequence()
+                ?.firstOrNull()
+            println(context)
+            if (context != null) {
+                println()
+                Either.forLeft(scopeGraph.getVisibleDeclarations(context.value).map {
+                    print(it.second)
+                    CompletionItem(it.second)
+                }.toMutableList())
+            } else { Either.forLeft(mutableListOf()) }
+        }
+        v
+    }
 //
 //    override fun resolveCompletionItem(unresolved: CompletionItem?): CompletableFuture<CompletionItem> {
 //        return super.resolveCompletionItem(unresolved)

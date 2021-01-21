@@ -1,7 +1,12 @@
 package dev.dialector.typesystem.inference.new
 
+import dev.dialector.typesystem.IdentityType
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.inference.DataGraph
+
+object InferredTopType : IdentityType("InferredTop")
+
+object InferredBottomType : IdentityType("InferredBottom")
 
 data class InferredGreatestLowerBound(val types: List<Type>) : Type {
     override fun getComponents(): Sequence<Type> {
@@ -402,15 +407,21 @@ class BaseInferenceSystem : InferenceSystem {
                     val types: List<Type> = toSolve.upperBounds.filter { it.first is TypeNode }.map { it.first.type }
                     if (types.size > 1) {
                         constraints.add(toSolve.variable equal InferredGreatestLowerBound(types))
-                    } else {
+                    } else if (types.size == 1) {
                         constraints.add(toSolve.variable equal types.first())
+                    } else {
+                        println("Failed to solve: ${toSolve.variable} given $types")
+                        constraints.add(toSolve.variable equal InferredBottomType)
                     }
                 } else {
                     val types: List<Type> = toSolve.lowerBounds.filter { it.first is TypeNode }.map { it.first.type }
                     if (types.size > 1) {
                         constraints.add(toSolve.variable equal InferredLeastUpperBound(types))
-                    } else {
+                    } else if (types.size == 1) {
                         constraints.add(toSolve.variable equal types.first())
+                    } else {
+                        println("Failed to solve: ${toSolve.variable} given $types")
+                        constraints.add(toSolve.variable equal InferredTopType)
                     }
                 }
             }

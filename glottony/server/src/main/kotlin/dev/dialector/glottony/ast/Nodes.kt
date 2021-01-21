@@ -183,7 +183,7 @@ interface DotExpression : Expression {
 }
 
 @NodeDefinition
-interface ReferenceExpression : Node {
+interface ReferenceExpression : Expression {
     @Reference
     val target: NodeReference<Node>
 }

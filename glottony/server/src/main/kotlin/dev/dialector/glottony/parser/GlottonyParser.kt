@@ -8,14 +8,14 @@ import dev.dialector.glottony.ast.Expression
 import dev.dialector.glottony.ast.File
 import dev.dialector.glottony.ast.FunctionDeclaration
 import dev.dialector.glottony.ast.FunctionType
-import dev.dialector.glottony.ast.Parameter
-import dev.dialector.glottony.ast.TopLevelConstruct
 import dev.dialector.glottony.ast.GType
 import dev.dialector.glottony.ast.LambdaLiteral
+import dev.dialector.glottony.ast.Parameter
 import dev.dialector.glottony.ast.ParameterTypeDeclaration
 import dev.dialector.glottony.ast.ReferenceExpression
 import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.Statement
+import dev.dialector.glottony.ast.TopLevelConstruct
 import dev.dialector.glottony.ast.ValStatement
 import dev.dialector.glottony.ast.argument
 import dev.dialector.glottony.ast.argumentList
@@ -38,9 +38,8 @@ import dev.dialector.glottony.ast.stringLiteral
 import dev.dialector.glottony.ast.stringType
 import dev.dialector.glottony.ast.structDeclaration
 import dev.dialector.glottony.ast.valStatement
-import dev.dialector.model.LazyNodeReference
 import dev.dialector.model.Node
-import dev.dialector.model.NodeReference
+import dev.dialector.model.nodeReference
 import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -48,6 +47,55 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import java.nio.file.Path
+
+data class SourceLocation(val line: Int, val character: Int)
+
+operator fun SourceLocation.compareTo(other: SourceLocation): Int = when {
+    other.line < line -> 1
+    other.line > line -> -1
+    other.character < character -> 1
+    other.character > character -> -1
+    else -> 0
+}
+
+data class SourceRange(val start: SourceLocation, val end: SourceLocation)
+
+operator fun SourceRange.compareTo(other: SourceRange): Int {
+    // If it starts first, it has lower priority
+    val start = this.start.compareTo(other.start)
+    return if (start != 0) {
+        start
+    } else {
+        // If it starts at the same point and ends first, it has higher priority
+        other.end.compareTo(this.end)
+    }
+}
+
+interface SourceMap {
+    fun getNodeAtLocation(location: SourceLocation): Node?
+
+    fun getNodesInRange(range: SourceRange): List<Node>
+
+    fun getRangeForNode(node: Node): SourceRange?
+}
+
+class SourceMapImpl(private val rangeMap: Map<Node, SourceRange>) : SourceMap {
+    private val orderedRangeList: List<Pair<Node, SourceRange>> = rangeMap.entries.sortedWith { a, b ->
+        a.value.compareTo(b.value)
+    }.map { it.key to it.value }.toList()
+
+    override fun getNodeAtLocation(location: SourceLocation): Node? =
+        orderedRangeList.lastOrNull { it.second.contains(location) }?.first
+
+    override fun getNodesInRange(range: SourceRange): List<Node> =
+        orderedRangeList.filter { range.contains(it.second.start) && range.contains(it.second.end) }.map { it.first }
+
+    override fun getRangeForNode(node: Node): SourceRange? = rangeMap[node]
+}
+
+
+fun SourceRange.contains(location: SourceLocation): Boolean =
+    this.start <= location && this.end >= location
 
 object GlottonyParser {
     fun parseFile(path: Path): File = parseFile(CharStreams.fromPath(path))
@@ -59,22 +107,36 @@ object GlottonyParser {
         return ParserVisitor().visit(GlottonyGrammar(tokens).file()) as File
     }
 
-    fun parseStringWithSourceMap(string: String): Pair<File, Map<Node, ParserRuleContext>> =
+    fun parseStringWithSourceMap(string: String): Pair<File, SourceMap> =
         parseFileWithSourceMap(CharStreams.fromString(string))
 
-    private fun parseFileWithSourceMap(charStream: CharStream): Pair<File, Map<Node, ParserRuleContext>> {
+    private fun parseFileWithSourceMap(charStream: CharStream): Pair<File, SourceMap> {
         val tokens = CommonTokenStream(GlottonyLexer(charStream))
         val mappingVisitor = MappingVisitor()
         val result = mappingVisitor.visit(GlottonyGrammar(tokens).file()) as File
-        return result to mappingVisitor.sourceMap.toMap()
+        return result to SourceMapImpl(mappingVisitor.sourceMapping.toMap())
     }
 }
 
+fun ParserRuleContext.toSourceRange(): SourceRange {
+    val lineCount = this.stop.text.split('\n').count() - 1
+    return SourceRange(
+        SourceLocation(this.start.line-1, this.start.charPositionInLine),
+        SourceLocation(
+            this.stop.line-1 + lineCount,
+            this.stop.charPositionInLine + this.stop.text.length - lineCount
+        )
+    )
+}
+
 class MappingVisitor : ParserVisitor() {
-    val sourceMap: MutableMap<Node, ParserRuleContext> = mutableMapOf()
+    val sourceMapping: MutableMap<Node, SourceRange> = mutableMapOf()
+
     override fun visit(tree: ParseTree?): Any? {
         val result = super.visit(tree)
-        if (result is Node && tree is ParserRuleContext) sourceMap[result] = tree
+        if (result is Node && tree is ParserRuleContext && !sourceMapping.contains(result)) {
+            sourceMapping[result] = tree.toSourceRange()
+        }
         return result
     }
 }
@@ -100,7 +162,7 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     override fun visitFunctionDeclaration(ctx: GlottonyGrammar.FunctionDeclarationContext): FunctionDeclaration =
         functionDeclaration {
             name = ctx.name.text
-            parameters = visit(ctx.parameters) as List<Parameter>
+            parameters += visit(ctx.parameters) as List<Parameter>
             type = visit(ctx.returnType) as GType
             // TODO parse dis plz
             body = visit(ctx.body()) as Expression
@@ -177,7 +239,7 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     }
 
     override fun visitLambdaLiteral(ctx: GlottonyGrammar.LambdaLiteralContext): LambdaLiteral = lambdaLiteral {
-        parameters = visit(ctx.lambdaParameters()) as List<Parameter>
+        parameters += visit(ctx.lambdaParameters()) as List<Parameter>
     }
 
     override fun visitLambdaParameters(ctx: GlottonyGrammar.LambdaParametersContext): List<Parameter> =
@@ -227,7 +289,7 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     }
 
     override fun visitIdentifierExpression(ctx: GlottonyGrammar.IdentifierExpressionContext): ReferenceExpression = referenceExpression {
-        target = LazyNodeReference(ctx.referent.text)
+        target = nodeReference(ctx.referent.text)
     }
 
     override fun visitSimpleIdentifier(ctx: GlottonyGrammar.SimpleIdentifierContext?): Any {

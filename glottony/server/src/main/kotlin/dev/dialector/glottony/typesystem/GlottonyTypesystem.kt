@@ -24,8 +24,10 @@ import dev.dialector.typesystem.IdentityType
 import dev.dialector.typesystem.Type
 import dev.dialector.typesystem.inference.new.BaseInferenceSystem
 import dev.dialector.typesystem.inference.new.InferenceResult
+import dev.dialector.typesystem.inference.new.InferredBottomType
 import dev.dialector.typesystem.inference.new.InferredLeastUpperBound
 import dev.dialector.typesystem.inference.new.InferredGreatestLowerBound
+import dev.dialector.typesystem.inference.new.InferredTopType
 import dev.dialector.typesystem.inference.new.leftReduction
 import dev.dialector.typesystem.inference.new.redundantElimination
 import dev.dialector.typesystem.inference.new.rightReduction
@@ -120,7 +122,7 @@ class GlottonyTypesystem {
             }
         },
         given<LambdaLiteral>() infer {
-            val parameterTypes = it.parameters.parameters.map {
+            val parameterTypes = it.parameters.map {
                 parameter -> ParameterType(typeOf(parameter), parameter.name)
             }
             constraint { typeOf(it) equal FunType(parameterTypes, typeOf(it.body)) }
@@ -131,19 +133,19 @@ class GlottonyTypesystem {
 
     suspend fun requestInferenceResult(root: GlottonyRoot): Map<Node, Type> {
         return rootInferenceResults[root] ?: suspendCoroutine { continuation ->
-            continuation.resume(inferTypes(root))
+            continuation.resume(inferTypes(root.rootNode))
         }
 
     }
 
-    private fun inferTypes(root: GlottonyRoot): Map<Node, Type> {
+    internal fun inferTypes(node: Node): Map<Node, Type> {
         val system = BaseInferenceSystem()
         val context = BaseProgramInferenceContext(system::createVariable, system::registerConstraint)
 
         context.apply {
-            for (node in root.rootNode.getAllDescendants(true)) {
+            for (currentNode in node.getAllDescendants(true)) {
                 for (rule in inferenceRules) {
-                    rule(this, node)
+                    rule(this, currentNode)
                 }
             }
         }
@@ -159,6 +161,8 @@ class GlottonyTypesystem {
                 when (it) {
                     is InferredLeastUpperBound -> lattice.leastCommonSupertype(it.types)
                     is InferredGreatestLowerBound -> lattice.greatestCommonSubtype(it.types)
+                    is InferredTopType -> lattice.topType
+                    is InferredBottomType -> lattice.bottomType
                     else -> it
                 }
             }.toSet())

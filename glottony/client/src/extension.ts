@@ -14,7 +14,7 @@ import { Console } from "console";
 export function activate(context: ExtensionContext) {
 	console.log("Activating");
 	let connectionInfo = {
-		port: 5008
+		port: 5011
 	}
 
 	let serverOptions = () => {
