@@ -28,6 +28,7 @@ import dev.dialector.glottony.ast.functionType
 import dev.dialector.glottony.ast.integerLiteral
 import dev.dialector.glottony.ast.integerType
 import dev.dialector.glottony.ast.lambdaLiteral
+import dev.dialector.glottony.ast.memberAccessExpression
 import dev.dialector.glottony.ast.numberLiteral
 import dev.dialector.glottony.ast.numberType
 import dev.dialector.glottony.ast.parameter
@@ -300,9 +301,15 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
         throw RuntimeException("Identifier not implemented")
     }
 
-//    override fun visitMemberAccessExpression(ctx: GlottonyGrammar.MemberAccessExpressionContext?): Any? {
-//        throw RuntimeException("Member access not implemented")
-//    }
+    override fun visitMemberAccessExpression(ctx: GlottonyGrammar.MemberAccessExpressionContext): Expression =
+        if (ctx.identifier().isEmpty) {
+            visit(ctx.primaryExpression()) as Expression
+        } else {
+            memberAccessExpression {
+                context = visit(ctx.primaryExpression()) as Expression
+                member = nodeReference(ctx.identifier().text)
+            }
+        }
 
     override fun visitFunctionTypeParameterList(ctx: GlottonyGrammar.FunctionTypeParameterListContext): List<ParameterTypeDeclaration> =
         ctx.functionTypeParameterDefinition().map { visit(it) as ParameterTypeDeclaration }

@@ -10,6 +10,7 @@ import dev.dialector.glottony.ast.GType
 import dev.dialector.glottony.ast.IntegerLiteral
 import dev.dialector.glottony.ast.IntegerType
 import dev.dialector.glottony.ast.LambdaLiteral
+import dev.dialector.glottony.ast.MemberAccessExpression
 import dev.dialector.glottony.ast.NumberLiteral
 import dev.dialector.glottony.ast.NumberType
 import dev.dialector.glottony.ast.Parameter

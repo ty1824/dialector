@@ -4,6 +4,7 @@ import dev.dialector.glottony.GlottonyRoot
 import dev.dialector.glottony.ast.Block
 import dev.dialector.glottony.ast.BlockExpression
 import dev.dialector.glottony.ast.FunctionDeclaration
+import dev.dialector.glottony.ast.MemberAccessExpression
 import dev.dialector.glottony.ast.ReferenceExpression
 import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.ValStatement
@@ -17,13 +18,14 @@ import dev.dialector.scoping.SingleRootScopeGraph
 import dev.dialector.scoping.produceScope
 
 object Unqualified : Namespace("unqualified")
+object Declarations : Namespace("declarations")
 
 class GlottonyScopeGraph {
     val rules: List<ScopeTraversalRule<out Node>> = listOf(
         given<FunctionDeclaration>().produceScope("functionDeclaration") { node, incomingScope ->
             with(newScope().inherit(incomingScope, "parent")) {
                 node.parameters.forEach {
-                    declare(Unqualified, it, it.name)
+                    declare(Declarations, it, it.name)
                 }
                 traverse(node.body, this)
             }
@@ -41,7 +43,7 @@ class GlottonyScopeGraph {
         given<ValStatement>().produceScope("valStatement") { node, incomingScope ->
             with(incomingScope) {
                 traverse(node.expression, this)
-                declare(Unqualified, node, node.name)
+                declare(Declarations, node, node.name)
             }
         },
         given<ReturnStatement>().produceScope("returnStatement") { node, incomingScope ->
@@ -50,7 +52,12 @@ class GlottonyScopeGraph {
             }
         },
         given<ReferenceExpression>().produceScope("referenceExpression") { node, incomingScope ->
-            incomingScope.reference(Unqualified, node.target, node.target.targetIdentifier)
+            incomingScope.reference(Declarations, node.target, node.target.targetIdentifier)
+        },
+        given<MemberAccessExpression>().produceScope("memberAccessExpression") { node, incomingScope ->
+            with(newScope().inherit(incomingScope, "parent")) {
+                node.context
+            }
         }
     )
 

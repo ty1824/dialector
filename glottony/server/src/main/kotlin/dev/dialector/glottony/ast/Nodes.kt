@@ -171,15 +171,13 @@ interface FunctionCall : Expression {
     val arguments: ArgumentList
 }
 
-interface DotTarget : Node
-
 @NodeDefinition
-interface DotExpression : Expression {
+interface MemberAccessExpression : Expression {
     @Child
     val context: Expression
 
-    @Child
-    val target: DotTarget
+    @Reference
+    val member: NodeReference<Node>
 }
 
 @NodeDefinition

@@ -17,7 +17,7 @@ interface ScopeDescriptor {
      */
     fun inherit(from: ScopeDescriptor, label: String): ScopeDescriptor
 
-    // TODO: Add transformations when inheritng
+    // TODO: Add transformations when inheriting
 //    /**
 //     * Declares that this scope will inherit elements from the given scope with a transformation applied.
 //     */
@@ -61,6 +61,11 @@ interface ScopeTraversalContext {
      * Creates a new scope
      */
     fun newScope(): ScopeDescriptor
+
+    /**
+     * Retrieves a published scope for the given identifier.
+     */
+//    fun queryScope(identifier: String): ScopeDescriptor
 
     /**
      * Traverses to the given node with the given scope to continue evaluating scope.

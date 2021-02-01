@@ -3,23 +3,23 @@ package dev.dialector.glottony.interpreter
 import dev.dialector.glottony.ast.BinaryExpression
 import dev.dialector.glottony.ast.BinaryOperator
 import dev.dialector.glottony.ast.BinaryOperators
-import dev.dialector.glottony.ast.DotExpression
 import dev.dialector.glottony.ast.Expression
 import dev.dialector.glottony.ast.IntegerLiteral
+import dev.dialector.glottony.ast.MemberAccessExpression
 import dev.dialector.glottony.ast.NumberLiteral
 import dev.dialector.glottony.ast.StringLiteral
 
 interface ExpressionVisitor<C, R> {
     fun visit(expression: Expression, context: C): R
-    
+
     fun visitBinaryExpression(expression: BinaryExpression, context: C): R
-    
-    fun visitDotExpression(expression: DotExpression, context: C): R
-    
+
+    fun visitMemberAccessExpression(expression: MemberAccessExpression, context: C): R
+
     fun visitIntegerLiteral(expression: IntegerLiteral, context: C): R
-    
+
     fun visitNumberLiteral(expression: NumberLiteral, context: C): R
-    
+
     fun visitStringLiteral(expression: StringLiteral, context: C): R
 }
 
@@ -36,7 +36,7 @@ class OverloadImpl<R>(
     val rightPredicate: (R) -> Boolean,
     val evaluate: (R, R) -> R,
     val reversible: Boolean = true
-): Overload<R> {
+) : Overload<R> {
     override fun predicate(left: R, right: R): Boolean =
         (leftPredicate(left) && rightPredicate(right)) ||
             (reversible && rightPredicate(left) && leftPredicate(right))
@@ -51,11 +51,11 @@ private fun overload(
     rightPredicate: (Any) -> Boolean,
     reversible: Boolean = true,
     evaluate: (Any, Any) -> Any,
-) : Overload<Any> = OverloadImpl(operator, leftPredicate, rightPredicate, evaluate, reversible)
+): Overload<Any> = OverloadImpl(operator, leftPredicate, rightPredicate, evaluate, reversible)
 
-object GlottonyInterpreter: ExpressionVisitor<InterpreterContext, Any> {
-    private val binaryOverloads : List<Overload<Any>> = listOf(
-        overload(BinaryOperators.Plus, { it is String}, { true }) { left, right ->
+object GlottonyInterpreter : ExpressionVisitor<InterpreterContext, Any> {
+    private val binaryOverloads: List<Overload<Any>> = listOf(
+        overload(BinaryOperators.Plus, { it is String }, { true }) { left, right ->
             left as String + right as String
         },
         overload(BinaryOperators.Plus, { it is Double }, { it is Double }, false) { left, right ->
@@ -87,7 +87,7 @@ object GlottonyInterpreter: ExpressionVisitor<InterpreterContext, Any> {
     override fun visit(expression: Expression, context: InterpreterContext): Any {
         return when (expression) {
             is BinaryExpression -> visitBinaryExpression(expression, context)
-            is DotExpression -> visitDotExpression(expression, context)
+            is MemberAccessExpression -> visitMemberAccessExpression(expression, context)
             is IntegerLiteral -> visitIntegerLiteral(expression, context)
             is NumberLiteral -> visitNumberLiteral(expression, context)
             is StringLiteral -> visitStringLiteral(expression, context)
@@ -98,11 +98,11 @@ object GlottonyInterpreter: ExpressionVisitor<InterpreterContext, Any> {
     override fun visitBinaryExpression(expression: BinaryExpression, context: InterpreterContext): Any {
         val left = visit(expression.left, context)
         val right = visit(expression.right, context)
-        
-        return binaryOverloads.first { it.predicate(left, right)}.evaluate(left, right)
+
+        return binaryOverloads.first { it.predicate(left, right) }.evaluate(left, right)
     }
 
-    override fun visitDotExpression(expression: DotExpression, context: InterpreterContext): Any {
+    override fun visitMemberAccessExpression(expression: MemberAccessExpression, context: InterpreterContext): Any {
         TODO("Not yet implemented")
     }
 
