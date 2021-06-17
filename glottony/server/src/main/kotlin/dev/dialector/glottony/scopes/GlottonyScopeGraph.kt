@@ -14,14 +14,20 @@ import dev.dialector.scoping.LinearScopeGraph
 import dev.dialector.scoping.Namespace
 import dev.dialector.scoping.ScopeGraph
 import dev.dialector.scoping.ScopeTraversalRule
-import dev.dialector.scoping.SingleRootScopeGraph
+import dev.dialector.scoping.TypeScopingRule
 import dev.dialector.scoping.produceScope
+import dev.dialector.typesystem.NodeType
+import dev.dialector.typesystem.Type
 
 object Unqualified : Namespace("unqualified")
 object Declarations : Namespace("declarations")
 
 class GlottonyScopeGraph {
-    val rules: List<ScopeTraversalRule<out Node>> = listOf(
+    val typeRules: List<TypeScopingRule<out Type>> = listOf(
+
+    )
+
+    val traversalRules: List<ScopeTraversalRule<out Node>> = listOf(
         given<FunctionDeclaration>().produceScope("functionDeclaration") { node, incomingScope ->
             with(newScope().inherit(incomingScope, "parent")) {
                 node.parameters.forEach {
@@ -55,17 +61,19 @@ class GlottonyScopeGraph {
             incomingScope.reference(Declarations, node.target, node.target.targetIdentifier)
         },
         given<MemberAccessExpression>().produceScope("memberAccessExpression") { node, incomingScope ->
+            val contextType = this.semantics.query(NodeType, node.context)
             with(newScope().inherit(incomingScope, "parent")) {
+
                 node.context
             }
         }
     )
 
     suspend fun resolveRoot(root: GlottonyRoot): ScopeGraph {
-        return LinearScopeGraph.invoke(root.rootNode, rules)
+        return LinearScopeGraph.invoke(root.rootNode, traversalRules)
     }
 
     internal suspend fun resolveNode(node: Node): ScopeGraph {
-        return LinearScopeGraph.invoke(node, rules)
+        return LinearScopeGraph.invoke(node, traversalRules)
     }
 }

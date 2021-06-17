@@ -4,6 +4,13 @@ import dev.dialector.model.Node
 import dev.dialector.model.NodeClause
 import dev.dialector.model.NodeReference
 import dev.dialector.model.ReferenceResolver
+import dev.dialector.resolution.SemanticAnalysisContext
+import dev.dialector.typesystem.Type
+import dev.dialector.typesystem.TypeClause
+
+/**
+ * Are there two different types of scoping? Flow-based scope evaluation vs
+ */
 
 /*
 TODO: Handle the difference between scopes that need to be cached cross-root vs ones that can be computed within a root.
@@ -51,52 +58,6 @@ abstract class Namespace(name: String)
 
 object Default : Namespace("Default")
 
-@DslMarker
-annotation class ScopeGraphDsl
-
-@ScopeGraphDsl
-interface ScopeTraversalContext {
-
-    /**
-     * Creates a new scope
-     */
-    fun newScope(): ScopeDescriptor
-
-    /**
-     * Retrieves a published scope for the given identifier.
-     */
-//    fun queryScope(identifier: String): ScopeDescriptor
-
-    /**
-     * Traverses to the given node with the given scope to continue evaluating scope.
-     *
-     * WARNING: This should generally be used with direct children of the current node. Use otherwise may cause
-     * performance issues or nondeterministic evaluation.
-     */
-    suspend fun traverse(node: Node, scope: ScopeDescriptor)
-}
-
-/**
- * Defines a rule that modifies how the AST is traversed to produce a scope.
- */
-interface ScopeTraversalRule<T : Node> {
-    val label: String
-    val isValidFor: NodeClause<T>
-    val traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit
-
-    suspend operator fun invoke(context: ScopeTraversalContext, node: Node, scope: ScopeDescriptor) {
-        if (isValidFor(node)) context.traversal(node as T, scope)
-    }
-}
-
-
-fun <T : Node> NodeClause<T>.produceScope(label: String, traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit) =
-    object : ScopeTraversalRule<T> {
-        override val label: String = label
-        override val isValidFor: NodeClause<T> = this@produceScope
-        override val traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit = traversal
-
-    }
 
 interface ScopeGraph : ReferenceResolver {
     fun getVisibleDeclarations(reference: NodeReference<*>): Sequence<Pair<Node, String>>
@@ -309,6 +270,9 @@ class SimpleScopeTraversalContext(
     val createScope: () -> ScopeDescriptor,
     val onTraversal: suspend ScopeTraversalContext.(node: Node, scope: ScopeDescriptor) -> Unit
 ) : ScopeTraversalContext {
+
+    override val semantics: SemanticAnalysisContext =
+        TODO("Simple traversal does not support semantics")
 
     override fun newScope(): ScopeDescriptor = createScope()
 

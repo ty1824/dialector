@@ -165,7 +165,6 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
             name = ctx.name.text
             parameters += visit(ctx.parameters) as List<Parameter>
             type = visit(ctx.returnType) as GType
-            // TODO parse dis plz
             body = visit(ctx.body()) as Expression
         }
 
@@ -302,7 +301,7 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     }
 
     override fun visitMemberAccessExpression(ctx: GlottonyGrammar.MemberAccessExpressionContext): Expression =
-        if (ctx.identifier().isEmpty) {
+        if (ctx.identifier() == null) {
             visit(ctx.primaryExpression()) as Expression
         } else {
             memberAccessExpression {

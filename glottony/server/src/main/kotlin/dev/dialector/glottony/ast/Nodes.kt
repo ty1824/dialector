@@ -168,7 +168,7 @@ interface FunctionCall : Expression {
     val functionExpression: Expression
 
     @Child
-    val arguments: ArgumentList
+    val argumentList: ArgumentList
 }
 
 @NodeDefinition

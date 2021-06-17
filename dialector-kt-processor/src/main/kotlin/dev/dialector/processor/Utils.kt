@@ -24,13 +24,13 @@ fun <S> Result<S, Any>.assumeSuccess(): S = when (this) {
     is Failure -> throw RuntimeException(reason.toString())
 }
 
-fun KSAnnotated.findAnnotations(annotationType: KClass<out Annotation>): List<KSAnnotation> =
+fun KSAnnotated.findAnnotations(annotationType: KClass<out Annotation>): Sequence<KSAnnotation> =
     this.annotations.filter {
         it.shortName.asString() == annotationType.simpleName
             && it.annotationType.resolve().declaration.qualifiedName?.asString() == annotationType.qualifiedName
     }
 
-fun KSAnnotated.hasAnnotation(annotationType: KClass<out Annotation>): Boolean = this.findAnnotations(annotationType).isNotEmpty()
+fun KSAnnotated.hasAnnotation(annotationType: KClass<out Annotation>): Boolean = this.findAnnotations(annotationType).any()
 
 fun KSClassDeclaration.isSubclassOf(superclass: KClass<out Any>): Boolean {
     return this.getAllSuperTypes().any { it.declaration.qualifiedName?.asString() == superclass.qualifiedName}
@@ -66,11 +66,12 @@ internal fun KSType.asTypeName(): TypeName {
 internal fun KSTypeParameter.asTypeVariableName(): TypeVariableName {
     return TypeVariableName.invoke(
         name = name.asString(),
-        bounds = this.bounds.map { it.resolve().asTypeName() }.toTypedArray(),
+        bounds = this.bounds.map { it.resolve().asTypeName() }.toList().toTypedArray(),
         variance = when (variance) {
             Variance.INVARIANT, Variance.STAR -> null
             Variance.CONTRAVARIANT -> KModifier.IN
             Variance.COVARIANT -> KModifier.OUT
+            else -> null
         }
     )
 }

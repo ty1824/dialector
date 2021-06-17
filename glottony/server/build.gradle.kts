@@ -1,7 +1,7 @@
 plugins {
-    id("symbol-processing") version "1.4.20-dev-experimental-20201222"
     kotlin("jvm")
     java
+    id("com.google.devtools.ksp")
     antlr
     application
 }
@@ -60,5 +60,5 @@ tasks.withType<Test> {
 }
 
 application {
-    mainClassName = "dev.dialector.glottony.server.ServerApplicationKt"
+    mainClass.set("dev.dialector.glottony.server.ServerApplicationKt")
 }

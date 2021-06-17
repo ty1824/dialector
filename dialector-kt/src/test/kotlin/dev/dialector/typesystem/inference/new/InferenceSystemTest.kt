@@ -1,14 +1,6 @@
 package dev.dialector.typesystem.inference.new
 
 import dev.dialector.typesystem.IdentityType
-import dev.dialector.typesystem.Type
-import dev.dialector.typesystem.lattice.SimpleTypeLattice
-import dev.dialector.typesystem.lattice.TypeLattice
-import dev.dialector.typesystem.lattice.hasSupertypes
-import dev.dialector.typesystem.type
-import dev.dialector.typesystem.typeClass
-import io.mockk.every
-import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
@@ -28,7 +20,7 @@ class InferenceEngineTest {
 
     @Test
     fun `simple equality inference`() {
-        val system = BaseInferenceSystem()
+        val system = BaseInferenceConstraintSystem()
         val context = BaseInferenceContext(system::createVariable, system::registerConstraint)
 
         context.apply {
@@ -71,7 +63,7 @@ class InferenceEngineTest {
 
     @Test
     fun `simple inequality inference`() {
-        val system = BaseInferenceSystem()
+        val system = BaseInferenceConstraintSystem()
         val context = BaseInferenceContext(system::createVariable, system::registerConstraint)
 
         context.apply {
@@ -91,7 +83,7 @@ class InferenceEngineTest {
 
     @Test
     fun `upper and lower bounded inference`() {
-        val system = BaseInferenceSystem()
+        val system = BaseInferenceConstraintSystem()
         val context = BaseInferenceContext(system::createVariable, system::registerConstraint)
 
         context.apply {
@@ -123,7 +115,7 @@ class InferenceEngineTest {
 
     @Test
     fun `codependent bounded inference`() {
-        val system = BaseInferenceSystem()
+        val system = BaseInferenceConstraintSystem()
         val context = BaseInferenceContext(system::createVariable, system::registerConstraint)
 
         context.apply {

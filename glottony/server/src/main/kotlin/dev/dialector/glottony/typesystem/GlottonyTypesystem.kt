@@ -4,16 +4,17 @@ import dev.dialector.glottony.GlottonyRoot
 import dev.dialector.glottony.ast.BinaryExpression
 import dev.dialector.glottony.ast.BinaryOperators
 import dev.dialector.glottony.ast.BlockExpression
+import dev.dialector.glottony.ast.FunctionCall
 import dev.dialector.glottony.ast.FunctionDeclaration
 import dev.dialector.glottony.ast.FunctionType
 import dev.dialector.glottony.ast.GType
 import dev.dialector.glottony.ast.IntegerLiteral
 import dev.dialector.glottony.ast.IntegerType
 import dev.dialector.glottony.ast.LambdaLiteral
-import dev.dialector.glottony.ast.MemberAccessExpression
 import dev.dialector.glottony.ast.NumberLiteral
 import dev.dialector.glottony.ast.NumberType
 import dev.dialector.glottony.ast.Parameter
+import dev.dialector.glottony.ast.ReferenceExpression
 import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.StringLiteral
 import dev.dialector.glottony.ast.StringType
@@ -21,15 +22,25 @@ import dev.dialector.glottony.ast.ValStatement
 import dev.dialector.model.Node
 import dev.dialector.model.getAllDescendants
 import dev.dialector.model.given
+import dev.dialector.resolution.Query
+import dev.dialector.resolution.SemanticAnalysisContext
+import dev.dialector.resolution.SemanticDataDefinition
+import dev.dialector.resolution.SemanticSystem
+import dev.dialector.resolution.SemanticSystemDefinition
+import dev.dialector.scoping.ReferencedNode
+import dev.dialector.scoping.ScopeSystemDefinition
 import dev.dialector.typesystem.IdentityType
 import dev.dialector.typesystem.Type
-import dev.dialector.typesystem.inference.new.BaseInferenceSystem
-import dev.dialector.typesystem.inference.new.InferenceResult
+import dev.dialector.typesystem.inference.new.BaseBound
+import dev.dialector.typesystem.inference.new.BaseInferenceConstraintSystem
+import dev.dialector.typesystem.inference.new.InferenceVariable
 import dev.dialector.typesystem.inference.new.InferredBottomType
 import dev.dialector.typesystem.inference.new.InferredLeastUpperBound
 import dev.dialector.typesystem.inference.new.InferredGreatestLowerBound
 import dev.dialector.typesystem.inference.new.InferredTopType
+import dev.dialector.typesystem.inference.new.RelationalConstraint
 import dev.dialector.typesystem.inference.new.leftReduction
+import dev.dialector.typesystem.inference.new.reducesTo
 import dev.dialector.typesystem.inference.new.redundantElimination
 import dev.dialector.typesystem.inference.new.rightReduction
 import dev.dialector.typesystem.integration.BaseProgramInferenceContext
@@ -43,6 +54,8 @@ import dev.dialector.typesystem.typeClass
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
+
+
 /**
  * Glottony's type system is hierarchically organized. Given that most of the program will remain constant in normal
  * IDE use cases (i.e. writing code in a single file), we want to ensure that we make minimal changes to types that
@@ -55,14 +68,38 @@ import kotlin.coroutines.suspendCoroutine
  * 2)
  */
 class GlottonyTypesystem {
-    val lattice: SimpleTypeLattice = SimpleTypeLattice(listOf(
-        typeClass<Type>() hasSupertype AnyType,
-        typeClass<IntType>() hasSupertype NumType,
-        typeClass<InferredGreatestLowerBound>() hasSupertypes {
-            it.getComponents()
+    val lattice: SimpleTypeLattice =
+        SimpleTypeLattice(listOf(
+            typeClass<Type>() hasSupertype AnyType,
+            typeClass<IntType>() hasSupertype NumType,
+            typeClass<InferredGreatestLowerBound>() hasSupertypes {
+                it.getComponents()
+            }
+        ), listOf())
+
+    val reductionRules = listOf(
+        redundantElimination,
+        leftReduction,
+        rightReduction,
+        { constraint: RelationalConstraint ->
+            constraint.left is FunType
+                && constraint.right is FunType
+                && (constraint.left as FunType).parameterTypes.size == (constraint.right as FunType).parameterTypes.size
+        } reducesTo  { constraint ->
+            // Reduce function comparison to its component pieces
+            val left = constraint.left as FunType
+            val right = constraint.right as FunType
+
+            left.parameterTypes.zip(right.parameterTypes).forEach { (leftParam, rightParam) ->
+                constraint { relate(constraint.relation.opposite(), leftParam.type, rightParam.type) }
+            }
+
+            constraint { relate(constraint.relation, left.returnType, right.returnType) }
+
+
         }
-    ), listOf())
-    val reductionRules = listOf(redundantElimination, leftReduction, rightReduction)
+    )
+
     val inferenceRules: List<InferenceRule<*>> = listOf(
         given<StringLiteral>() infer {
             constraint { typeOf(it) equal StrType }
@@ -127,6 +164,17 @@ class GlottonyTypesystem {
                 parameter -> ParameterType(typeOf(parameter), parameter.name)
             }
             constraint { typeOf(it) equal FunType(parameterTypes, typeOf(it.body)) }
+        },
+        given<ReferenceExpression>() infer {
+            val target = semantics.query(ReferencedNode, it.target)
+
+            constraint { typeOf(it) equal typeOf(target) }
+        },
+        given<FunctionCall>() infer {
+            val callType = FunType(it.argumentList.arguments.map { arg -> ParameterType(typeOf(arg)) }, typeVar())
+            constraint { typeOf(it.functionExpression) equal callType }
+
+            constraint { typeOf(it) equal callType.returnType}
         }
     )
 
@@ -139,9 +187,19 @@ class GlottonyTypesystem {
 
     }
 
+    object Context : SemanticAnalysisContext {
+        override fun <S : SemanticSystem> getSystem(definition: SemanticSystemDefinition<S>): S {
+            TODO("Not yet implemented")
+        }
+
+        override fun <A, D> query(data: SemanticDataDefinition<*, A, D>, argument: A): Query<A, D> {
+            TODO("Not yet implemented")
+        }
+    }
+
     internal fun inferTypes(node: Node): Map<Node, Type> {
-        val system = BaseInferenceSystem()
-        val context = BaseProgramInferenceContext(system::createVariable, system::registerConstraint)
+        val system = BaseInferenceConstraintSystem()
+        val context = BaseProgramInferenceContext(Context, system::createVariable, system::registerConstraint)
 
         context.apply {
             for (currentNode in node.getAllDescendants(true)) {

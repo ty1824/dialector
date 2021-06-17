@@ -4,9 +4,10 @@ import com.google.auto.service.AutoService
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
-import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
+import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
+import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
@@ -31,20 +32,21 @@ import dev.dialector.model.Property
 import dev.dialector.model.Reference
 import kotlin.reflect.KClass
 
-@AutoService(SymbolProcessor::class)
-class DialectorSymbolProcessor : SymbolProcessor {
-    lateinit var codeGenerator: CodeGenerator
+
+@AutoService(SymbolProcessorProvider::class)
+class DialectorSymbolProcessorProvider: SymbolProcessorProvider {
+    override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor =
+        DialectorSymbolProcessor(environment.codeGenerator)
+}
+
+class DialectorSymbolProcessor(val codeGenerator: CodeGenerator) : SymbolProcessor {
 
     override fun finish() {
 
     }
 
-    override fun init(options: Map<String, String>, kotlinVersion: KotlinVersion, codeGenerator: CodeGenerator, logger: KSPLogger) {
-        this.codeGenerator = codeGenerator
-    }
-
-    override fun process(resolver: Resolver) {
-        val symbols: List<KSAnnotated> = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
+    override fun process(resolver: Resolver): List<KSAnnotated> {
+        val symbols = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
         val nodeDefinitions = symbols.filterIsInstance<KSClassDeclaration>()
         Generator(resolver).generate(nodeDefinitions).forEach { (fileSpec, ksClasses) ->
             val file = codeGenerator.createNewFile(Dependencies(true, *(ksClasses.mapNotNull { it.containingFile }.distinct().toTypedArray())), fileSpec.packageName, fileSpec.name)
@@ -52,6 +54,7 @@ class DialectorSymbolProcessor : SymbolProcessor {
                 fileSpec.writeTo(stream)
             }
         }
+        return listOf()
     }
 }
 
@@ -85,7 +88,7 @@ class Generator(private val resolver: Resolver) {
         resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(nodeType), Variance.COVARIANT)
     )).makeNullable()
 
-    fun generate(classes: List<KSClassDeclaration>) =
+    fun generate(classes: Sequence<KSClassDeclaration>) =
             createGenerationModel(classes).assumeSuccess().generate()
     
     private class NodeModel constructor(val nodeClass: KSClassDeclaration) {
@@ -99,9 +102,9 @@ class Generator(private val resolver: Resolver) {
                     && it.hasAnnotation(NodeDefinition::class)
             }.toList()
 
-        val properties: List<KSPropertyDeclaration> = nodeClass.getAllProperties().filter { it.hasAnnotation(Property::class) }
-        val children: List<KSPropertyDeclaration> = nodeClass.getAllProperties().filter { it.hasAnnotation(Child::class) }
-        val references: List<KSPropertyDeclaration> = nodeClass.getAllProperties().filter { it.hasAnnotation(Reference::class) }
+        val properties: List<KSPropertyDeclaration> = nodeClass.getAllProperties().filter { it.hasAnnotation(Property::class) }.toList()
+        val children: List<KSPropertyDeclaration> = nodeClass.getAllProperties().filter { it.hasAnnotation(Child::class) }.toList()
+        val references: List<KSPropertyDeclaration> = nodeClass.getAllProperties().filter { it.hasAnnotation(Reference::class) }.toList()
     }
 
     private fun createNodeModel(nodeClass: KSClassDeclaration): Result<NodeModel, String> {
@@ -146,7 +149,7 @@ class Generator(private val resolver: Resolver) {
         return errors.toList()
     }
     
-    private fun createGenerationModel(classes: List<KSClassDeclaration>): Result<GenerationModel, String> {
+    private fun createGenerationModel(classes: Sequence<KSClassDeclaration>): Result<GenerationModel, String> {
         val errors: MutableList<String> = mutableListOf()
         val nodeModels: MutableMap<KSClassDeclaration, NodeModel> = mutableMapOf()
         classes.forEach {

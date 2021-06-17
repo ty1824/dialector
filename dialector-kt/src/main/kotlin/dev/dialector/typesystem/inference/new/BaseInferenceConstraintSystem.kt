@@ -83,7 +83,7 @@ private class BaseInferenceVariable(override val id: String) : InferenceVariable
     override fun toString(): String = "tv.$id"
 }
 
-private data class BaseBound(
+data class BaseBound(
     override val relation: TypeRelation,
     override val variable: InferenceVariable,
     override val boundingType: Type,
@@ -263,14 +263,12 @@ class ConstraintSystem(initialConstraints: Iterable<InferenceConstraint>) {
     override fun toString(): String = "Constraints:\n\t${unresolvedConstraints.joinToString("\n\t")}"
 }
 
-class BaseInferenceSystem : InferenceSystem {
+class BaseInferenceConstraintSystem : InferenceConstraintSystem {
     private val variables: MutableSet<InferenceVariable> = mutableSetOf()
     private val inferenceConstraints: MutableSet<InferenceConstraint> = mutableSetOf()
     private var variableIdCounter = 0
 
-    override fun getInferenceVariables(): Set<InferenceVariable> {
-        return variables.toSet()
-    }
+    override fun getInferenceVariables(): Set<InferenceVariable> = variables.toSet()
 
     override fun getInferenceConstraints(): Set<InferenceConstraint> = inferenceConstraints.toSet()
 
@@ -282,11 +280,12 @@ class BaseInferenceSystem : InferenceSystem {
 
     fun solve(reductionRules: List<ReductionRule>) : InferenceResult {
         println("Solving")
-        println(inferenceConstraints)
-        val constraints = ConstraintSystem(inferenceConstraints)
+        val initialConstraints = getInferenceConstraints()
+        println(initialConstraints)
+        val constraints = ConstraintSystem(initialConstraints)
 
         val bounds = BoundSystemGraph()
-        variables.forEach(bounds::addVariable)
+        getInferenceVariables().forEach(bounds::addVariable)
 
         var iteration = 0
         while (constraints.anyUnresolved()) {

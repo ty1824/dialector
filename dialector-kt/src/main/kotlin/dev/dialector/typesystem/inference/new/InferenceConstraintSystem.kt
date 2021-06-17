@@ -1,7 +1,6 @@
 package dev.dialector.typesystem.inference.new
 
 import dev.dialector.typesystem.Type
-import javax.management.relation.Relation
 
 /*
  * Incremental inference algorithm is as follows:
@@ -62,6 +61,7 @@ data class RelationalConstraint(
     val relation: TypeRelation,
     val left: Type,
     val right: Type,
+    val mutual: Boolean = false
 ) : InferenceConstraint()
 
 interface Bound {
@@ -73,36 +73,17 @@ interface Bound {
     fun upperType(): Type = if (relation == TypeRelation.SUBTYPE || relation == TypeRelation.EQUIVALENT) boundingType else variable
 }
 
-interface InferenceSystem {
+interface InferenceConstraintSystem {
     fun getInferenceVariables(): Set<InferenceVariable>
 
     fun getInferenceConstraints(): Set<InferenceConstraint>
-
-
-//    /**
-//     * Register equality between two terms.
-//     *
-//     * Returns an error if:
-//     * - The left and right type are proper types or resolved type variables that are not equivalent.
-//     *
-//     * @return InferenceResult.Ok if successful or InferenceResult.Error if the types can not be equivalent.
-//     */
-//    fun equals(left: Type, right: Type): InferenceResult
-//
-//    /**
-//     * Indicates that the left term must be a subtype of the right term (left <= right)
-//     */
-//    fun subtype(left: Type, right: Type): InferenceResult
-//
-//    /**
-//     * Indicates that the left term must be a supertype of the right term (left >= right)
-//     */
-//    fun supertype(left: Type, right: Type): InferenceResult
 }
 
 interface InferenceSolver {
-    fun solve(): InferenceResult
+    fun solve(constraintSystem: InferenceConstraintSystem): InferenceResult
 }
+
+interface InferenceVariableSolution
 
 interface InferenceResult {
     operator fun get(variable: InferenceVariable): List<Type>?
@@ -128,6 +109,11 @@ interface ConstraintCreator {
     fun pushDown(variable: InferenceVariable): VariableConstraint
 
     /**
+     * Creates a constraint between the two types with the context [TypeRelation]
+     */
+    fun relate(relation: TypeRelation, left: Type, right: Type): RelationalConstraint
+
+    /**
      * Indicates that two types should be considered equivalent.
      */
     infix fun Type.equal(type: Type): RelationalConstraint
@@ -149,6 +135,9 @@ object SimpleConstraintCreator : ConstraintCreator {
 
     override fun pushDown(variable: InferenceVariable): VariableConstraint =
         VariableConstraint(variable, VariableConstraintKind.PUSH_DOWN)
+
+    override fun relate(relation: TypeRelation, left: Type, right: Type): RelationalConstraint =
+        RelationalConstraint(relation, left, right)
 
     override fun Type.equal(type: Type): RelationalConstraint =
         RelationalConstraint(TypeRelation.EQUIVALENT, this, type)
