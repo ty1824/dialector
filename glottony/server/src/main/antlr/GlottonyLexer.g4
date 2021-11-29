@@ -28,6 +28,7 @@ MUL: '*';
 DIV: '/';
 DOT: '.';
 QUOTE: '"';
+AS: 'as';
 NUMBER_TYPE: 'num';
 INTEGER_TYPE: 'int';
 STRING_TYPE: 'string';

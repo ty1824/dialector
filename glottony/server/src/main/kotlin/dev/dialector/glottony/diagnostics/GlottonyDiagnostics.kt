@@ -1,18 +1,18 @@
 package dev.dialector.glottony.diagnostics
 
+import dev.dialector.diagnostic.DiagnosticEvaluationContext
+import dev.dialector.diagnostic.DiagnosticRule
+import dev.dialector.diagnostic.check
 import dev.dialector.glottony.GlottonyRoot
 import dev.dialector.glottony.ast.FunctionDeclaration
 import dev.dialector.glottony.ast.ValStatement
 import dev.dialector.glottony.typesystem.GlottonyTypesystem
 import dev.dialector.glottony.typesystem.asType
-import dev.dialector.model.Node
-import dev.dialector.model.getAllDescendants
-import dev.dialector.model.given
-import dev.dialector.typesystem.Type
-import dev.dialector.typesystem.lattice.TypeLattice
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
-import kotlin.coroutines.suspendCoroutine
+import dev.dialector.syntax.Node
+import dev.dialector.syntax.getAllDescendants
+import dev.dialector.syntax.given
+import dev.dialector.semantic.type.Type
+import dev.dialector.semantic.type.lattice.TypeLattice
 
 interface ModelDiagnostic {
     /**

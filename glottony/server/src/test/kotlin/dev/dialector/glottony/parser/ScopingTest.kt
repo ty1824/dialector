@@ -1,8 +1,5 @@
 package dev.dialector.glottony.parser
 
-import dev.dialector.glottony.ast.BlockExpression
-import dev.dialector.glottony.ast.ReferenceExpression
-import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.block
 import dev.dialector.glottony.ast.blockExpression
 import dev.dialector.glottony.ast.functionDeclaration
@@ -13,11 +10,8 @@ import dev.dialector.glottony.ast.returnStatement
 import dev.dialector.glottony.ast.stringLiteral
 import dev.dialector.glottony.ast.stringType
 import dev.dialector.glottony.ast.valStatement
-import dev.dialector.glottony.scopes.GlottonyScopeGraph
-import dev.dialector.model.nodeReference
-import kotlinx.coroutines.runBlocking
+import dev.dialector.syntax.nodeReference
 import org.junit.jupiter.api.Test
-import kotlin.test.assertEquals
 
 class ScopingTest {
     @Test

@@ -6,8 +6,6 @@ import dev.dialector.glottony.diagnostics.ModelDiagnostic
 import dev.dialector.glottony.parser.GlottonyParser
 import dev.dialector.glottony.parser.SourceLocation
 import dev.dialector.glottony.parser.SourceMap
-import dev.dialector.glottony.parser.SourceRange
-import dev.dialector.model.Node
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

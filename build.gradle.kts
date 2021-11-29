@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     idea
     kotlin("jvm") apply false
@@ -6,5 +8,8 @@ plugins {
 allprojects {
     repositories {
         mavenCentral()
+        maven {
+            url = URI("https://jitpack.io")
+        }
     }
 }

@@ -6,6 +6,10 @@ plugins {
     application
 }
 
+/**
+ * Use mavenCentral for most things
+ * google sources the KSP plugin
+ */
 repositories {
     mavenCentral()
     google()
@@ -15,7 +19,6 @@ dependencies {
     antlr("org.antlr:antlr4:4.8")
 
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation(kotlin("reflect"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
 
@@ -34,6 +37,10 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
 }
 
+ksp {
+    arg("dev.dialector.targetPackage", "dev.dialector.glottony.ast")
+}
+
 gradle.taskGraph.addTaskExecutionListener(object : TaskExecutionListener {
     var lastTimestamp: Long = 0
     override fun beforeExecute(task: Task) {
@@ -45,10 +52,14 @@ gradle.taskGraph.addTaskExecutionListener(object : TaskExecutionListener {
     }
 })
 
-tasks.named("generateGrammarSource", AntlrTask::class) {
+val generateGrammarSource = tasks.named("generateGrammarSource", AntlrTask::class) {
     arguments.addAll(listOf("-visitor"))
     outputDirectory = File("${project.projectDir}/src/main/gen/java/dev/dialector/glottony/parser")
 }
+
+tasks.matching { it.name == "kspKotlin" || it.name == "compileKotlin" }
+    .configureEach { dependsOn(generateGrammarSource) }
+
 
 sourceSets.getByName("main").java {
     srcDir("src/main/gen/java")

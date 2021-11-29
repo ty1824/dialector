@@ -50,7 +50,12 @@ additiveExpression
     ;
 
 multiplicativeExpression
-    : callExpression (multiplyOperator callExpression)*
+    : castExpression (multiplyOperator castExpression)*
+    ;
+
+castExpression
+    : callExpression
+    | callExpression AS type
     ;
 
 callExpression

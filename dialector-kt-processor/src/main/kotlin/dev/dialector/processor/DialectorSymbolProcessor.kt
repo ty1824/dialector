@@ -8,9 +8,11 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
+import com.google.devtools.ksp.symbol.FileLocation
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.Location
 import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.ClassName
@@ -24,31 +26,26 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asTypeName
-import dev.dialector.model.Child
-import dev.dialector.model.Node
-import dev.dialector.model.NodeDefinition
-import dev.dialector.model.NodeReference
-import dev.dialector.model.Property
-import dev.dialector.model.Reference
+import dev.dialector.syntax.Child
+import dev.dialector.syntax.Node
+import dev.dialector.syntax.NodeDefinition
+import dev.dialector.syntax.NodeReference
+import dev.dialector.syntax.Property
+import dev.dialector.syntax.Reference
 import kotlin.reflect.KClass
 
 
 @AutoService(SymbolProcessorProvider::class)
 class DialectorSymbolProcessorProvider: SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor =
-        DialectorSymbolProcessor(environment.codeGenerator)
+        DialectorSymbolProcessor(environment.codeGenerator, environment.options["dev.dialector.targetPackage"]!!)
 }
 
-class DialectorSymbolProcessor(val codeGenerator: CodeGenerator) : SymbolProcessor {
-
-    override fun finish() {
-
-    }
-
+class DialectorSymbolProcessor(val codeGenerator: CodeGenerator, val targetPackage: String) : SymbolProcessor {
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
         val nodeDefinitions = symbols.filterIsInstance<KSClassDeclaration>()
-        Generator(resolver).generate(nodeDefinitions).forEach { (fileSpec, ksClasses) ->
+        Generator(resolver).generate(targetPackage, nodeDefinitions).forEach { (fileSpec, ksClasses) ->
             val file = codeGenerator.createNewFile(Dependencies(true, *(ksClasses.mapNotNull { it.containingFile }.distinct().toTypedArray())), fileSpec.packageName, fileSpec.name)
             file.bufferedWriter().use { stream ->
                 fileSpec.writeTo(stream)
@@ -60,25 +57,16 @@ class DialectorSymbolProcessor(val codeGenerator: CodeGenerator) : SymbolProcess
 
 /*
 TODO:
-- Implement Class properties (DONE)
-- Implement builder (DONE)
-- Generate Node implementation
 - Handle inheritance
 - Mutability through change objects
 - No builder if no properties
- */
-
-/*
-Notes:
-Look into using KAPT/creating a compiler plugin
-Incremental compilation??
  */
 
 class Generator(private val resolver: Resolver) {
     private fun KClass<out Any>.getClassDeclaration(): KSClassDeclaration? =
         resolver.getClassDeclarationByName(resolver.getKSNameFromString(this.qualifiedName!!))
 
-    val nodeClass = Node::class.getClassDeclaration()!!
+    private val nodeClass = Node::class.getClassDeclaration()!!
     private val nodeType = nodeClass.asType(listOf())
     private val nullableNodeType = nodeClass.asType(listOf()).makeNullable()
     private val nodeListType = List::class.getClassDeclaration()!!.asType(listOf(
@@ -88,9 +76,8 @@ class Generator(private val resolver: Resolver) {
         resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(nodeType), Variance.COVARIANT)
     )).makeNullable()
 
-    fun generate(classes: Sequence<KSClassDeclaration>) =
-            createGenerationModel(classes).assumeSuccess().generate()
-    
+    fun generate(targetPackage: String, classes: Sequence<KSClassDeclaration>): List<Pair<FileSpec, List<KSClassDeclaration>>> = createGenerationModel(targetPackage, classes).assumeSuccess().generate()
+
     private class NodeModel constructor(val nodeClass: KSClassDeclaration) {
 
         @Suppress("UNCHECKED_CAST")
@@ -110,51 +97,63 @@ class Generator(private val resolver: Resolver) {
     private fun createNodeModel(nodeClass: KSClassDeclaration): Result<NodeModel, String> {
         val model = NodeModel(nodeClass)
         val problems = model.validate()
-        if (problems.isEmpty())
-            return Success(model)
-        else
-            return Failure("Errors found for $nodeClass:\n\t" +
-                problems.joinToString("\n\t"))
+        return if (problems.isEmpty())
+                Success(model)
+            else
+                Failure("Errors found for $nodeClass:\n\t" +
+                    problems.joinToString("\n\t"))
     }
 
-    private fun NodeModel.validate(): List<String> {
-        val errors: MutableList<String> = mutableListOf()
+    private class ModelError(val message: String, val location: Location) {
+        override fun toString(): String {
+            if (location is FileLocation) {
+                return "$message (${location.filePath}:${location.lineNumber})"
+            } else {
+                return "$message ($location)"
+            }
+        }
+    }
+
+    private infix fun String.at(location: Location): ModelError = ModelError(this, location)
+
+    private fun NodeModel.validate(): List<ModelError> {
+        val errors: MutableList<ModelError> = mutableListOf()
 
         if (!nodeClass.isSubclassOf(Node::class))
-            errors += "Input class must have Node as a superinterface"
+            errors += "Input class must have Node as a superinterface" at nodeClass.location
 
         if (nodeClass.modifiers.contains(Modifier.FINAL) || nodeClass.modifiers.contains(Modifier.SEALED)) {
-            errors += "Input class must be extensible."
+            errors += "Input class must be extensible." at nodeClass.location
         }
 
         properties.forEach {
             // A property may be any type besides a Node
             if (it.type.resolve().isAssignableTo(nullableNodeType))
-                errors += "'${it.qualifiedName}' Property must not be of type Node"
+                errors += "'${it.qualifiedName}' Property must not be of type Node" at it.location
         }
 
         children.forEach {
             // A child must either be of type T? or List<T> where T is a subclass of Node
-            if (!(it.type.resolve().isAssignableTo(nullableNodeType) || it.type.resolve().isAssignableTo(nodeListType)))
-                errors += "'${it.qualifiedName}': Child must be of type Node or List<Node>"
+            val resolvedType = it.type.resolve()
+            if (!(resolvedType.isAssignableTo(nullableNodeType) || resolvedType.isAssignableTo(nodeListType)))
+                errors += "'${it.qualifiedName}': Child must be of type Node or List<Node>" at it.location
         }
 
         references.forEach {
             // A reference must be of type NodeReference<T> where T is a subclass of Node.
             if (!it.type.resolve().isAssignableTo(nodeReferenceType)) {
-                errors += "'${it.qualifiedName}' Reference must be of type NodeReference"
+                errors += "'${it.qualifiedName}' Reference must be of type NodeReference" at it.location
             }
         }
 
         return errors.toList()
     }
     
-    private fun createGenerationModel(classes: Sequence<KSClassDeclaration>): Result<GenerationModel, String> {
+    private fun createGenerationModel(targetPackage: String, classes: Sequence<KSClassDeclaration>): Result<GenerationModel, String> {
         val errors: MutableList<String> = mutableListOf()
         val nodeModels: MutableMap<KSClassDeclaration, NodeModel> = mutableMapOf()
         classes.forEach {
-            val result = createNodeModel(it)
-            when (result) {
+            when (val result = createNodeModel(it)) {
                 is Success -> nodeModels[it] = result.value
                 is Failure -> errors += result.reason
             }
@@ -164,7 +163,7 @@ class Generator(private val resolver: Resolver) {
             return Failure("Failed to generate classes, ${errors.size} errors found:\n" +
                 errors.joinToString("\n"))
         } else {
-            return Success(GenerationModel("dev.dialector.glottony.ast", nodeModels.toMap()))
+            return Success(GenerationModel(targetPackage, nodeModels.toMap()))
         }
     }
 
@@ -188,7 +187,7 @@ class Generator(private val resolver: Resolver) {
             builder.addType(generateBuilder(model))
             builder.addFunction(generateBuilderDsl(model))
 
-            // Create extension functions for the base class, too.
+            // TODO: Create extension functions for the base class, too.
         }
 
         fun generateBuilderDsl(model: NodeModel): FunSpec {
@@ -199,7 +198,7 @@ class Generator(private val resolver: Resolver) {
             return FunSpec.builder(
                 model.nodeClass.simpleName.getShortName().let {
                     val first = it.first()
-                    it.replaceFirst(first, first.toLowerCase())
+                    it.replaceFirst(first, first.lowercaseChar())
                 })
                 .addParameter("init",
                     LambdaTypeName.get(
@@ -272,12 +271,14 @@ class Generator(private val resolver: Resolver) {
                                 .indent()
                                 .apply {
                                     model.children.forEach { property ->
-                                        if (property.type.resolve().isAssignableTo(nullableNodeType))
-                                            add("\"${property.simpleName.asString()}\" to listOfNotNull(${property.simpleName.asString()}), ")
-                                        else if (property.type.resolve().isAssignableTo(nodeListType))
-                                            add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
-                                        else
-                                            throw RuntimeException("Unexpected child type found: $property : ${property.type}")
+                                        when {
+                                            property.type.resolve().isAssignableTo(nullableNodeType) ->
+                                                add("\"${property.simpleName.asString()}\" to listOfNotNull(${property.simpleName.asString()}), ")
+                                            property.type.resolve().isAssignableTo(nodeListType) ->
+                                                add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
+                                            else ->
+                                                throw RuntimeException("Unexpected child type found: $property : ${property.type}")
+                                        }
                                     }
                                 }
                                 .unindent()

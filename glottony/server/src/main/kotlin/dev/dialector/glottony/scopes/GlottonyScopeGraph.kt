@@ -8,25 +8,31 @@ import dev.dialector.glottony.ast.MemberAccessExpression
 import dev.dialector.glottony.ast.ReferenceExpression
 import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.ValStatement
-import dev.dialector.model.Node
-import dev.dialector.model.given
-import dev.dialector.scoping.LinearScopeGraph
-import dev.dialector.scoping.Namespace
-import dev.dialector.scoping.ScopeGraph
-import dev.dialector.scoping.ScopeTraversalRule
-import dev.dialector.scoping.TypeScopingRule
-import dev.dialector.scoping.produceScope
-import dev.dialector.typesystem.NodeType
-import dev.dialector.typesystem.Type
+import dev.dialector.glottony.typesystem.asType
+import dev.dialector.semantic.PropagationType
+import dev.dialector.semantic.ScopeConstraintCreator
+import dev.dialector.semantic.Scopes
+import dev.dialector.semantic.SemanticRule
+import dev.dialector.semantic.TypeScopes
+import dev.dialector.semantic.Types
+import dev.dialector.semantic.evaluateSemantics
+import dev.dialector.semantic.scope.LinearScopeGraph
+import dev.dialector.semantic.scope.Namespace
+import dev.dialector.semantic.scope.ScopeGraph
+import dev.dialector.semantic.scope.ScopeTraversalRule
+import dev.dialector.semantic.scope.TypeScopingRule
+import dev.dialector.semantic.scope.produceScope
+import dev.dialector.semantic.type.NodeType
+import dev.dialector.semantic.type.Type
+import dev.dialector.syntax.Node
+import dev.dialector.syntax.given
 
 object Unqualified : Namespace("unqualified")
 object Declarations : Namespace("declarations")
 
+object OutgoingScope : PropagationType
+
 class GlottonyScopeGraph {
-    val typeRules: List<TypeScopingRule<out Type>> = listOf(
-
-    )
-
     val traversalRules: List<ScopeTraversalRule<out Node>> = listOf(
         given<FunctionDeclaration>().produceScope("functionDeclaration") { node, incomingScope ->
             with(newScope().inherit(incomingScope, "parent")) {

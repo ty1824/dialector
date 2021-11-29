@@ -24,7 +24,7 @@ pluginManagement {
 }
 
 include("dialector-kt")
-include("dialector-kt-gradle")
+include("dialector-lsp")
 include("dialector-kt-processor")
 include("glottony")
 include("glottony:server")
