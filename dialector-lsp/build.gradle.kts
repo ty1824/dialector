@@ -6,7 +6,8 @@ plugins {
 
 dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.5.2")
 
     implementation(project(":dialector-kt"))
     implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.12.0")

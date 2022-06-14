@@ -38,14 +38,19 @@ import kotlin.reflect.KClass
 @AutoService(SymbolProcessorProvider::class)
 class DialectorSymbolProcessorProvider: SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor =
-        DialectorSymbolProcessor(environment.codeGenerator, environment.options["dev.dialector.targetPackage"]!!)
+        DialectorSymbolProcessor(
+            environment.codeGenerator,
+            SymbolProcessingOptions(environment.options["dev.dialector.targetPackage"]!!)
+        )
 }
 
-class DialectorSymbolProcessor(val codeGenerator: CodeGenerator, val targetPackage: String) : SymbolProcessor {
+class SymbolProcessingOptions(val targetPackage: String)
+
+class DialectorSymbolProcessor(val codeGenerator: CodeGenerator, val options: SymbolProcessingOptions) : SymbolProcessor {
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
         val nodeDefinitions = symbols.filterIsInstance<KSClassDeclaration>()
-        Generator(resolver).generate(targetPackage, nodeDefinitions).forEach { (fileSpec, ksClasses) ->
+        Generator(resolver).generate(options.targetPackage, nodeDefinitions).forEach { (fileSpec, ksClasses) ->
             val file = codeGenerator.createNewFile(Dependencies(true, *(ksClasses.mapNotNull { it.containingFile }.distinct().toTypedArray())), fileSpec.packageName, fileSpec.name)
             file.bufferedWriter().use { stream ->
                 fileSpec.writeTo(stream)
@@ -76,7 +81,8 @@ class Generator(private val resolver: Resolver) {
         resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(nodeType), Variance.COVARIANT)
     )).makeNullable()
 
-    fun generate(targetPackage: String, classes: Sequence<KSClassDeclaration>): List<Pair<FileSpec, List<KSClassDeclaration>>> = createGenerationModel(targetPackage, classes).assumeSuccess().generate()
+    fun generate(targetPackage: String, classes: Sequence<KSClassDeclaration>): List<Pair<FileSpec, List<KSClassDeclaration>>> =
+        createGenerationModel(targetPackage, classes).assumeSuccess().generate()
 
     private class NodeModel constructor(val nodeClass: KSClassDeclaration) {
 
@@ -358,7 +364,7 @@ class Generator(private val resolver: Resolver) {
             }
         }
 
-        internal fun generateReference(reference: KSPropertyDeclaration): PropertySpec =
+        fun generateReference(reference: KSPropertyDeclaration): PropertySpec =
             PropertySpec.builder(reference.simpleName.asString(), reference.type.resolve().asTypeName())
                 .mutable(true)
                 .addModifiers(KModifier.OVERRIDE)
@@ -368,7 +374,7 @@ class Generator(private val resolver: Resolver) {
         /**
          * Creates the [Node] builder for the given [NodeModel]
          */
-        internal fun generateBuilder(model: NodeModel): TypeSpec {
+        fun generateBuilder(model: NodeModel): TypeSpec {
             val builder = TypeSpec.classBuilder("${model.nodeClass.simpleName.asString()}Initializer")
 
             builder.addProperties(model.properties.map {
@@ -415,6 +421,12 @@ class Generator(private val resolver: Resolver) {
 
             return builder.build()
         }
+
+        fun generateMutator(model: NodeModel): TypeSpec {
+            val classBuilder = TypeSpec.classBuilder("${model.nodeClass.simpleName.asString()}Mutator")
+            return classBuilder.build()
+        }
+
     }
 }
 

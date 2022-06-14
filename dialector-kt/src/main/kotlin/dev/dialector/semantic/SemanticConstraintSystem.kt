@@ -468,7 +468,7 @@ val rightReduction: ReductionRule<TypeRelationConstraint> =
 
 val inheritScope: ReductionRule<InheritScopeConstraint> =
     given<InheritScopeConstraint>().reducesTo("inheritScope") {
-
+        scopeGraph
     }
 
 val declareElement: ReductionRule<DeclareElementConstraint> =
@@ -519,6 +519,9 @@ interface Bound {
     val relation: TypeRelation
     val variable: TypeVariable
     val boundingType: Type
+
+    fun lowerType(): Type = if (relation == TypeRelation.SUBTYPE || relation == TypeRelation.EQUIVALENT) variable else boundingType
+    fun upperType(): Type = if (relation == TypeRelation.SUBTYPE || relation == TypeRelation.EQUIVALENT) boundingType else variable
 }
 
 data class BaseBound(

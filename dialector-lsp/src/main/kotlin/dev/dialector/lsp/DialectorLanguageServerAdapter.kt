@@ -1,40 +1,27 @@
 package dev.dialector.lsp
 
+import dev.dialector.lsp.capabilities.LspCapability
+import dev.dialector.lsp.capabilities.LspCapabilityDescriptor
+import dev.dialector.lsp.capabilities.TextDocumentSync
+import dev.dialector.semantic.type.Type
+import dev.dialector.server.DocumentLocation
+import dev.dialector.server.TextPosition
+import dev.dialector.server.TextRange
 import dev.dialector.syntax.Node
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import org.eclipse.lsp4j.CompletionItem
-import org.eclipse.lsp4j.CompletionList
+import dev.dialector.syntax.NodeReference
 import org.eclipse.lsp4j.CompletionOptions
-import org.eclipse.lsp4j.CompletionParams
-import org.eclipse.lsp4j.CreateFilesParams
-import org.eclipse.lsp4j.DeleteFilesParams
-import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DidChangeConfigurationParams
-import org.eclipse.lsp4j.DidChangeTextDocumentParams
 import org.eclipse.lsp4j.DidChangeWatchedFilesParams
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams
-import org.eclipse.lsp4j.DidCloseTextDocumentParams
-import org.eclipse.lsp4j.DidOpenTextDocumentParams
-import org.eclipse.lsp4j.DidSaveTextDocumentParams
 import org.eclipse.lsp4j.ExecuteCommandParams
 import org.eclipse.lsp4j.InitializeParams
 import org.eclipse.lsp4j.InitializeResult
-import org.eclipse.lsp4j.MessageParams
-import org.eclipse.lsp4j.MessageType
+import org.eclipse.lsp4j.Location
 import org.eclipse.lsp4j.Position
-import org.eclipse.lsp4j.PublishDiagnosticsParams
 import org.eclipse.lsp4j.Range
-import org.eclipse.lsp4j.RenameFilesParams
-import org.eclipse.lsp4j.SaveOptions
 import org.eclipse.lsp4j.ServerCapabilities
 import org.eclipse.lsp4j.SymbolInformation
-import org.eclipse.lsp4j.TextDocumentSyncKind
 import org.eclipse.lsp4j.TextDocumentSyncOptions
-import org.eclipse.lsp4j.WorkspaceEdit
 import org.eclipse.lsp4j.WorkspaceSymbolParams
 import org.eclipse.lsp4j.jsonrpc.CompletableFutures
 import org.eclipse.lsp4j.jsonrpc.messages.Either
@@ -44,19 +31,12 @@ import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.services.WorkspaceService
 import java.util.concurrent.CompletableFuture
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.cancellation.CancellationException
 
-class Model {
-    private val roots: MutableMap<String, Node> = mutableMapOf()
-}
-
-class DialectorWorkspaced {
+class DialectorWorkspace {
     fun onFilesChanged(): Nothing = TODO()
 }
 
-class DialectorWorkspaceServiced(private val workspace: DialectorWorkspaced) : WorkspaceService {
+class DialectorWorkspaceService(private val server: DialectorServer) : WorkspaceService {
     override fun didChangeConfiguration(params: DidChangeConfigurationParams?) {
         TODO("Not yet implemented")
     }
@@ -79,18 +59,81 @@ class DialectorWorkspaceServiced(private val workspace: DialectorWorkspaced) : W
     }
 }
 
-class DialectorLanguageServerAdapter : LanguageServer, LanguageClientAware {
-    val workspaceService: DialectorWorkspaceServiced = DialectorWorkspaceServiced()
-    val textDocumentService: GlottonyDocumentService = GlottonyDocumentService(this)
-    lateinit var client: LanguageClient
-    val program: GlottonyProgram = GlottonyProgram()
+fun Position.asTextPosition(): TextPosition = TextPosition(this.line, this.character)
 
+fun TextPosition.asPosition(): Position = Position(this.line, this.column)
+
+fun Range.asTextRange(): TextRange = TextRange(this.start.asTextPosition(), this.end.asTextPosition())
+
+fun TextRange.asRange(): Range = Range(this.start.asPosition(), this.end.asPosition())
+
+fun Location.asDocumentLocation(): DocumentLocation = DocumentLocation(this.uri, this.range.asTextRange())
+
+fun DocumentLocation.asLocation(): Location = Location(this.uri, this.range.asRange())
+
+interface DialectorService
+
+abstract class DialectorServiceDescriptor<T : DialectorService>
+
+interface SyntaxService : DialectorService {
+    companion object : DialectorServiceDescriptor<SyntaxService>()
+
+    /**
+     * Retrieves the node at the given position.
+     */
+    fun getNodeAt(position: TextPosition): Node
+
+    /**
+     * Retrieves the  at the given position, if it exists
+     */
+    fun getReferenceAt(position: TextPosition): NodeReference<out Node>?
+
+    fun getLocation(node: Node): DocumentLocation
+
+    /**
+     * Retrieves the text range containing the node's reference.
+     */
+    fun getLocationOfReference(reference: NodeReference<out Node>): DocumentLocation
+}
+
+interface Scope {
+    val elements: Sequence<String>
+}
+
+interface ScopeService : DialectorService {
+    companion object : DialectorServiceDescriptor<ScopeService>()
+
+    fun getScopeForReference(reference: NodeReference<out Node>): Scope
+
+    fun getTargetForReference(reference: NodeReference<out Node>): Node?
+}
+
+interface TypeService : DialectorService {
+    companion object : DialectorServiceDescriptor<TypeService>()
+
+    fun getTypeForNode(node: Node): Type?
+}
+
+interface DialectorServer {
+    fun <T : DialectorService> get(type: DialectorServiceDescriptor<T>): T
+
+    fun <T : LspCapability> get(capability: LspCapabilityDescriptor<T>): T
+}
+
+
+
+class DialectorLanguageServerAdapter(
+    private val server: DialectorServer,
+    private val workspaceService: DialectorWorkspaceService,
+    private val textDocumentService: DialectorTextDocumentService,
+) : LanguageServer, LanguageClientAware {
+
+    lateinit var client: LanguageClient
     var shutdownReceived: Boolean = false
 
     override fun initialize(params: InitializeParams): CompletableFuture<InitializeResult> {
         return CompletableFutures.computeAsync {
             println(params)
-            workspaceService.init(params.rootUri)
             InitializeResult(getCapabilities())
         }
     }
@@ -111,10 +154,12 @@ class DialectorLanguageServerAdapter : LanguageServer, LanguageClientAware {
     fun getCapabilities(): ServerCapabilities {
         val capabilities = ServerCapabilities().apply {
             textDocumentSync = Either.forRight(TextDocumentSyncOptions().apply {
-                openClose = true
-                save = Either.forRight(SaveOptions(true))
-                // TODO: For now, move to Incremental when supported
-                change = TextDocumentSyncKind.Full
+                val opts = server.get(TextDocumentSync)
+                openClose = opts.openClose
+                change = opts.change
+                save = Either.forRight(opts.save?.saveOptions)
+                willSave = opts.willSave != null
+                willSaveWaitUntil = opts.willSaveWaitUntil != null
             })
             completionProvider = CompletionOptions()
         }
@@ -125,115 +170,4 @@ class DialectorLanguageServerAdapter : LanguageServer, LanguageClientAware {
     override fun connect(client: LanguageClient) {
         this.client = client
     }
-}
-
-fun ModelDiagnostic.toDiagnostic(sourceMap: SourceMap): Diagnostic? {
-    val range = sourceMap.getRangeForNode(target)
-    return if (range != null) {
-        Diagnostic(Range(range.start.toPosition(), range.end.toPosition()), message)
-    } else null
-}
-
-fun SourceLocation.toPosition(): Position = Position(line, character)
-
-fun Position.toSourceLocation(): SourceLocation = SourceLocation(line, character)
-
-class GlottonyDocumentService(val server: GlottonyLanguageServer) : TextDocumentService {
-    object Scope : CoroutineScope {
-        override val coroutineContext: CoroutineContext = EmptyCoroutineContext
-    }
-
-    val typesystemJobs: MutableMap<String, Job> = mutableMapOf()
-    override fun didOpen(params: DidOpenTextDocumentParams) {
-        server.client.showMessage(MessageParams(MessageType.Info, "Opened doc"))
-        val uri = params.textDocument.uri
-        println(uri)
-        println(params.textDocument.text)
-        if (typesystemJobs.contains(uri)) {
-            typesystemJobs[uri]!!.cancel(CancellationException("Starting new job"))
-            typesystemJobs.remove(uri)
-        }
-        typesystemJobs[uri] = Scope.launch(Dispatchers.Default) {
-            val (file, sourceMap) = GlottonyParser.parseStringWithSourceMap(params.textDocument.text)
-            val program = server.program
-            program.addRoot(
-                uri,
-                GlottonyRoot(file, sourceMap)
-            )
-            val diagnostics = program.diagnostics.evaluate(program.getRoot(uri)!!)
-            println(diagnostics)
-            server.client.publishDiagnostics(PublishDiagnosticsParams(
-                uri,
-                diagnostics.map { it.toDiagnostic(sourceMap) }
-            ))
-        }
-    }
-
-    override fun didChange(params: DidChangeTextDocumentParams) {
-        val uri = params.textDocument.uri
-        println(uri)
-        if (typesystemJobs.contains(uri)) {
-            typesystemJobs[uri]!!.cancel(CancellationException("Starting new job"))
-            typesystemJobs.remove(uri)
-        }
-        typesystemJobs[uri] = Scope.launch(Dispatchers.Default) {
-            println("Parsing")
-            val program = server.program
-            val (file, sourceMap) = GlottonyParser.parseStringWithSourceMap(params.contentChanges[0].text)
-            program.addRoot(
-                uri,
-                GlottonyRoot(file, sourceMap)
-            )
-            println("Starting diagnostics")
-            val diagnostics = program.diagnostics.evaluate(program.getRoot(uri)!!)
-            println(diagnostics)
-            println("Publishing diagnostics")
-            server.client.publishDiagnostics(PublishDiagnosticsParams(
-                uri,
-                diagnostics.map { it.toDiagnostic(sourceMap) }
-            ))
-        }
-    }
-
-    override fun didClose(params: DidCloseTextDocumentParams?) {
-        TODO("Not yet implemented")
-    }
-
-    override fun didSave(params: DidSaveTextDocumentParams?) {
-        TODO("Not yet implemented")
-    }
-
-    // TODO: Map position into node tree to find the current reference.
-    override fun completion(position: CompletionParams): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> = CompletableFuture.supplyAsync {
-        println(position.position)
-        val v: Either<MutableList<CompletionItem>, CompletionList> = runBlocking {
-            val program = server.program
-            println(position.textDocument.uri)
-            val root = program.getRoot(position.textDocument.uri)!!
-            val scopeGraph = program.scopeGraph.resolveRoot(root)
-            val context = root.sourceMap.getNodeAtLocation(position.position.toSourceLocation())
-                ?.references
-                ?.asSequence()
-                ?.firstOrNull()
-            println(context)
-            if (context != null) {
-                println()
-                Either.forLeft(scopeGraph.getVisibleDeclarations(context.value).map {
-                    print(it.second)
-                    CompletionItem(it.second)
-                }.toMutableList())
-            } else { Either.forLeft(mutableListOf()) }
-        }
-        v
-    }
-//
-//    override fun resolveCompletionItem(unresolved: CompletionItem?): CompletableFuture<CompletionItem> {
-//        return super.resolveCompletionItem(unresolved)
-//    }
-
-
-}
-
-class GlottonyFileHandle() {
-
 }

@@ -76,7 +76,7 @@ class GlottonyLanguageServer : LanguageServer, LanguageClientAware {
         val capabilities = ServerCapabilities().apply {
             textDocumentSync = Either.forRight(TextDocumentSyncOptions().apply {
                 openClose = true
-                save = SaveOptions(true)
+                save = Either.forRight(SaveOptions(true))
                 // TODO: For now, move to Incremental when supported
                 change = TextDocumentSyncKind.Full
             })

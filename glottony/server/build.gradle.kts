@@ -24,7 +24,7 @@ dependencies {
 
     implementation("org.antlr:antlr4-runtime:4.8")
     implementation("com.google.guava:guava:28.2-jre")
-    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.9.0")
+    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.12.0")
     implementation(project(":dialector-kt"))
     ksp(project(":dialector-kt-processor"))
 

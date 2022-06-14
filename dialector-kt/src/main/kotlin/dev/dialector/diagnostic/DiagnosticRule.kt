@@ -28,7 +28,7 @@ interface DiagnosticRule<T : Node> {
     val diagnostics: DiagnosticEvaluationContext.(node: T) -> Unit
 
 
-    operator fun invoke(context: DiagnosticEvaluationContext, node: Node): Unit {
+    operator fun invoke(context: DiagnosticEvaluationContext, node: Node) {
         @Suppress("UNCHECKED_CAST")
         if (isValidFor(node)) context.diagnostics(node as T)
     }

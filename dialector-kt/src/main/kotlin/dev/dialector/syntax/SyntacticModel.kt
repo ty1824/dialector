@@ -1,7 +1,5 @@
 package dev.dialector.syntax
 
-import cafe.adriel.broker.BrokerPublisher
-
 interface RootId
 
 /**
@@ -9,7 +7,7 @@ interface RootId
  */
 interface SyntacticModel {
     fun getRoots(): Sequence<Node>
-    fun getRoot(id: RootId): Node
+    fun getRoot(id: RootId): Node?
 }
 
 /**
@@ -19,11 +17,11 @@ interface DynamicSyntacticModel : SyntacticModel {
     /**
      * Adds or replaces a root in the model
      */
-    fun putRoot(id: RootId): Node
+    fun putRoot(id: RootId, root: Node)
 
     /**
      * Removes a root from the model
      */
-    fun removeRoot(id: RootId): Node
+    fun removeRoot(id: RootId)
 }
 
