@@ -1,3 +1,0 @@
-struct Foo(name: string, count: int)
-
-fun bar(input: Foo): string = input.data + ", " input.count

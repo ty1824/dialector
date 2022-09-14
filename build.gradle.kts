@@ -1,12 +1,19 @@
+import java.net.URI
+
 plugins {
     idea
+    kotlin("jvm") apply false
+    id("maven-publish")
 }
 
 allprojects {
+    group = "dev.dialector"
+    version = "0.1.0"
+
     repositories {
-        // Use jcenter for resolving dependencies.
-        // You can declare any Maven/Ivy/file repository here.
-        jcenter()
+        mavenCentral()
+        maven {
+            url = URI("https://jitpack.io")
+        }
     }
 }
-
