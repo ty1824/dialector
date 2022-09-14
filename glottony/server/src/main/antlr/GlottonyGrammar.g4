@@ -1,6 +1,8 @@
 parser grammar GlottonyGrammar;
 
-options { tokenVocab = GlottonyLexer; }
+options {
+    tokenVocab = GlottonyLexer;
+}
 
 @header {
 package dev.dialector.glottony.parser;

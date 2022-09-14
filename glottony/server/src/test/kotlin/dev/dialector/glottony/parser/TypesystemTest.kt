@@ -103,6 +103,6 @@ class TypesystemTest {
 
         val block = (node.body as BlockExpression).block
         assertEquals(NumType, result[node.body])
-        assertEquals(NumType, result[block.statements[0]])
+        assertEquals(StrType, result[block.statements[0]])
     }
 }

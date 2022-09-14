@@ -202,9 +202,9 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     }
 
     override fun visitMultiplicativeExpression(ctx: GlottonyGrammar.MultiplicativeExpressionContext): Expression {
-        val left = visit(ctx.callExpression(0)) as Expression
+        val left = visit(ctx.castExpression(0)) as Expression
 
-        val ops = ctx.callExpression().drop(1).zip(ctx.multiplyOperator())
+        val ops = ctx.castExpression().drop(1).zip(ctx.multiplyOperator())
 
         return ops.fold(left) { accum, (right, op) ->
             binaryExpression {
@@ -213,6 +213,12 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
                 this.right = visit(right) as Expression
             }
         }
+    }
+
+    override fun visitCastExpression(ctx: GlottonyGrammar.CastExpressionContext): Expression {
+        val left = visit(ctx.callExpression()) as Expression
+        // TODO: Handle cast expression
+        return left
     }
 
     override fun visitCallExpression(ctx: GlottonyGrammar.CallExpressionContext): Expression {

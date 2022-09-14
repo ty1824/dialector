@@ -1,7 +1,6 @@
 plugins {
-    `java-library`
-    kotlin("jvm")
-    kotlin("kapt")
+    kotlin("multiplatform")
+    id("maven-publish")
 }
 
 val kspVersion: String by project
@@ -11,13 +10,21 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation(kotlin("reflect"))
-    implementation("com.squareup:kotlinpoet:1.6.0")
-    implementation(project(":dialector-kt"))
-    implementation("com.google.devtools.ksp:symbol-processing-api:$kspVersion")
-    implementation("com.google.auto.service:auto-service:1.0-rc4")
-    kapt("com.google.auto.service:auto-service:1.0-rc4")
+kotlin {
+    jvm()
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlin:kotlin-stdlib")
+                implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+                implementation(project(":dialector-kt"))
+                implementation("com.squareup:kotlinpoet:1.12.0")
+                implementation("com.google.devtools.ksp:symbol-processing-api:$kspVersion")
+                implementation(kotlin("reflect"))
+            }
+            kotlin.srcDir("src/main/kotlin")
+            resources.srcDir("src/main/resources")
+        }
+    }
 }

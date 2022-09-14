@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    antlr("org.antlr:antlr4:4.8")
+    antlr("org.antlr:antlr4:4.11.1")
 
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation(kotlin("reflect"))
@@ -54,15 +54,16 @@ gradle.taskGraph.addTaskExecutionListener(object : TaskExecutionListener {
 
 val generateGrammarSource = tasks.named("generateGrammarSource", AntlrTask::class) {
     arguments.addAll(listOf("-visitor"))
-    outputDirectory = File("${project.projectDir}/src/main/gen/java/dev/dialector/glottony/parser")
+    outputDirectory = File("${project.projectDir}/build/generated/antlr/main/java/dev/dialector/glottony/parser")
 }
 
+// Antlr generation must happen before compilation
 tasks.matching { it.name == "kspKotlin" || it.name == "compileKotlin" }
     .configureEach { dependsOn(generateGrammarSource) }
 
 
 sourceSets.getByName("main").java {
-    srcDir("src/main/gen/java")
+    srcDir("build/generated/antlr/main/java")
     srcDir("build/generated/ksp/main/kotlin")
 }
 

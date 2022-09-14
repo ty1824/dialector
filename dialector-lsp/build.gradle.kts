@@ -1,6 +1,10 @@
 plugins {
-    kotlin("jvm")
+    kotlin("multiplatform")
     `java-library`
+}
+
+kotlin {
+    jvm()
 }
 
 

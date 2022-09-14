@@ -58,7 +58,7 @@ class TeeOutputStream(out: OutputStream?, tee: OutputStream?) : OutputStream() {
 }
 
 fun main(args: Array<String>) {
-    val port = /*args[0]*/ "5008"
+    val port = if (args.isNotEmpty()) args[0] else "5008"
     val socketChannel = AsynchronousServerSocketChannel.open()
     socketChannel.use {
         socketChannel.bind(InetSocketAddress("localhost", 5011))
