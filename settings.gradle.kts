@@ -3,16 +3,16 @@ rootProject.name = "dialector"
 pluginManagement {
     val kotlinVersion: String by settings
     val kspVersion: String by settings
+    val koverVersion: String by settings
 
     resolutionStrategy {
         eachPlugin {
-            if (requested.id.id.startsWith("org.jetbrains.kotlin")) {
+            when (requested.id.id) {
+                "com.google.devtools.ksp" -> useVersion(kspVersion)
+                "org.jetbrains.kotlinx.kover" -> useVersion(koverVersion)
+            }
+            if (requested.id.id.startsWith("org.jetbrains.kotlin.")) {
                 useVersion(kotlinVersion)
-            } else {
-                when (requested.id.id) {
-                    "com.google.devtools.ksp" ->
-                        useVersion(kspVersion)
-                }
             }
         }
     }
@@ -20,6 +20,7 @@ pluginManagement {
     repositories {
         gradlePluginPortal()
         google()
+        mavenCentral()
     }
 }
 

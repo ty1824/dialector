@@ -15,25 +15,26 @@ import dev.dialector.semantic.type.inference.new.RelationalConstraint
 import dev.dialector.semantic.type.inference.new.VariableConstraint
 import dev.dialector.semantic.type.integration.InferenceRule
 
-object TypeSystemDefinition : SemanticSystemDefinition<TypeSystem>() {
-    val ReferencedNode = SemanticDataDef<NodeReference<*>, Node> { system, argument -> TODO("") }
+public object TypeSystemDefinition : SemanticSystemDefinition<TypeSystem>() {
+    public val ReferencedNode: SemanticDataDef<NodeReference<*>, Node> =
+        SemanticDataDef { system, argument -> TODO("") }
 }
 
-object NodeType : SemanticDataDefinition<TypeSystem, Node, List<Type>?>(TypeSystemDefinition) {
+public object NodeType : SemanticDataDefinition<TypeSystem, Node, List<Type>?>(TypeSystemDefinition) {
     override fun query(system: TypeSystem, argument: Node): Query<Node, List<Type>?> {
         TODO("Not yet implemented")
     }
 }
 
-sealed class TypeResult
+public sealed class TypeResult
 
-interface TypeSystem : SemanticSystem {
+public interface TypeSystem : SemanticSystem {
 
-    val inferenceRules: List<InferenceRule<*>>
-    val reductionRules: List<ReductionRule>
-    val incorporationRules: List<IncorporationRule>
+    public val inferenceRules: List<InferenceRule<*>>
+    public val reductionRules: List<ReductionRule>
+    public val incorporationRules: List<IncorporationRule>
 
-    suspend fun getTypeOfNode(node: Node): TypeResult
+    public suspend fun getTypeOfNode(node: Node): TypeResult
 }
 
 /*
@@ -43,7 +44,7 @@ On change:
     Invoke all
 
  */
-class InferringTypeSystem(override val semantics: SemanticAnalysisContext) : TypeSystem {
+public class InferringTypeSystem(override val semantics: SemanticAnalysisContext) : TypeSystem {
     private val nodeTypes: MutableMap<Node, TypeResult> = mutableMapOf()
 
     override val inferenceRules: List<InferenceRule<*>> = listOf()
@@ -69,56 +70,56 @@ class InferringTypeSystem(override val semantics: SemanticAnalysisContext) : Typ
     }
 }
 
-interface TypeConstraintCreator {
+public interface TypeConstraintCreator {
     /**
      * Indicates that the variable's optimal solution should resolve using its upper bounds.
      */
-    fun pullUp(variable: InferenceVariable): VariableConstraint
+    public fun pullUp(variable: InferenceVariable): VariableConstraint
 
     /**
      * Indicates that the variable's optimal solution should resolve using its lower bounds.
      */
-    fun pushDown(variable: InferenceVariable): VariableConstraint
+    public fun pushDown(variable: InferenceVariable): VariableConstraint
 
     /**
      * Indicates that two types should be considered equivalent.
      *
      * There is a unidirectional dependency from the left-hand-side argument and the right-hand-side argument.
      */
-    infix fun Type.equal(type: Type): RelationalConstraint
+    public infix fun Type.equal(type: Type): RelationalConstraint
 
     /**
      * Indicates that two types should be considered equivalent.
      *
      * There is a bidirectional dependency between the two arguments.
      */
-    infix fun Type.mutualEqual(type: Type): RelationalConstraint
+    public infix fun Type.mutualEqual(type: Type): RelationalConstraint
 
     /**
      * Indicates that the left-hand-side type should be a subtype of the right-hand-side type.
      *
      * There is a unidirectional dependency from the left-hand-side argument and the right-hand-side argument.
      */
-    infix fun Type.subtype(type: Type): RelationalConstraint
+    public infix fun Type.subtype(type: Type): RelationalConstraint
 
     /**
      * Indicates that the left-hand-side type should be a subtype of the right-hand-side type.
      *
      * There is a bidirectional dependency between the two arguments.
      */
-    infix fun Type.mutualSubtype(type: Type): RelationalConstraint
+    public infix fun Type.mutualSubtype(type: Type): RelationalConstraint
 
     /**
      * Indicates that the left-hand-side type should be a supertype of the right-hand-side type.
      *
      * There is a unidirectional dependency from the left-hand-side argument and the right-hand-side argument.
      */
-    infix fun Type.supertype(type: Type): RelationalConstraint
+    public infix fun Type.supertype(type: Type): RelationalConstraint
 
     /**
      * Indicates that the left-hand-side type should be a supertype of the right-hand-side type.
      *
      * There is a bidirectional dependency between the two arguments.
      */
-    infix fun Type.mutualSupertype(type: Type): RelationalConstraint
+    public infix fun Type.mutualSupertype(type: Type): RelationalConstraint
 }

@@ -288,9 +288,9 @@ open class ParserVisitor : GlottonyGrammarBaseVisitor<Any?>() {
     override fun visitType(ctx: GlottonyGrammar.TypeContext): GType {
         return if (ctx.getChild(0) is TerminalNode) {
             when ((ctx.getChild(0) as TerminalNode).symbol.type) {
-                GlottonyGrammar.INTEGER_TYPE -> integerType {}
-                GlottonyGrammar.NUMBER_TYPE -> numberType {}
-                GlottonyGrammar.STRING_TYPE -> stringType {}
+                GlottonyGrammar.INTEGER_TYPE -> integerType()
+                GlottonyGrammar.NUMBER_TYPE -> numberType()
+                GlottonyGrammar.STRING_TYPE -> stringType()
                 else -> throw RuntimeException("Can not resolve type:$ctx")
             }
         } else visit(ctx.getChild(0)) as GType

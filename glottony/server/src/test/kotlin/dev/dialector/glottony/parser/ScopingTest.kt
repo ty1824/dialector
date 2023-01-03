@@ -20,13 +20,13 @@ class ScopingTest {
             name = "foo"
             parameters += parameter {
                 name = "param1"
-                type = numberType {}
+                type = numberType()
             }
-            type = stringType {  }
+            type = stringType()
             body = blockExpression { block = block {
                 statements += valStatement {
                     name = "v"
-                    type = stringType { }
+                    type = stringType()
                     expression = stringLiteral { value = "abc" }
                 }
                 statements += returnStatement {

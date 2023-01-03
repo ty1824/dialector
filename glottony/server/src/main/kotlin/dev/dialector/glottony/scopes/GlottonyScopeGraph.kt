@@ -8,22 +8,13 @@ import dev.dialector.glottony.ast.MemberAccessExpression
 import dev.dialector.glottony.ast.ReferenceExpression
 import dev.dialector.glottony.ast.ReturnStatement
 import dev.dialector.glottony.ast.ValStatement
-import dev.dialector.glottony.typesystem.asType
 import dev.dialector.semantic.PropagationType
-import dev.dialector.semantic.ScopeConstraintCreator
-import dev.dialector.semantic.Scopes
-import dev.dialector.semantic.SemanticRule
-import dev.dialector.semantic.TypeScopes
-import dev.dialector.semantic.Types
-import dev.dialector.semantic.evaluateSemantics
 import dev.dialector.semantic.scope.LinearScopeGraph
 import dev.dialector.semantic.scope.Namespace
 import dev.dialector.semantic.scope.ScopeGraph
 import dev.dialector.semantic.scope.ScopeTraversalRule
-import dev.dialector.semantic.scope.TypeScopingRule
 import dev.dialector.semantic.scope.produceScope
 import dev.dialector.semantic.type.NodeType
-import dev.dialector.semantic.type.Type
 import dev.dialector.syntax.Node
 import dev.dialector.syntax.given
 

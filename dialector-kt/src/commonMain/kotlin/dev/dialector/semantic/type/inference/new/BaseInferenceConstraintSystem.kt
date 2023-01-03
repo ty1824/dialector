@@ -2,7 +2,7 @@ package dev.dialector.semantic.type.inference.new
 
 import dev.dialector.semantic.type.IdentityType
 import dev.dialector.semantic.type.Type
-import dev.dialector.semantic.type.inference.DataGraph
+import dev.dialector.util.DataGraph
 
 object InferredTopType : IdentityType("InferredTop")
 

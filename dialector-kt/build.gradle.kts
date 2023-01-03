@@ -2,11 +2,13 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("multiplatform")
+    id("org.jetbrains.kotlinx.kover")
     id("maven-publish")
 }
 
 kotlin {
     jvm()
+    explicitApiWarning()
 
     sourceSets {
         val commonMain by getting {

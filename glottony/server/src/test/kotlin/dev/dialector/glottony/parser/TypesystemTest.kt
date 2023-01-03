@@ -62,11 +62,11 @@ class TypesystemTest {
     fun functionTypeInferenceTest() {
         val node = functionDeclaration {
             name = "foo"
-            type = stringType {  }
+            type = stringType()
             body = blockExpression { block = block {
                 statements += valStatement {
                     name = "v"
-                    type = stringType { }
+                    type = stringType()
                     expression = stringLiteral { value = "abc" }
                 }
                 statements += returnStatement {
@@ -86,11 +86,11 @@ class TypesystemTest {
     fun functionInvalidReturnTypeTest() {
         val node = functionDeclaration {
             name = "foo"
-            type = stringType {  }
+            type = stringType()
             body = blockExpression { block = block {
                 statements += valStatement {
                     name = "v"
-                    type = stringType { }
+                    type = stringType()
                     expression = stringLiteral { value = "abc" }
                 }
                 statements += returnStatement {

@@ -3,6 +3,7 @@ import java.net.URI
 plugins {
     idea
     kotlin("jvm") apply false
+    id("org.jetbrains.kotlinx.kover")
     id("maven-publish")
 }
 

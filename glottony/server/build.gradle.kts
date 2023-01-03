@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    antlr("org.antlr:antlr4:4.11.1")
+    antlr("org.antlr:antlr4:4.8")
 
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation(kotlin("reflect"))

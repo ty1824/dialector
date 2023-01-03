@@ -1,8 +1,8 @@
 package dev.dialector.util
 
-typealias Cache<K, V> = MutableMap<K, V>
+internal typealias Cache<K, V> = MutableMap<K, V>
 
-class LeastRecentlyAddedCache<K, V>(private val capacity: Int?) : LinkedHashMap<K, V>() {
+public class LeastRecentlyAddedCache<K, V>(private val capacity: Int?) : LinkedHashMap<K, V>() {
     override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean = capacity == null || this.size > capacity
 }
 
@@ -12,4 +12,4 @@ class LeastRecentlyAddedCache<K, V>(private val capacity: Int?) : LinkedHashMap<
  *
  * @param maxSize The maximum number of entries. If null, the cache size will not be capped.
  */
-fun <K, V> lraCache(capacity: Int? = null): Cache<K, V> = LeastRecentlyAddedCache(capacity)
+public fun <K, V> lraCache(capacity: Int? = null): Cache<K, V> = LeastRecentlyAddedCache(capacity)

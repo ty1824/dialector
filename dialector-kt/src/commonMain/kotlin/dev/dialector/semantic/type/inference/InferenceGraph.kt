@@ -2,6 +2,7 @@ package dev.dialector.semantic.type.inference
 
 import dev.dialector.semantic.type.Type
 import dev.dialector.semantic.type.lattice.TypeLattice
+import dev.dialector.util.DataGraph
 
 /*
  * Incremental inference algorithm is as follows:
