@@ -1,6 +1,5 @@
 package dev.dialector.syntax
 
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 /*
@@ -59,40 +58,44 @@ public fun <T : Node> nodeReference(targetIdentifier: String): NodeReference<T> 
  */
 public fun Node.getRoot(): Node = parent?.getRoot() ?: this
 
+/**
+ * Retrieves the Node property defined by the given [KProperty]
+ */
 @Suppress("UNCHECKED_CAST")
 public fun <T> Node.getProperty(property: KProperty<T>): T =
     properties[property.name] as T
 
+/**
+ * Retrieves the list of children as defined by the given property.
+ */
 @Suppress("UNCHECKED_CAST")
 public fun <T : Node> Node.getChildren(child: KProperty<List<T>>): List<T> =
     children[child.name] as List<T>
 
+/**
+ * Retrieves the reference defined by the given property.
+ */
 @Suppress("UNCHECKED_CAST")
-public fun <T : Node> Node.getReferences(relation: KProperty<NodeReference<T>>): NodeReference<T> =
+public fun <T : Node> Node.getReference(relation: KProperty<NodeReference<T>>): NodeReference<T> =
     references[relation.name] as NodeReference<T>
 
+/**
+ * Retrieves all children of this node.
+ */
 public fun Node.getAllChildren() : List<Node> = children.values.flatten()
 
+/**
+ * Retrieves all references from this node.
+ */
 public fun Node.getAllReferences() : List<NodeReference<*>> = references.values.toList()
 
-public fun Node.getDescendants(inclusive: Boolean = false, ofType: KClass<out Node>) : Sequence<Node> = sequence {
-    val node = this@getDescendants
-    if (inclusive && ofType.isInstance(node)) { yield (node) }
-    val current: MutableList<Node> = if (inclusive) mutableListOf(node) else node.getAllChildren().toMutableList()
-    while (current.isNotEmpty()) {
-        val value = current.removeFirst()
-        if (ofType.isInstance(value)) yield(value)
-        current += value.getAllChildren()
-    }
-}
-
-public inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = false) : Sequence<Node> =
-    this@getDescendants.getAllDescendants(inclusive).filterIsInstance(T::class.java)
-
+/**
+ * Returns a sequence that iterates through all descendants of this node in a breadth-first traversal.
+ */
 public fun Node.getAllDescendants(inclusive: Boolean = false) : Sequence<Node> = sequence {
     val node = this@getAllDescendants
     if (inclusive) { yield (node) }
-    val current: MutableList<Node> = if (inclusive) mutableListOf(node) else node.getAllChildren().toMutableList()
+    val current: MutableList<Node> = node.getAllChildren().toMutableList()
     while (current.isNotEmpty()) {
         val value = current.removeFirst()
         yield(value)
@@ -100,6 +103,31 @@ public fun Node.getAllDescendants(inclusive: Boolean = false) : Sequence<Node> =
     }
 }
 
+/**
+ * Returns a sequence that iterates through all descendants of this node in a breadth-first traversal, filtered by
+ * the given type.
+ */
+public inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = false) : Sequence<Node> =
+    this.getAllDescendants(inclusive).filterIsInstance<T>()
+
+/**
+ * Returns a sequence that iterates through all ancestors of this node.
+ */
+public fun Node.getAllAncestors(inclusive: Boolean = false): Sequence<Node> = sequence {
+    val node = this@getAllAncestors
+    if (inclusive) { yield (node) }
+    var current: Node? = node.parent
+    while (current != null) {
+        yield(current)
+        current = current.parent
+    }
+}
+
+/**
+ * Returns a sequence that iterates through all ancestors of this node filtered by the given type.
+ */
+public inline fun <reified T : Node> Node.getAncestors(inclusive: Boolean = false) : Sequence<Node> =
+    this.getAllAncestors(inclusive).filterIsInstance<T>()
 
 /**
  * Indicates that the target class defines the structure of a [Node]

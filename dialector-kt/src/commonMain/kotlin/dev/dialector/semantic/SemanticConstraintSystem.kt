@@ -198,7 +198,7 @@ public inline fun <reified T : SemanticConstraint> given(crossinline predicate: 
     }
 
 public interface ReductionContext {
-    public fun constraint(routine: ConstraintCreator.() -> TypeRelationConstraint)
+    public fun <T : ConstraintCreator> constraint(creator: T, routine: T.() -> SemanticConstraint)
     public fun bound(routine: BoundCreator.() -> Bound)
     public fun scoping(routine: ScopeGraph.() -> Unit)
 }
