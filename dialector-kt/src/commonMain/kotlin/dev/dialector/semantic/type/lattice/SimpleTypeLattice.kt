@@ -6,14 +6,18 @@ import dev.dialector.semantic.type.TypeObjectClause
 import dev.dialector.util.Cache
 import dev.dialector.util.lraCache
 
-object Any : IdentityType("any") {}
-object None : IdentityType("none") {}
+public object AnyType : IdentityType("any")
+public object NoneType : IdentityType("none")
 
-data class AndType(val members: Set<Type>) : Type
+public data class AndType(val members: Set<Type>) : Type
+public data class OrType(val members: Set<Type>) : Type
 
-data class OrType(val members: Set<Type>) : Type
-
-class SimpleTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, subtypeRules: Collection<SupertypeRule>) : TypeLattice {
+public class SimpleTypeLattice(
+    supertypeRelations: Collection<SupertypeRelation<*>>,
+    subtypeRules: Collection<SupertypeRule>,
+    override val topType: Type = AnyType,
+    override val bottomType: Type = NoneType
+) : TypeLattice {
     private val supertypeRelations: List<SupertypeRelation<*>> = supertypeRelations.toList()
     private val supertypeRule: List<SupertypeRule> = subtypeRules.toList()
     private val supertypes: MutableMap<Type, Set<Type>> = mutableMapOf()
@@ -26,9 +30,6 @@ class SimpleTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, su
             .map { it.type }
             .forEach { this.directSupertypes(it) }
     }
-
-    override val topType: Type = Any
-    override val bottomType: Type = None
 
     override fun isSubtypeOf(candidate: Type, supertype: Type): Boolean =
         candidate == supertype
@@ -53,7 +54,7 @@ class SimpleTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, su
         return candidate == other
     }
 
-    fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
+    public fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
         assert(!types.none()) { "May not call leastCommonSupertypes without at least one argument type"}
 
         val initialTypes = types.asSequence().filterRedundantSubtypes()
@@ -119,14 +120,11 @@ class SimpleTypeLattice(supertypeRelations: Collection<SupertypeRelation<*>>, su
         }
 
 
-    override fun directSupertypes(type: Type): Set<Type> = supertypes.computeIfAbsent(type) {
-        val result = supertypeRelations.asSequence()
-            .flatMap { it.evaluate(type) }
-            .toSet()
-
-        if (result.isEmpty())
-            setOf(this.topType)
-        else
-            result
-    }
+    override fun directSupertypes(type: Type): Set<Type> =
+        supertypes.computeIfAbsent(type) {
+            supertypeRelations.asSequence()
+                .flatMap { it.evaluate(type) }
+                .toSet()
+                .ifEmpty { setOf(this.topType) }
+        }
 }

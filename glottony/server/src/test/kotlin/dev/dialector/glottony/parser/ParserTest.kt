@@ -21,6 +21,7 @@ class ParserTest {
         assertEquals("foo", decl.name )
         assertTrue(decl.type is StringType, "Expected string but was ${decl.type}")
         assertTrue(decl.body is StringLiteral, "Expected string literal but was ${decl.body}")
+        assertEquals(decl, decl.body.parent)
     }
 
     @Test

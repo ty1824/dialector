@@ -6,7 +6,7 @@ import dev.dialector.semantic.type.TypeClause
 /**
  * Defines algorithms for resolving the supremum and infimum of some set of types.
  */
-interface ExtremumSolver {
+public interface ExtremumSolver {
     /**
      * Resolves the set of least common supertypes, otherwise known as the supremum, for the input types.
      *
@@ -18,7 +18,7 @@ interface ExtremumSolver {
      * In some cases, there may be multiple valid candidate types. This method should resolve them using a Join-like
      * type.
      */
-    fun leastCommonSupertype(types: Iterable<Type>): Type
+    public fun leastCommonSupertype(types: Iterable<Type>): Type
 
     /**
      * Resolves the set of greatest common subtypes, otherwise known as the infimum, for input types.
@@ -31,69 +31,69 @@ interface ExtremumSolver {
      * In some cases, there may be multiple valid concrete candidate types. This method should resolve them using a
      * Meet-like type.
      */
-    fun greatestCommonSubtype(types: Iterable<Type>): Type
+    public fun greatestCommonSubtype(types: Iterable<Type>): Type
 }
 
 /**
  * An object that maintains the type inheritance graph in lattice form.
  */
-interface TypeLattice : ExtremumSolver {
+public interface TypeLattice : ExtremumSolver {
     /**
      * The common supertype of all other types.
      */
-    val topType: Type
+    public val topType: Type
 
     /**
      * The common subtype of all other types.
      */
-    val bottomType: Type
+    public val bottomType: Type
 
     /**
      * Returns true if the candidate type is a subtype of the expected supertype.
      */
-    fun isSubtypeOf(candidate: Type, supertype: Type): Boolean
+    public fun isSubtypeOf(candidate: Type, supertype: Type): Boolean
 
     /**
      * Returns true if the candidate type is considered to be the same type as the other type.
      */
-    fun isEquivalent(candidate: Type, other: Type): Boolean
+    public fun isEquivalent(candidate: Type, other: Type): Boolean
 
     /**
      * Returns supertypes defined by [SupertypingRelation]s, does not include implicit supertypes derived from
      * [SubtypeRule]s
      */
-    fun directSupertypes(type: Type): Set<Type>
+    public fun directSupertypes(type: Type): Set<Type>
 }
 
 /**
  * Defines a relation between some category of types matching a [TypeClause] and a set of valid supertypes for all types
  * in that category. Multiple relations may apply to the same type.
  */
-interface SupertypeRelation<T : Type> {
-    val isValidFor: TypeClause<T>
-    fun supertypes(type: T): Sequence<Type>
+public interface SupertypeRelation<T : Type> {
+    public val isValidFor: TypeClause<T>
+    public fun supertypes(type: T): Sequence<Type>
 }
 
 @Suppress("UNCHECKED_CAST")
-fun <T : Type> SupertypeRelation<T>.evaluate(candidate: Type): Sequence<Type> =
+public fun <T : Type> SupertypeRelation<T>.evaluate(candidate: Type): Sequence<Type> =
     if (this.isValidFor(candidate)) this.supertypes(candidate as T) else sequenceOf()
 
 
-interface SupertypeRule {
-    fun check(subtype: Type, supertype: Type, lattice: TypeLattice): Boolean
+public interface SupertypeRule {
+    public fun check(subtype: Type, supertype: Type, lattice: TypeLattice): Boolean
 }
 
-infix fun <T : Type> TypeClause<T>.hasSupertypes(supertypeFunction: (type: T) -> Sequence<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
+public infix fun <T : Type> TypeClause<T>.hasSupertypes(supertypeFunction: (type: T) -> Sequence<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
     override val isValidFor = this@hasSupertypes
     override fun supertypes(type: T): Sequence<Type> = supertypeFunction(type)
 }
 
-infix fun <T : Type> TypeClause<T>.hasSupertypes(explicitSupertypes: Sequence<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
+public infix fun <T : Type> TypeClause<T>.hasSupertypes(explicitSupertypes: Sequence<Type>): SupertypeRelation<T> = object : SupertypeRelation<T> {
     override val isValidFor = this@hasSupertypes
     override fun supertypes(type: T): Sequence<Type> = explicitSupertypes
 }
 
-infix fun <T : Type> TypeClause<T>.hasSupertype(explicitSupertype: Type): SupertypeRelation<T> = object : SupertypeRelation<T> {
+public infix fun <T : Type> TypeClause<T>.hasSupertype(explicitSupertype: Type): SupertypeRelation<T> = object : SupertypeRelation<T> {
     override val isValidFor = this@hasSupertype
     override fun supertypes(type: T): Sequence<Type> = sequenceOf(explicitSupertype)
 }

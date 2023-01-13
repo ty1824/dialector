@@ -20,6 +20,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LambdaTypeName
+import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
@@ -31,6 +32,7 @@ import dev.dialector.syntax.NodeDefinition
 import dev.dialector.syntax.NodeReference
 import dev.dialector.syntax.Property
 import dev.dialector.syntax.Reference
+import dev.dialector.syntax.getAllChildren
 import kotlin.reflect.KClass
 
 class DialectorSymbolProcessorProvider: SymbolProcessorProvider {
@@ -218,7 +220,9 @@ class Generator(private val resolver: Resolver) {
                         )
                     )
                     .returns(model.nodeClass.asClassName())
-                    .addStatement("""return ${initializerClassName.canonicalName}().apply(init).build()""")
+                    .addStatement("""val node = ${initializerClassName.canonicalName}().apply(init).build()""")
+                    .addStatement("""node.%M().forEach { it.parent = node }""", MemberName("dev.dialector.syntax", "getAllChildren", true))
+                    .addStatement("""return node""")
                     .build()
             }else {
                 return FunSpec.builder(name)
@@ -253,6 +257,13 @@ class Generator(private val resolver: Resolver) {
                     .addModifiers(KModifier.OVERRIDE)
                     .initializer("null")
                     .mutable(true)
+                    .setter(FunSpec.setterBuilder()
+                        .addParameter("value", Node::class.asTypeName())
+                        // TODO: Expand this exception
+                        .addStatement("""if (field != null) throw RuntimeException("A node may not be a child of two nodes.")""")
+                        .addStatement("""field = value""")
+                        .build()
+                    )
                     .build()
             })
 

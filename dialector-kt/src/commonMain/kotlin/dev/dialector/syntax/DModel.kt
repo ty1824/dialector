@@ -22,7 +22,7 @@ import kotlin.reflect.KProperty
  * node.
  */
 public interface Node {
-    public val parent: Node?
+    public var parent: Node?
     public val properties: Map<String, Any?>
     public val children: Map<String, List<Node>>
     public val references: Map<String, NodeReference<*>>
