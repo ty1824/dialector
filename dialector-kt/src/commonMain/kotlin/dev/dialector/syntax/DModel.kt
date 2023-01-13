@@ -126,7 +126,7 @@ public fun Node.getAllAncestors(inclusive: Boolean = false): Sequence<Node> = se
 /**
  * Returns a sequence that iterates through all ancestors of this node filtered by the given type.
  */
-public inline fun <reified T : Node> Node.getAncestors(inclusive: Boolean = false) : Sequence<Node> =
+public inline fun <reified T : Node> Node.getAncestors(inclusive: Boolean = false) : Sequence<T> =
     this.getAllAncestors(inclusive).filterIsInstance<T>()
 
 /**
