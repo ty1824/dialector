@@ -1,12 +1,8 @@
 plugins {
-    kotlin("multiplatform")
+    kotlin("jvm")
+    id("org.jetbrains.kotlinx.kover")
     `java-library`
 }
-
-kotlin {
-    jvm()
-}
-
 
 dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
@@ -23,6 +19,12 @@ dependencies {
     testImplementation("com.natpryce:hamkrest:1.7.0.2")
 
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
+}
+
+kover {
+    xmlReport {
+        onCheck.set(true)
+    }
 }
 
 tasks.withType<Test> {

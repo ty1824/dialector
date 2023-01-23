@@ -1,30 +1,25 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    kotlin("multiplatform")
+    kotlin("jvm")
     id("org.jetbrains.kotlinx.kover")
     id("maven-publish")
 }
 
-kotlin {
-    jvm()
-    explicitApiWarning()
+dependencies {
+    implementation(kotlin("reflect"))
 
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation(kotlin("reflect"))
-            }
-        }
-        val jvmTest by getting {
-            dependencies {
-                implementation("org.jetbrains.kotlin:kotlin-test")
-                implementation("io.mockk:mockk:1.12.0")
-            }
-        }
-    }
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation("io.mockk:mockk:1.12.0")
 }
 
+kotlin {
+    explicitApiWarning()
+}
+
+kover {
+    xmlReport {
+        onCheck.set(true)
+    }
+}
 
 publishing {
     repositories {
