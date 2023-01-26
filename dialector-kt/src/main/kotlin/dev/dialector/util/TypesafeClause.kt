@@ -18,15 +18,20 @@ public inline fun <T : Any, reified V : T> TypesafeClause<V>.evaluate(candidate:
     contract {
         returns(true) implies (candidate is V)
     }
-
     return clauseClass.isInstance(candidate) && constraint(candidate as V)
 }
 
+/**
+ * A specialized [TypesafeClause] that matches against a specific instance.
+ */
 public abstract class InstanceClause<T : Any>(public val instance: T) : TypesafeClause<T> {
     override val clauseClass: KClass<out T> = instance::class
     override fun constraint(candidate: T): Boolean = instance == candidate
 }
 
+/**
+ * A specialized [TypesafeClause] that matches against instances of a class (or its subclasses).
+ */
 public abstract class ClassifierClause<T : Any>(override val clauseClass: KClass<T>) : TypesafeClause<T> {
     override fun constraint(candidate: T): Boolean = true
 }
