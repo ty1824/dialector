@@ -33,15 +33,14 @@ kover {
 
 publishing {
     repositories {
-        /* TODO: Add support for maven central publishing */
-//        maven {
-//            name = "OSSRH"
-//            setUrl("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-//            credentials {
-//                username = System.getenv("SONATYPE_USERNAME")
-//                password = System.getenv("SONATYPE_PASSWORD")
-//            }
-//        }
+        maven {
+            name = "OSSRH"
+            setUrl("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials {
+                username = System.getenv("SONATYPE_USERNAME")
+                password = System.getenv("SONATYPE_PASSWORD")
+            }
+        }
         maven {
             name = "GitHubPackages"
             setUrl("https://maven.pkg.github.com/ty1824/dialector")
@@ -52,9 +51,8 @@ publishing {
         }
     }
     publications {
-        register<MavenPublication>("gpr") {
+        register<MavenPublication>("default") {
             from(components["java"])
-//            artifact(javadocJar)
             pom {
                 name.set("dialector-kt-processor")
                 description.set("Code generation for Dialector Node interfaces using KSP.")
@@ -85,11 +83,12 @@ publishing {
 }
 
 signing {
-    useInMemoryPgpKeys(
-            System.getenv("GPG_PRIVATE_KEY"),
-            System.getenv("GPG_PRIVATE_PASSWORD")
-    )
-    if (false) {
+    val gpgPrivateKey = System.getenv("GPG_SIGNING_KEY")
+    if (!gpgPrivateKey.isNullOrBlank()) {
+        useInMemoryPgpKeys(
+            gpgPrivateKey,
+            System.getenv("GPG_SIGNING_PASSPHRASE")
+        )
         sign(publishing.publications)
     }
 }
