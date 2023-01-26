@@ -64,7 +64,8 @@ publishing {
         }
     }
     publications {
-        withType<MavenPublication> {
+        register<MavenPublication>("gpr") {
+            from(components["java"])
 //            artifact(javadocJar)
             pom {
                 name.set("dialector-kt")
@@ -100,5 +101,7 @@ signing {
             System.getenv("GPG_PRIVATE_KEY"),
             System.getenv("GPG_PRIVATE_PASSWORD")
     )
-    sign(publishing.publications)
+    if (false) {
+        sign(publishing.publications)
+    }
 }

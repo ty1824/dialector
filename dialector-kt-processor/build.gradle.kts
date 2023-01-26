@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     id("org.jetbrains.kotlinx.kover")
+    `java-library`
     id("maven-publish")
     signing
 }
@@ -51,7 +52,8 @@ publishing {
         }
     }
     publications {
-        withType<MavenPublication> {
+        register<MavenPublication>("gpr") {
+            from(components["java"])
 //            artifact(javadocJar)
             pom {
                 name.set("dialector-kt-processor")
@@ -79,5 +81,15 @@ publishing {
                 }
             }
         }
+    }
+}
+
+signing {
+    useInMemoryPgpKeys(
+            System.getenv("GPG_PRIVATE_KEY"),
+            System.getenv("GPG_PRIVATE_PASSWORD")
+    )
+    if (false) {
+        sign(publishing.publications)
     }
 }
