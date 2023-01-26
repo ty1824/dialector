@@ -1,3 +1,4 @@
+import java.time.LocalDateTime
 import java.net.URI
 
 plugins {
@@ -7,10 +8,26 @@ plugins {
     id("org.jetbrains.kotlinx.kover")
 }
 
-subprojects {
-    group = "dev.dialector"
-    version = "0.1.0-SNAPSHOT"
+/**
+ * Provides a semi-readable qualifier for local publications
+ */
+fun getVersionTimestamp(): String = with(LocalDateTime.now()) {
+    year.toString() +
+            monthValue.toString().padStart(0, '0') +
+            dayOfMonth.toString().padStart(0, '0') +
+            hour.toString().padStart(0, '0') +
+            minute.toString().padStart(0, '0') +
+            second.toString().padStart(0, '0')
+}
 
+allprojects {
+    // If the version hasn't been specified
+    if (version.toString().isNullOrBlank()) {
+        version = "LOCAL-${getVersionTimestamp()}"
+    }
+}
+
+subprojects {
     repositories {
         mavenCentral()
         maven {
