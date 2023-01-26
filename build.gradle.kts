@@ -24,6 +24,8 @@ allprojects {
     // If the version hasn't been specified
     if (version.toString().isNullOrBlank()) {
         version = "LOCAL-${getVersionTimestamp()}"
+    } else if (version.toString().startsWith("v")) {
+        version = version.toString().drop(1)
     }
 }
 
