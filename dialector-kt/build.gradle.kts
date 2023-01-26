@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm")
     id("org.jetbrains.kotlinx.kover")
     id("maven-publish")
+    signing
 }
 
 dependencies {
@@ -15,43 +16,89 @@ kotlin {
     explicitApiWarning()
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 kover {
     xmlReport {
         onCheck.set(true)
     }
 }
 
+//val dokkaOutputDir = "$buildDir/dokka"
+//
+//tasks.getByName("dokkaHtml", DokkaTask::class) {
+//    outputDirectory.set(file(dokkaOutputDir))
+//}
+//
+//val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
+//    delete(dokkaOutputDir)
+//}
+//
+//val javadocJar = tasks.register<Jar>("javadocJar") {
+//    dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
+//    archiveClassifier.set("javadoc")
+//    from(dokkaOutputDir)
+//}
+
 publishing {
     repositories {
+        /* TODO: Add support for maven central publishing */
+//        maven {
+//            name = "OSSRH"
+//            setUrl("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+//            credentials {
+//                username = System.getenv("SONATYPE_USERNAME")
+//                password = System.getenv("SONATYPE_PASSWORD")
+//            }
+//        }
         maven {
+            name = "GitHubPackages"
+            setUrl("https://maven.pkg.github.com/ty1824/dialector")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    publications {
+        withType<MavenPublication> {
+//            artifact(javadocJar)
+            pom {
+                name.set("dialector-kt")
+                description.set("Dialector language workbench core library.")
+                url.set("http://dialector.dev")
+                licenses {
+                    license {
+                        name.set("GPL-3.0")
+                        url.set("https://opensource.org/licenses/GPL-3.0")
+                    }
+                }
+                issueManagement {
+                    system.set("Github")
+                    url.set("https://github.com/ty1824/dialector/issues")
+                }
+                scm {
+                    connection.set("https://github.com/ty1824/dialector.git")
+                    url.set("https://github.com/ty1824/dialector")
+                }
+                developers {
+                    developer {
+                        name.set("Tyler Hodgkins")
+                        email.set("ty1824@gmail.com")
+                    }
+                }
+            }
         }
     }
 }
 
-//dependencies {
-//    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-//    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-//    implementation(kotlin("reflect"))
-//    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-//
-////    implementation("com.squareup:kotlinpoet:1.12.0")
-////    implementation("com.google.guava:guava:31.1-jre")
-//
-//    testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
-//    testImplementation("io.mockk:mockk:1.9.3")
-//    testImplementation("org.jetbrains.kotlin:kotlin-test")
-//    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-//    testImplementation("com.natpryce:hamkrest:1.7.0.2")
-//
-//    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
-//}
-
-
-//tasks.withType<Test> {
-//    useJUnitPlatform()
-//}
-
-//val compileKotlin: KotlinCompile by tasks
-//compileKotlin.kotlinOptions {
-//    languageVersion = "1.4"
-//}
+signing {
+    useInMemoryPgpKeys(
+            System.getenv("GPG_PRIVATE_KEY"),
+            System.getenv("GPG_PRIVATE_PASSWORD")
+    )
+    sign(publishing.publications)
+}

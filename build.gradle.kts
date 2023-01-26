@@ -3,13 +3,13 @@ import java.net.URI
 plugins {
     idea
     kotlin("jvm") apply false
+    id("org.jetbrains.dokka")
     id("org.jetbrains.kotlinx.kover")
-    id("maven-publish")
 }
 
-allprojects {
+subprojects {
     group = "dev.dialector"
-    version = "0.1.0"
+    version = "0.1.0-SNAPSHOT"
 
     repositories {
         mavenCentral()

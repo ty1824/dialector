@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
       - uses: actions/setup-java@v3
         with:
           distribution: temurin
@@ -18,9 +20,9 @@ jobs:
           arguments: build
       - name: Test Report
         uses: dorny/test-reporter@v1
-        if: success() || failure()    # run this step even if previous step failed
+        if: success() || failure()
         with:
-          name: Test Results           # Name of the check run which will be created
+          name: Test Results
           path: '**/test-results/test/*.xml'
           reporter: java-junit
       - name: Coverage Report

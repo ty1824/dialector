@@ -1,0 +1,55 @@
+name: Snapshot From Main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 11
+
+      - name: Gradle Build
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: build
+
+      - name: Publish package
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: publishAllPublicationsToGitHubPackagesRepository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Test Results
+          path: '**/test-results/test/*.xml'
+          reporter: java-junit
+
+      - name: Coverage Report
+        uses: mi-kas/kover-report@v1
+        if: success() || failure()
+        with:
+          path: 'dialector-kt/build/reports/kover/xml/report.xml'
+          title: Coverage Results
+          token: ${{ secrets.GITHUB_TOKEN }}
+          update-comment: true
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
+
+          # Generate snapshots and publish
