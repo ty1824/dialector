@@ -21,10 +21,11 @@ fun getVersionTimestamp(): String = with(LocalDateTime.now()) {
 }
 
 allprojects {
-    // If the version hasn't been specified
     if (version.toString().isNullOrBlank()) {
+        // If the version hasn't been specified, set it to a timestamped default
         version = "LOCAL-${getVersionTimestamp()}"
     } else if (version.toString().startsWith("v")) {
+        // TODO: Probably should do this before passing as a parameter
         version = version.toString().drop(1)
     }
 }
@@ -32,8 +33,5 @@ allprojects {
 subprojects {
     repositories {
         mavenCentral()
-        maven {
-            url = URI("https://jitpack.io")
-        }
     }
 }
