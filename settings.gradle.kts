@@ -29,6 +29,3 @@ pluginManagement {
 include("dialector-kt")
 include("dialector-lsp")
 include("dialector-kt-processor")
-include("glottony")
-include("glottony:server")
-include("glottony:client")
