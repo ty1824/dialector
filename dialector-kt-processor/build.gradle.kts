@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm")
     id("org.jetbrains.kotlinx.kover")
-    `java-library`
     id("maven-publish")
     signing
 }
@@ -23,6 +22,10 @@ dependencies {
 java {
     withJavadocJar()
     withSourcesJar()
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
 
 kover {

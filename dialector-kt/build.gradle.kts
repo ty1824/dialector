@@ -21,6 +21,10 @@ java {
     withSourcesJar()
 }
 
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
+
 kover {
     xmlReport {
         onCheck.set(true)
