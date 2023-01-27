@@ -21,14 +21,9 @@ jobs:
           distribution: temurin
           java-version: 11
 
-      - name: Gradle Build
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: build
-
       - name: Build and Publish Package
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: publishAllPublicationsToGitHubPackagesRepository -Pversion=${{ github.sha }}
+          arguments: build publishAllPublicationsToGitHubPackagesRepository -Pversion=${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
