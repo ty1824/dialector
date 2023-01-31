@@ -20,7 +20,7 @@ interface TextDocumentSync : LspCapability {
      * Open and close notifications are sent to the server. If omitted open
      * close notification should not be sent.
      */
-    val openClose: Boolean?
+    val openClose: OpenCloseCapability?
 
     /**
      * Change notifications are sent to the server. See
@@ -28,13 +28,34 @@ interface TextDocumentSync : LspCapability {
      * TextDocumentSyncKind.Incremental. If omitted it defaults to
      * TextDocumentSyncKind.None.
      */
-    val change: TextDocumentSyncKind?
+    val change: ChangeCapability?
 
-    fun didOpen(server: DialectorServer, params: DidOpenTextDocumentParams)
+    /**
+     * The capability indicates that the server is interested in textDocument/didSave notifications.
+     */
+    val save: SaveCapability?
 
-    fun didChange(server: DialectorServer, params: DidChangeTextDocumentParams)
+    /**
+     * The capability indicates that the server is interested in textDocument/willSave notifications.
+     */
+    val willSave: WillSaveCapability?
 
-    fun didClose(server: DialectorServer, params: DidCloseTextDocumentParams)
+    /**
+     * The capability indicates that the server is interested in textDocument/willSaveWaitUntil requests.
+     */
+    val willSaveWaitUntil: WillSaveWaitUntilCapability?
+
+    interface OpenCloseCapability {
+        fun didOpen(server: DialectorServer, params: DidOpenTextDocumentParams)
+
+        fun didClose(server: DialectorServer, params: DidCloseTextDocumentParams)
+    }
+
+    interface ChangeCapability {
+        val textDocumentSyncKind: TextDocumentSyncKind
+
+        fun didChange(server: DialectorServer, params: DidChangeTextDocumentParams)
+    }
 
     interface SaveCapability {
         val saveOptions: SaveOptions
@@ -42,46 +63,19 @@ interface TextDocumentSync : LspCapability {
         fun didSave(server: DialectorServer, params: DidSaveTextDocumentParams)
     }
 
-    /**
-     * The capability indicates that the server is interested in textDocument/didSave notifications.
-     */
-    val save: SaveCapability?
-
     interface WillSaveCapability {
         fun willSave(server: DialectorServer, params: WillSaveTextDocumentParams)
     }
-    /**
-     * The capability indicates that the server is interested in textDocument/willSave notifications.
-     */
-    val willSave: WillSaveCapability?
 
     interface WillSaveWaitUntilCapability {
         fun willSaveWaitUntil(server: DialectorServer, params: WillSaveTextDocumentParams): List<TextEdit>
     }
-
-    /**
-     * The capability indicates that the server is interested in textDocument/willSaveWaitUntil requests.
-     */
-    val willSaveWaitUntil: WillSaveWaitUntilCapability?
 }
 
 open class DefaultTextDocumentSync(
+    override val openClose: TextDocumentSync.OpenCloseCapability? = null,
+    override val change: TextDocumentSync.ChangeCapability? = null,
     override val save: TextDocumentSync.SaveCapability? = null,
     override val willSave: TextDocumentSync.WillSaveCapability? = null,
     override val willSaveWaitUntil: TextDocumentSync.WillSaveWaitUntilCapability? = null
-) : TextDocumentSync {
-    override val openClose = true
-    override val change = TextDocumentSyncKind.Full
-
-    override fun didOpen(server: DialectorServer, params: DidOpenTextDocumentParams) {
-        TODO("Not yet implemented")
-    }
-
-    override fun didChange(server: DialectorServer, params: DidChangeTextDocumentParams) {
-        TODO("Not yet implemented")
-    }
-
-    override fun didClose(server: DialectorServer, params: DidCloseTextDocumentParams) {
-        TODO("Not yet implemented")
-    }
-}
+) : TextDocumentSync

@@ -2,132 +2,71 @@ package dev.dialector.lsp
 
 import dev.dialector.lsp.capabilities.CompletionProvider
 import dev.dialector.lsp.capabilities.TextDocumentSync
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
-import org.eclipse.lsp4j.CallHierarchyIncomingCall
-import org.eclipse.lsp4j.CallHierarchyIncomingCallsParams
-import org.eclipse.lsp4j.CallHierarchyItem
-import org.eclipse.lsp4j.CallHierarchyOutgoingCall
-import org.eclipse.lsp4j.CallHierarchyOutgoingCallsParams
-import org.eclipse.lsp4j.CallHierarchyPrepareParams
-import org.eclipse.lsp4j.CodeAction
-import org.eclipse.lsp4j.CodeActionParams
-import org.eclipse.lsp4j.CodeLens
-import org.eclipse.lsp4j.CodeLensParams
-import org.eclipse.lsp4j.ColorInformation
-import org.eclipse.lsp4j.ColorPresentation
-import org.eclipse.lsp4j.ColorPresentationParams
-import org.eclipse.lsp4j.Command
-import org.eclipse.lsp4j.CompletionItem
-import org.eclipse.lsp4j.CompletionList
-import org.eclipse.lsp4j.CompletionParams
-import org.eclipse.lsp4j.DeclarationParams
-import org.eclipse.lsp4j.DefinitionParams
-import org.eclipse.lsp4j.DidChangeTextDocumentParams
-import org.eclipse.lsp4j.DidCloseTextDocumentParams
-import org.eclipse.lsp4j.DidOpenTextDocumentParams
-import org.eclipse.lsp4j.DidSaveTextDocumentParams
-import org.eclipse.lsp4j.DocumentColorParams
-import org.eclipse.lsp4j.DocumentFormattingParams
-import org.eclipse.lsp4j.DocumentHighlight
-import org.eclipse.lsp4j.DocumentHighlightParams
-import org.eclipse.lsp4j.DocumentLink
-import org.eclipse.lsp4j.DocumentLinkParams
-import org.eclipse.lsp4j.DocumentOnTypeFormattingParams
-import org.eclipse.lsp4j.DocumentRangeFormattingParams
-import org.eclipse.lsp4j.DocumentSymbol
-import org.eclipse.lsp4j.DocumentSymbolParams
-import org.eclipse.lsp4j.FoldingRange
-import org.eclipse.lsp4j.FoldingRangeRequestParams
-import org.eclipse.lsp4j.Hover
-import org.eclipse.lsp4j.HoverParams
-import org.eclipse.lsp4j.ImplementationParams
-import org.eclipse.lsp4j.LinkedEditingRangeParams
-import org.eclipse.lsp4j.LinkedEditingRanges
-import org.eclipse.lsp4j.Location
-import org.eclipse.lsp4j.LocationLink
-import org.eclipse.lsp4j.Moniker
-import org.eclipse.lsp4j.MonikerParams
-import org.eclipse.lsp4j.PrepareRenameParams
-import org.eclipse.lsp4j.PrepareRenameResult
-import org.eclipse.lsp4j.Range
-import org.eclipse.lsp4j.ReferenceParams
-import org.eclipse.lsp4j.RenameParams
-import org.eclipse.lsp4j.ResolveTypeHierarchyItemParams
-import org.eclipse.lsp4j.SelectionRange
-import org.eclipse.lsp4j.SelectionRangeParams
-import org.eclipse.lsp4j.SemanticTokens
-import org.eclipse.lsp4j.SemanticTokensDelta
-import org.eclipse.lsp4j.SemanticTokensDeltaParams
-import org.eclipse.lsp4j.SemanticTokensParams
-import org.eclipse.lsp4j.SemanticTokensRangeParams
-import org.eclipse.lsp4j.SignatureHelp
-import org.eclipse.lsp4j.SignatureHelpParams
-import org.eclipse.lsp4j.SymbolInformation
-import org.eclipse.lsp4j.TextEdit
-import org.eclipse.lsp4j.TypeDefinitionParams
-import org.eclipse.lsp4j.TypeHierarchyItem
-import org.eclipse.lsp4j.TypeHierarchyParams
-import org.eclipse.lsp4j.WillSaveTextDocumentParams
-import org.eclipse.lsp4j.WorkspaceEdit
+import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
+import org.eclipse.lsp4j.jsonrpc.messages.Either3
 import org.eclipse.lsp4j.services.TextDocumentService
 import java.util.concurrent.CompletableFuture
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 class DialectorTextDocumentService(val server: DialectorServer) : TextDocumentService {
-    val Scope = object : CoroutineScope {
+    val dispatcher: CoroutineDispatcher = Dispatchers.Default
+    
+    val scope = object : CoroutineScope {
         override val coroutineContext: CoroutineContext = EmptyCoroutineContext
     }
 
     override fun didOpen(params: DidOpenTextDocumentParams) {
-        Scope.launch(Dispatchers.Default) {
-            server.get(TextDocumentSync).didOpen(server, params)
+        scope.launch(dispatcher) {
+            server.get(TextDocumentSync).openClose!!.didOpen(server, params)
         }
     }
 
     override fun didChange(params: DidChangeTextDocumentParams) {
-        Scope.launch(Dispatchers.Default) {
-            server.get(TextDocumentSync).didChange(server, params)
+        scope.launch(dispatcher) {
+            server.get(TextDocumentSync).change!!.didChange(server, params)
         }
     }
 
     override fun didClose(params: DidCloseTextDocumentParams) {
-        Scope.launch(Dispatchers.Default) {
-            server.get(TextDocumentSync).didClose(server, params)
+        scope.launch(dispatcher) {
+            server.get(TextDocumentSync).openClose!!.didClose(server, params)
         }
     }
 
     override fun didSave(params: DidSaveTextDocumentParams) {
-        Scope.launch(Dispatchers.Default) {
+        scope.launch(dispatcher) {
             server.get(TextDocumentSync).save!!.didSave(server, params)
         }
     }
 
     override fun willSave(params: WillSaveTextDocumentParams) {
-        Scope.launch(Dispatchers.Default) {
+        scope.launch(dispatcher) {
             server.get(TextDocumentSync).willSave!!.willSave(server, params)
         }
     }
 
     override fun willSaveWaitUntil(params: WillSaveTextDocumentParams): CompletableFuture<MutableList<TextEdit>> {
-        return Scope.future(Dispatchers.Default) {
+        return scope.future(dispatcher) {
             server.get(TextDocumentSync).willSaveWaitUntil!!.willSaveWaitUntil(server, params).toMutableList()
         }
     }
 
     override fun completion(position: CompletionParams): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> {
-        return Scope.future(Dispatchers.Default) {
+        return scope.future(dispatcher) {
             val completion = server.get(CompletionProvider).completion(server, position)
             Either.forRight(completion)
         }
     }
 
     override fun resolveCompletionItem(unresolved: CompletionItem): CompletableFuture<CompletionItem> {
-        return Scope.future(Dispatchers.Default) {
+        return scope.future(dispatcher) {
             server.get(CompletionProvider).resolveProvider!!.resolveCompletionItem(server, unresolved)
         }
     }
@@ -141,7 +80,7 @@ class DialectorTextDocumentService(val server: DialectorServer) : TextDocumentSe
     }
 
     override fun declaration(params: DeclarationParams): CompletableFuture<Either<MutableList<out Location>, MutableList<out LocationLink>>> {
-        return Scope.future(Dispatchers.Default) {
+        return scope.future(dispatcher) {
             val reference = server.get(SyntaxService).getReferenceAt(params.position.asTextPosition())
             if (reference != null) {
                 val target = server.get(ScopeService).getTargetForReference(reference)
@@ -237,16 +176,20 @@ class DialectorTextDocumentService(val server: DialectorServer) : TextDocumentSe
         return super.foldingRange(params)
     }
 
-    override fun prepareRename(params: PrepareRenameParams?): CompletableFuture<Either<Range, PrepareRenameResult>> {
+    override fun prepareRename(params: PrepareRenameParams?): CompletableFuture<Either3<Range?, PrepareRenameResult?, PrepareRenameDefaultBehavior?>?>? {
         return super.prepareRename(params)
     }
 
-    override fun typeHierarchy(params: TypeHierarchyParams?): CompletableFuture<TypeHierarchyItem> {
-        return super.typeHierarchy(params)
+    override fun prepareTypeHierarchy(params: TypeHierarchyPrepareParams?): CompletableFuture<List<TypeHierarchyItem?>?>? {
+        throw UnsupportedOperationException()
     }
 
-    override fun resolveTypeHierarchy(params: ResolveTypeHierarchyItemParams?): CompletableFuture<TypeHierarchyItem> {
-        return super.resolveTypeHierarchy(params)
+    override fun typeHierarchySupertypes(params: TypeHierarchySupertypesParams?): CompletableFuture<List<TypeHierarchyItem?>?>? {
+        throw UnsupportedOperationException()
+    }
+
+    override fun typeHierarchySubtypes(params: TypeHierarchySubtypesParams): CompletableFuture<List<TypeHierarchyItem>> {
+        throw UnsupportedOperationException()
     }
 
     override fun prepareCallHierarchy(params: CallHierarchyPrepareParams?): CompletableFuture<MutableList<CallHierarchyItem>> {
