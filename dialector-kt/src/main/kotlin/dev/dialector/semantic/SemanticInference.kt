@@ -44,7 +44,6 @@ A change to the AST results in a series of invalidations - stepping through the 
  */
 abstract class SemanticSystemDefinition<S : SemanticSystem> {
     companion object {
-
     }
     open inner class SemanticDataDef<A, D>(query: (system: S, argument: A) -> Query<A, D>) {
         val forSystem: SemanticSystemDefinition<S> = this@SemanticSystemDefinition
@@ -78,11 +77,10 @@ interface Query<A, D> {
     fun getResult(): D
 }
 
-
 interface SemanticAnalysisMetaGraph {
     val systems: Map<SemanticSystemDefinition<*>, SemanticSystem>
 
-    fun <S: SemanticSystem, A, D> query(data: SemanticDataDefinition<S, A, D>, argument: A): Query<A, D> {
+    fun <S : SemanticSystem, A, D> query(data: SemanticDataDefinition<S, A, D>, argument: A): Query<A, D> {
         return data.query((systems[data.forSystem] ?: error("System implementation not found: ${data.forSystem}")) as S, argument)
     }
 }
@@ -95,9 +93,7 @@ data class Waiting(val on: Iterable<Query<*, *>>) : IterationResult()
 
 object Completed : IterationResult()
 
-interface RuleProvider {
-
-}
+interface RuleProvider
 
 interface IterativeSolver {
     fun initialize(program: Program)

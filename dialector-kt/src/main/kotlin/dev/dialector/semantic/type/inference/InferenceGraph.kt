@@ -50,7 +50,7 @@ class InferenceSys {
         graph.addEdge(relation, left, right, bidirectional)
     }
 
-    fun solve() : Map<Variable, TypeRes> {
+    fun solve(): Map<Variable, TypeRes> {
         return mapOf()
     }
 }
@@ -59,8 +59,8 @@ class InferenceSys {
  * An [InferenceVariable] is a special [Type] that represents a "hole" in the type system.
  */
 class InferenceVariable internal constructor(
-        val id: Int,
-        /*val context: VariableContext*/
+    val id: Int
+    /*val context: VariableContext*/
 ) : Type {
     override fun equals(other: Any?): Boolean = this === other
 
@@ -92,10 +92,10 @@ enum class Directionality {
 }
 
 data class InferenceConstraint(
-        val left: Term,
-        val right: Term,
-        /*val directionality: Directionality = Directionality.Left,*/
-        /*val context: ConstraintContext*/
+    val left: Term,
+    val right: Term
+    /*val directionality: Directionality = Directionality.Left,*/
+    /*val context: ConstraintContext*/
 )
 
 class BoundSet(val variable: InferenceVariable) {
@@ -109,13 +109,15 @@ class BoundSet(val variable: InferenceVariable) {
 
     var result: Type? = null
 
-    fun getDependencies(): List<InferenceVariable> = (upperBounds.mapNotNull { it.right.type as? InferenceVariable } +
+    fun getDependencies(): List<InferenceVariable> = (
+        upperBounds.mapNotNull { it.right.type as? InferenceVariable } +
             lowerBounds.mapNotNull { it.left.type as? InferenceVariable } +
             equivalenceBounds.mapNotNull { it.right.type as? InferenceVariable } +
-            equivalenceBounds.mapNotNull { it.left.type as? InferenceVariable }).distinct() - variable
+            equivalenceBounds.mapNotNull { it.left.type as? InferenceVariable }
+        ).distinct() - variable
 
     fun resolve(state: InferenceState): TypeRes {
-        val properLowerBounds = lowerBounds.filter { it.left.type !is InferenceVariable }.map { it.left}
+        val properLowerBounds = lowerBounds.filter { it.left.type !is InferenceVariable }.map { it.left }
         val properUpperBounds = upperBounds.filter { it.right.type !is InferenceVariable }.map { it.right }
 
         if (pushDown) {
@@ -145,18 +147,14 @@ class BoundSet(val variable: InferenceVariable) {
 data class Bound(val left: Term, val right: Term)
 class InferenceError(val message: String)
 
-interface ReductionRule {
+interface ReductionRule
 
-}
-
-interface IncorporationRule {
-
-}
+interface IncorporationRule
 
 class InferenceState(
-        val lattice: TypeLattice,
-        val reductionRules: List<ReductionRule>,
-        val incorporationRules: List<IncorporationRule>
+    val lattice: TypeLattice,
+    val reductionRules: List<ReductionRule>,
+    val incorporationRules: List<IncorporationRule>
 ) {
     val constraints: MutableSet<InferenceConstraint> = mutableSetOf()
     val currentConstraints: MutableList<InferenceConstraint> = mutableListOf()
@@ -164,7 +162,7 @@ class InferenceState(
     val errors: MutableList<InferenceError> = mutableListOf()
 
     private var variableCounter = 0
-    fun createVariable() : InferenceVariable {
+    fun createVariable(): InferenceVariable {
         val variable = InferenceVariable(variableCounter++)
         boundSets[variable] = BoundSet(variable)
         return variable
@@ -184,7 +182,6 @@ class InferenceState(
         if (bound.right.type is InferenceVariable) {
             boundSets[bound.right.type]!!.lowerBounds += bound
         }
-
     }
 }
 
@@ -195,41 +192,41 @@ fun inferenceAlgorithm(state: InferenceState) {
         incorporate(state)
         resolve(state)
     }
-
 }
 
-fun reduce(state: InferenceState) { state.apply {
-    while (currentConstraints.isNotEmpty()) {
-        val constraint = currentConstraints.removeFirst()
-        val leftType = constraint.left.type
-        val rightType = constraint.right.type
-        if (!(leftType is InferenceVariable || rightType is InferenceVariable)) {
-            if (!lattice.isSubtypeOf(leftType, rightType)) {
-                errors += InferenceError("Inference error on $constraint. $leftType is not a subtype of $rightType" )
+fun reduce(state: InferenceState) {
+    state.apply {
+        while (currentConstraints.isNotEmpty()) {
+            val constraint = currentConstraints.removeFirst()
+            val leftType = constraint.left.type
+            val rightType = constraint.right.type
+            if (!(leftType is InferenceVariable || rightType is InferenceVariable)) {
+                if (!lattice.isSubtypeOf(leftType, rightType)) {
+                    errors += InferenceError("Inference error on $constraint. $leftType is not a subtype of $rightType")
+                }
+            } else if (leftType is InferenceVariable) {
+                addBound(Bound(constraint.left, constraint.right))
+            } else if (rightType is InferenceVariable) {
+                addBound(Bound(constraint.left, constraint.right))
             }
-        } else if (leftType is InferenceVariable) {
-            addBound(Bound(constraint.left, constraint.right))
-        } else if (rightType is InferenceVariable) {
-            addBound(Bound(constraint.left, constraint.right))
         }
     }
-} }
+}
 
-fun incorporate(state: InferenceState) { state.apply {
+fun incorporate(state: InferenceState) {
+    state.apply {
+    }
+}
 
-} }
-
-fun resolve(state: InferenceState) { state.apply {
-    state.boundSets.forEach { (variable, boundSet) ->
-        if (boundSet.getDependencies().isEmpty()) {
-
+fun resolve(state: InferenceState) {
+    state.apply {
+        state.boundSets.forEach { (variable, boundSet) ->
+            if (boundSet.getDependencies().isEmpty()) {
+            }
         }
     }
-} }
-
+}
 
 sealed class TypeRes
 class Success(type: Type) : TypeRes()
 class Failure(error: String) : TypeRes()
-
-

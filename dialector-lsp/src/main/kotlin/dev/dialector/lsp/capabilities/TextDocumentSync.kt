@@ -7,11 +7,8 @@ import org.eclipse.lsp4j.DidOpenTextDocumentParams
 import org.eclipse.lsp4j.DidSaveTextDocumentParams
 import org.eclipse.lsp4j.SaveOptions
 import org.eclipse.lsp4j.TextDocumentSyncKind
-import org.eclipse.lsp4j.TextDocumentSyncOptions
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j.WillSaveTextDocumentParams
-import org.eclipse.lsp4j.jsonrpc.messages.Either
-
 
 interface TextDocumentSync : LspCapability {
     companion object : LspCapabilityDescriptor<TextDocumentSync>()
@@ -50,6 +47,7 @@ interface TextDocumentSync : LspCapability {
     interface WillSaveCapability {
         fun willSave(server: DialectorServer, params: WillSaveTextDocumentParams)
     }
+
     /**
      * The capability indicates that the server is interested in textDocument/willSave notifications.
      */

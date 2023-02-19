@@ -50,4 +50,3 @@ public inline fun <reified T : Type> typeClause(crossinline predicate: (T) -> Bo
     override val clauseClass = T::class
     override fun constraint(candidate: T): Boolean = predicate(candidate)
 }
-

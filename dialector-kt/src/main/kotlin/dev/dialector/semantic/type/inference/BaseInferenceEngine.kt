@@ -8,12 +8,11 @@ import java.util.concurrent.atomic.AtomicInteger
 Java type inference algorithm:
 
     Resolution:
-        
+
         Given a set of variables V
             If there are
 
  */
-
 
 /**
  * Represents internal structure, should not be exposed without finalizing.
@@ -107,7 +106,7 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
                 // variable == type
                 is TypeTerm -> equals(left, right)
             }
-            is TypeTerm -> when(right) {
+            is TypeTerm -> when (right) {
                 // type == variable
                 is VariableTerm -> equals(left, right)
                 // type == type
@@ -122,10 +121,11 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
      * @return InferenceResult.Ok if successful or InferenceResult.UnifyError if the variables are not compatible.
      */
     override fun equals(left: VariableTerm, right: VariableTerm): InferenceResult =
-        if (getRelationGroup(left).unify(getRelationGroup(right)))
+        if (getRelationGroup(left).unify(getRelationGroup(right))) {
             InferenceResult.Ok
-        else
+        } else {
             InferenceResult.UnifyError(left, right)
+        }
 
     /**
      * Indicates that the variable is equal to the type. Returns an error if the variable is already equivalent to a type that
@@ -134,11 +134,11 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
      * @return InferenceResult.Ok if successful or InferenceResult.UnifyError if the variable is not compatible with the type.
      */
     override fun equals(left: VariableTerm, right: TypeTerm): InferenceResult =
-        if (getRelationGroup(left).unify(right))
+        if (getRelationGroup(left).unify(right)) {
             InferenceResult.Ok
-        else
+        } else {
             InferenceResult.UnifyError(left, right)
-
+        }
 
     /**
      * Indicates that the type is equal to the variable. Returns an error if the variable is already equivalent to a type that
@@ -147,11 +147,11 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
      * @return InferenceResult.Ok if successful or InferenceResult.UnifyError if the variable is not compatible with the type.
      */
     override fun equals(left: TypeTerm, right: VariableTerm): InferenceResult =
-        if (getRelationGroup(right).unify(left))
+        if (getRelationGroup(right).unify(left)) {
             InferenceResult.Ok
-        else
+        } else {
             InferenceResult.UnifyError(left, right)
-
+        }
 
     /**
      * Compares the two type terms. Returns an error if the two types are not equivalent according to the TypeLattice.
@@ -159,10 +159,11 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
      * @return InferenceResult.Ok if successful or InferenceResult.Error if the types are not equivalent
      */
     override fun equals(left: TypeTerm, right: TypeTerm): InferenceResult =
-        if (left.unify(right))
+        if (left.unify(right)) {
             InferenceResult.Ok
-        else
+        } else {
             InferenceResult.Error("Types not equivalent: ${left.type} and ${right.type}")
+        }
 
     /**
      * Indicates that the left term must be a subtype of the right term (left <= right)
@@ -202,13 +203,17 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
             // Replace usages of the right Group with the left Group
             other.variableTerms.forEach { groups[it] = this }
             true
-        } else false
+        } else {
+            false
+        }
 
     private fun MutableInferenceGroup.unify(other: TypeTerm): Boolean =
         if (this.typeTerms.all { lattice.isEquivalent(it.type, other.type) }) {
             this.typeTerms += other
             true
-        } else false
+        } else {
+            false
+        }
 
     private fun TypeTerm.unify(other: TypeTerm): Boolean =
         lattice.isEquivalent(this.type, other.type)
@@ -217,7 +222,7 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
         return StringBuilder("Inference System State:\n").let { builder ->
             var i = 0
             this.groups.values.distinct().forEach {
-                builder.append("Group ${i++} (${it}):\n")
+                builder.append("Group ${i++} ($it):\n")
                 builder.append("  Type terms:${it.typeTerms}\n")
                 builder.append("  Variable terms:${it.variableTerms}\n")
                 builder.append("  Upper Bounds:${it.upperBounds}\n")
@@ -226,7 +231,6 @@ internal class BaseInferenceSystem(override val lattice: TypeLattice) : Inferenc
             builder
         }.toString()
     }
-
 }
 
 object DefaultInferenceSolver : InferenceSolver {
@@ -234,7 +238,6 @@ object DefaultInferenceSolver : InferenceSolver {
         val typeMap: MutableMap<InferenceGroup, TypeResult> = mutableMapOf()
 
         val remaining = system.getInferenceGroups().values.toMutableList()
-
 
         while (remaining.isNotEmpty()) {
             val numRemaining = remaining.size
@@ -250,7 +253,7 @@ object DefaultInferenceSolver : InferenceSolver {
                         val term = typeTerms.first()
                         val unmatchedBounds = group.unmatchedBounds(term, typeMap, system)
                         if (unmatchedBounds.first.isEmpty() && unmatchedBounds.second.isEmpty()) {
-                           TypeResult.Success(term.type)
+                            TypeResult.Success(term.type)
                         } else {
                             TypeResult.Error.DoesNotMatchBounds(term, unmatchedBounds.first, unmatchedBounds.second)
                         }
@@ -278,9 +281,7 @@ object DefaultInferenceSolver : InferenceSolver {
                         iter.remove()
                     }
                 }
-
             }
-
 
             if (remaining.size == numRemaining) {
                 // TODO: We haven't resolved anything this step. All remaining groups must apply inference or report an error

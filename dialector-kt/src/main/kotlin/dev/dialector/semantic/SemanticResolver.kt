@@ -1,4 +1,4 @@
-package dev.dialector.semantic;
+package dev.dialector.semantic
 
 import dev.dialector.syntax.Node
 
@@ -38,5 +38,4 @@ class SemanticEvaluator(val solvers: List<IterativeSolver>) {
         // Allow solvers to complete
         solvers.forEach { it.conclude(SemanticSolverContext()) }
     }
-
 }

@@ -21,8 +21,6 @@ sealed class InferenceResult {
     data class UnifyError(val left: InferenceTerm, val right: InferenceTerm) : InferenceResult()
 }
 
-
-
 sealed class Relation() {
     abstract val left: InferenceTerm
     abstract val right: InferenceTerm
@@ -70,7 +68,7 @@ interface InferenceSystem {
     fun asTerm(type: Type): TypeTerm
 
     // TODO: Find out how to handle internal/external representation of Group
-    fun getInferenceGroups() : Map<VariableTerm, InferenceGroup>
+    fun getInferenceGroups(): Map<VariableTerm, InferenceGroup>
 
     /**
      * Register equality between two terms
@@ -119,13 +117,11 @@ interface InferenceSystem {
     fun supertype(left: VariableTerm, right: VariableTerm): InferenceResult
 }
 
-
-
 interface TypeResult {
-    data class Success(val type: Type): TypeResult
+    data class Success(val type: Type) : TypeResult
 
-    interface Error: TypeResult {
-        object NoTypeInferred: Error
+    interface Error : TypeResult {
+        object NoTypeInferred : Error
         data class TooManyBoundTypes(val terms: Iterable<TypeTerm>) : Error
         data class DoesNotMatchBounds(val type: TypeTerm, val unmatchedLower: Iterable<Type>, val unmatchedUpper: Iterable<Type>) : Error
     }
@@ -134,4 +130,3 @@ interface TypeResult {
 interface InferenceSolver {
     fun solve(system: InferenceSystem): Map<VariableTerm, TypeResult>
 }
-

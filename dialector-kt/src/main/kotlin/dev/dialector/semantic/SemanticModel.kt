@@ -6,9 +6,7 @@ import dev.dialector.syntax.Node
 import dev.dialector.syntax.NodeReference
 import dev.dialector.syntax.SyntacticModel
 
-interface Scope {
-
-}
+interface Scope
 
 /**
  * Maintains semantic information relating to a [SyntacticModel]

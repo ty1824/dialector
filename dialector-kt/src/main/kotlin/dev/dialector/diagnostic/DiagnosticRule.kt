@@ -3,8 +3,6 @@ package dev.dialector.diagnostic
 import dev.dialector.semantic.SemanticModel
 import dev.dialector.syntax.Node
 import dev.dialector.syntax.NodeClause
-import dev.dialector.semantic.type.Type
-import dev.dialector.semantic.type.lattice.TypeLattice
 import dev.dialector.syntax.SyntacticModel
 
 public interface DiagnosticEvaluationContext : SyntacticModel, SemanticModel {
@@ -20,7 +18,6 @@ public interface DiagnosticEvaluationContext : SyntacticModel, SemanticModel {
 public interface DiagnosticRule<T : Node> {
     public val isValidFor: NodeClause<T>
     public val diagnostics: DiagnosticEvaluationContext.(node: T) -> Unit
-
 
     public operator fun invoke(context: DiagnosticEvaluationContext, node: Node) {
         @Suppress("UNCHECKED_CAST")

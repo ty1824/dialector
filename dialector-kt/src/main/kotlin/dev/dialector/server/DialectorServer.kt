@@ -18,17 +18,14 @@ import java.nio.file.Path
  *  - Done upon opening/changing a single file
  *  - Needs to be very granular + diagnostics and needs to be able to respond in real-time
  */
-class DialectorServer {
-}
+class DialectorServer
 
 /**
  * A workspace is responsible for monitoring files & responding to changes
  *
  * Upon construction and file change, the workspace should recompute its syntactic and semantic models
  */
-interface DialectorWorkspaceModel {
-
-}
+interface DialectorWorkspaceModel
 
 /**
  * A position in a document
@@ -52,9 +49,7 @@ data class DocumentLocation(val uri: String, val range: TextRange)
  * Will propagate events:
  * - Node add/change/remove
  */
-interface ModelService {
-
-}
+interface ModelService
 
 interface ParseIndex {
     val root: Node
@@ -72,15 +67,13 @@ data class RootUpdated(val id: RootId) : Event
 
 data class RootRemoved(val id: RootId) : Event
 
-
-
 class LocalTextModelService(
     val eventBus: EventBus,
     val pathToId: (Path) -> RootId,
-    val parser: Parser,
+    val parser: Parser
 ) : ModelService {
 
-    val model : DynamicSyntacticModel = object : DynamicSyntacticModel {
+    val model: DynamicSyntacticModel = object : DynamicSyntacticModel {
         private val roots: MutableMap<RootId, Node> = mutableMapOf()
 
         override fun putRoot(id: RootId, root: Node) {
@@ -117,14 +110,10 @@ class LocalTextModelService(
 /**
  * Responsible for computing and maintaining semantic information about the program as the model changes.
  */
-interface SemanticService {
-
-}
+interface SemanticService
 
 /**
  * Responsible for computing and maintaining diagnostic feedback that can be relayed to the client to provide feedback
  * on syntactic and semantic correctness.
  */
-interface DiagnosticService {
-
-}
+interface DiagnosticService

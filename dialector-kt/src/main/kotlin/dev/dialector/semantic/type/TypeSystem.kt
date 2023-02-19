@@ -1,7 +1,5 @@
 package dev.dialector.semantic.type
 
-import dev.dialector.syntax.Node
-import dev.dialector.syntax.NodeReference
 import dev.dialector.semantic.Query
 import dev.dialector.semantic.SemanticAnalysisContext
 import dev.dialector.semantic.SemanticDataDefinition
@@ -14,6 +12,8 @@ import dev.dialector.semantic.type.inference.new.ReductionRule
 import dev.dialector.semantic.type.inference.new.RelationalConstraint
 import dev.dialector.semantic.type.inference.new.VariableConstraint
 import dev.dialector.semantic.type.integration.InferenceRule
+import dev.dialector.syntax.Node
+import dev.dialector.syntax.NodeReference
 
 public object TypeSystemDefinition : SemanticSystemDefinition<TypeSystem>() {
     public val ReferencedNode: SemanticDataDef<NodeReference<*>, Node> =
@@ -50,7 +50,6 @@ public class InferringTypeSystem(override val semantics: SemanticAnalysisContext
     override val inferenceRules: List<InferenceRule<*>> = listOf()
     override val reductionRules: List<ReductionRule> = listOf()
     override val incorporationRules: List<IncorporationRule> = listOf()
-
 
     private val variables: MutableList<InferenceVariable> = mutableListOf()
     private val constraints: MutableList<InferenceConstraint> = mutableListOf()

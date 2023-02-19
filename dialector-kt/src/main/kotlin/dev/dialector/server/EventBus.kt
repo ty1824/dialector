@@ -7,7 +7,7 @@ interface EventBus {
     fun <T : Any> publish(eventType: KClass<T>, event: T)
 }
 //
-//class EventBus {
+// class EventBus {
 //    private val flow = MutableSharedFlow<Any>(
 //        extraBufferCapacity = Int.MAX_VALUE,
 //        onBufferOverflow = BufferOverflow.DROP_LATEST)
@@ -21,6 +21,6 @@ interface EventBus {
 //    fun <T : Any> publish(eventType: KClass<T>, event: T) {
 //        flow.tryEmit(event)
 //    }
-//}
+// }
 
 inline fun <reified T : Any> EventBus.publish(event: T) = this.publish(T::class, event)

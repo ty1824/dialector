@@ -40,7 +40,6 @@ public class DataGraph<N, E> {
 
     private fun getOrCreateNode(data: N): Node<N, E> = nodes.computeIfAbsent(data) { Node(it) }
 
-
     public class Node<N, E>(public val data: N) {
         internal val edges: MutableSet<Edge<N, E>> = mutableSetOf()
 
@@ -60,4 +59,3 @@ public class DataGraph<N, E> {
         public val bidirectional: Boolean = false
     )
 }
-

@@ -32,10 +32,10 @@ public class SimpleTypeLattice(
     }
 
     override fun isSubtypeOf(candidate: Type, supertype: Type): Boolean =
-        candidate == supertype
-            || supertype == topType
-            || candidate == bottomType
-            || subtypeCache.computeIfAbsent(candidate to supertype) { isSubtypeOf(it.first, it.second, mutableSetOf()) }
+        candidate == supertype ||
+            supertype == topType ||
+            candidate == bottomType ||
+            subtypeCache.computeIfAbsent(candidate to supertype) { isSubtypeOf(it.first, it.second, mutableSetOf()) }
 
     private fun isSubtypeOf(candidate: Type, supertype: Type, visited: MutableSet<Type>): Boolean {
         visited.add(candidate)
@@ -47,7 +47,6 @@ public class SimpleTypeLattice(
             directSupertypes.asSequence()
                 .minus(visited)
                 .any { isSubtypeOf(it, supertype, visited) }
-
     }
 
     override fun isEquivalent(candidate: Type, other: Type): Boolean {
@@ -55,7 +54,7 @@ public class SimpleTypeLattice(
     }
 
     public fun leastCommonSupertypes(types: Iterable<Type>): Set<Type> {
-        assert(!types.none()) { "May not call leastCommonSupertypes without at least one argument type"}
+        assert(!types.none()) { "May not call leastCommonSupertypes without at least one argument type" }
 
         val initialTypes = types.asSequence().filterRedundantSubtypes()
 
@@ -75,16 +74,17 @@ public class SimpleTypeLattice(
                         // Additionally, if none of the existing result types is a subtype of this type, add it to result
                         if (result.none { isSubtypeOf(it, type) }) result += type
                         false
-                    } else true
+                    } else {
+                        true
+                    }
                 }.toSet()
-
         } while (frontier.isNotEmpty())
 
         return result.asSequence().filterRedundantSupertypes().toSet()
     }
 
     override fun leastCommonSupertype(types: Iterable<Type>): Type {
-        assert(!types.none()) { "May not call leastCommonSupertype without at least one argument type"}
+        assert(!types.none()) { "May not call leastCommonSupertype without at least one argument type" }
         val commonSupertypes = leastCommonSupertypes(types)
 
         return if (commonSupertypes.size > 1) {
@@ -95,7 +95,7 @@ public class SimpleTypeLattice(
     }
 
     override fun greatestCommonSubtype(types: Iterable<Type>): Type {
-        assert(!types.none()) { "May not call greatestCommonSubtype without at least one argument type"}
+        assert(!types.none()) { "May not call greatestCommonSubtype without at least one argument type" }
         val filteredTypes = types.asSequence().filterRedundantSupertypes().toSet()
 
         return if (filteredTypes.size > 1) {
@@ -118,7 +118,6 @@ public class SimpleTypeLattice(
                 type != it && isSubtypeOf(type, it)
             }
         }
-
 
     override fun directSupertypes(type: Type): Set<Type> =
         supertypes.computeIfAbsent(type) {

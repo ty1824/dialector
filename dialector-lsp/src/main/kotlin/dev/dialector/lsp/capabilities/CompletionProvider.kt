@@ -8,7 +8,6 @@ import org.eclipse.lsp4j.CompletionItem
 import org.eclipse.lsp4j.CompletionList
 import org.eclipse.lsp4j.CompletionParams
 
-
 interface CompletionProvider : LspCapability {
     companion object : LspCapabilityDescriptor<CompletionProvider>()
 
@@ -24,7 +23,7 @@ interface CompletionProvider : LspCapability {
      * valid inside an identifier (for example `.` in JavaScript) list them in
      * `triggerCharacters`.
      */
-    val triggerCharacters : List<String>?
+    val triggerCharacters: List<String>?
 
     /**
      * The list of all possible characters that commit a completion. This field

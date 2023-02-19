@@ -1,9 +1,9 @@
 package dev.dialector.semantic.scope
 
+import dev.dialector.semantic.SemanticAnalysisContext
 import dev.dialector.syntax.Node
 import dev.dialector.syntax.NodeReference
 import dev.dialector.syntax.ReferenceResolver
-import dev.dialector.semantic.SemanticAnalysisContext
 
 /**
  * Are there two different types of scoping? Flow-based scope evaluation vs
@@ -48,13 +48,11 @@ interface ScopeDescriptor {
      * Declares a NodeReference target as a given identifier.
      */
     fun reference(namespace: Namespace, reference: NodeReference<out Node>, targetIdentifier: String)
-
 }
 
 abstract class Namespace(name: String)
 
 object Default : Namespace("Default")
-
 
 interface ScopeGraph : ReferenceResolver {
     fun getVisibleDeclarations(reference: NodeReference<*>): Sequence<Pair<Node, String>>
@@ -69,11 +67,13 @@ class SingleRootScopeGraph private constructor(
             val targetsInit = mutableMapOf<NodeReference<out Node>, Node>()
             val visibleElementsInit = mutableMapOf<NodeReference<*>, Sequence<Pair<Node, String>>>()
 
-            val context = SimpleScopeTraversalContext({ SimpleScopeDescriptor { namespace, reference, targetIdentifier ->
-                visibleElementsInit[reference] = (this as SimpleScopeDescriptor).visibleElements(namespace)
-                val element = visibleElementsInit[reference]?.first { it.second == targetIdentifier }?.first
-                if (element != null) targetsInit[reference] = element
-            } }, { node, scope ->
+            val context = SimpleScopeTraversalContext({
+                SimpleScopeDescriptor { namespace, reference, targetIdentifier ->
+                    visibleElementsInit[reference] = (this as SimpleScopeDescriptor).visibleElements(namespace)
+                    val element = visibleElementsInit[reference]?.first { it.second == targetIdentifier }?.first
+                    if (element != null) targetsInit[reference] = element
+                }
+            }, { node, scope ->
                 if (rules.any { it.isValidFor(node) }) {
                     rules.forEach {
                         it(this, node, scope)
@@ -86,8 +86,7 @@ class SingleRootScopeGraph private constructor(
 
             val globalScope = context.newScope()
 
-
-            with (context) {
+            with(context) {
                 traverse(root, globalScope)
             }
 
@@ -126,7 +125,6 @@ class SimpleScopeDescriptor(private val onReference: ReferenceHandler) : ScopeDe
         if (element != null) {
             declare(aliasNamespace, element, alias)
         }
-
     }
 
     override fun reference(namespace: Namespace, reference: NodeReference<out Node>, targetIdentifier: String) {
@@ -140,7 +138,7 @@ class SimpleScopeDescriptor(private val onReference: ReferenceHandler) : ScopeDe
     }
 
     fun findElement(namespace: Namespace, identifier: String): Node? =
-        visibleElements(namespace).firstOrNull { (_, string) -> string == identifier}?.first
+        visibleElements(namespace).firstOrNull { (_, string) -> string == identifier }?.first
 
     fun visibleElements(namespace: Namespace): Sequence<Pair<Node, String>> =
         sequence {
@@ -214,7 +212,7 @@ class LinearScopeDescriptor(private val onReference: ReferenceHandler) : ScopeDe
     }
 
     override fun declare(namespace: Namespace, elements: Iterable<Pair<Node, String>>) {
-        declarations += elements.map { ExplicitDeclaration(namespace, it.first, it.second )}
+        declarations += elements.map { ExplicitDeclaration(namespace, it.first, it.second) }
     }
 
     override fun alias(namespace: Namespace, identifier: String, aliasNamespace: Namespace, alias: String) {
@@ -260,7 +258,7 @@ class LinearScopeDescriptor(private val onReference: ReferenceHandler) : ScopeDe
         findDeclaration(namespace, index, identifier)?.node
 
     fun visibleElements(namespace: Namespace, index: Int): Sequence<Pair<Node, String>> =
-        visibleDeclarations(namespace, index).map { it.node to it.identifier}
+        visibleDeclarations(namespace, index).map { it.node to it.identifier }
 }
 
 class SimpleScopeTraversalContext(
@@ -283,9 +281,11 @@ class LinearScopeGraph private constructor(
         suspend operator fun invoke(root: Node, rules: List<ScopeTraversalRule<out Node>>): LinearScopeGraph {
             val referenceScopes = mutableMapOf<NodeReference<out Node>, LinearScopeDescriptor>()
 
-            val context = SimpleScopeTraversalContext({ LinearScopeDescriptor { namespace, reference, targetIdentifier ->
-                referenceScopes[reference] = this as LinearScopeDescriptor
-            } }, { node, scope ->
+            val context = SimpleScopeTraversalContext({
+                LinearScopeDescriptor { namespace, reference, targetIdentifier ->
+                    referenceScopes[reference] = this as LinearScopeDescriptor
+                }
+            }, { node, scope ->
                 if (rules.any { it.isValidFor(node) }) {
                     rules.forEach {
                         it(this, node, scope)
@@ -298,7 +298,7 @@ class LinearScopeGraph private constructor(
 
             val globalScope = context.newScope()
 
-            with (context) {
+            with(context) {
                 traverse(root, globalScope)
             }
 
@@ -313,7 +313,7 @@ class LinearScopeGraph private constructor(
         referenceScopes[reference]?.getReferenceableElements(reference).orEmpty()
 }
 //
-//suspend fun ScopeTraversalContext.foo(node: Node) {
+// suspend fun ScopeTraversalContext.foo(node: Node) {
 //    val scopeOne = newScope()
 //
 //    with(newScope().inherit(scopeOne, "parent")) {
@@ -322,4 +322,4 @@ class LinearScopeGraph private constructor(
 //        reference(Default, object : NodeReference<Node> {}, "hi")
 //        traverse(node)
 //    }
-//}
+// }

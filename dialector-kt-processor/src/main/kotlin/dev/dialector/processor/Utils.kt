@@ -26,22 +26,24 @@ fun <S> Result<S, Any>.assumeSuccess(): S = when (this) {
 
 fun KSAnnotated.findAnnotations(annotationType: KClass<out Annotation>): Sequence<KSAnnotation> =
     this.annotations.filter {
-        it.shortName.asString() == annotationType.simpleName
-            && it.annotationType.resolve().declaration.qualifiedName?.asString() == annotationType.qualifiedName
+        it.shortName.asString() == annotationType.simpleName &&
+            it.annotationType.resolve().declaration.qualifiedName?.asString() == annotationType.qualifiedName
     }
 
 fun KSAnnotated.hasAnnotation(annotationType: KClass<out Annotation>): Boolean = this.findAnnotations(annotationType).any()
 
 fun KSClassDeclaration.isSubclassOf(superclass: KClass<out Any>): Boolean {
-    return this.getAllSuperTypes().any { it.declaration.qualifiedName?.asString() == superclass.qualifiedName}
+    return this.getAllSuperTypes().any { it.declaration.qualifiedName?.asString() == superclass.qualifiedName }
 }
 
 fun KSType.isAssignableTo(type: KSType): Boolean = type.isAssignableFrom(this)
 
 internal fun KSDeclaration.getLocalQualifiedName(): List<String> =
-    if (this.parentDeclaration != null)
+    if (this.parentDeclaration != null) {
         this.parentDeclaration!!.getLocalQualifiedName() + this.simpleName.asString()
-    else listOf(this.simpleName.asString())
+    } else {
+        listOf(this.simpleName.asString())
+    }
 
 internal fun KSClassDeclaration.asClassName(): ClassName =
     ClassName(this.packageName.asString(), this.getLocalQualifiedName())
@@ -51,15 +53,16 @@ internal fun KSType.asTypeName(): TypeName {
         val declarationName = (this.declaration as KSClassDeclaration).asClassName()
         val candidate = if (this.arguments.isNotEmpty()) {
             declarationName.parameterizedBy(*this.arguments.map { it.type!!.resolve().asTypeName() }.toTypedArray())
-        } else declarationName
+        } else {
+            declarationName
+        }
 
         if (this.isMarkedNullable) candidate.copy(nullable = true) else candidate
-    }
-    else if (this.declaration is KSTypeParameter) {
+    } else if (this.declaration is KSTypeParameter) {
         val declarationName: TypeVariableName = (this.declaration as KSTypeParameter).asTypeVariableName()
         if (this.isMarkedNullable) declarationName.copy(nullable = true) else declarationName
     } else {
-        throw RuntimeException("Failed to create TypeName for ${this.toString()}")
+        throw RuntimeException("Failed to create TypeName for $this")
     }
 }
 

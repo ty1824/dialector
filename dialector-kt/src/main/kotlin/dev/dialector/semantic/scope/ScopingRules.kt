@@ -1,10 +1,10 @@
 package dev.dialector.semantic.scope
 
-import dev.dialector.syntax.Node
-import dev.dialector.syntax.NodeClause
 import dev.dialector.semantic.SemanticAnalysisContext
 import dev.dialector.semantic.type.Type
 import dev.dialector.semantic.type.TypeClause
+import dev.dialector.syntax.Node
+import dev.dialector.syntax.NodeClause
 
 @DslMarker
 annotation class ScopeGraphDsl
@@ -33,7 +33,6 @@ interface ScopeTraversalContext {
     suspend fun traverse(node: Node, scope: ScopeDescriptor)
 }
 
-
 /**
  * Defines a rule that modifies how the AST is traversed to produce a scope.
  */
@@ -47,13 +46,11 @@ interface ScopeTraversalRule<T : Node> {
     }
 }
 
-
 fun <T : Node> NodeClause<T>.produceScope(label: String, traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit) =
     object : ScopeTraversalRule<T> {
         override val label: String = label
         override val isValidFor: NodeClause<T> = this@produceScope
         override val traversal: suspend ScopeTraversalContext.(node: T, incomingScope: ScopeDescriptor) -> Unit = traversal
-
     }
 
 interface TypeScopeContext {
@@ -71,5 +68,4 @@ fun <T : Type> TypeClause<T>.produceScope(label: String, contribution: TypeScope
         override val label: String = label
         override val isValidFor: TypeClause<T> = this@produceScope
         override val contribution: TypeScopeContext.(type: T, scope: ScopeDescriptor) -> Unit = contribution
-
     }

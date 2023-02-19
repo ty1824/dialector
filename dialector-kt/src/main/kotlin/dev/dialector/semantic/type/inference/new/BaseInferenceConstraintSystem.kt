@@ -71,11 +71,11 @@ val redundantElimination: ReductionRule =
 
 val leftReduction: ReductionRule =
     { constraint: RelationalConstraint -> constraint.left is InferenceVariable } reducesTo {
-        bound { BaseBound(it.relation, it.left as InferenceVariable, it.right)}
+        bound { BaseBound(it.relation, it.left as InferenceVariable, it.right) }
     }
 val rightReduction: ReductionRule =
     { constraint: RelationalConstraint -> constraint.right is InferenceVariable } reducesTo {
-        bound { BaseBound(it.relation.opposite(), it.right as InferenceVariable, it.left)}
+        bound { BaseBound(it.relation.opposite(), it.right as InferenceVariable, it.left) }
     }
 
 private class BaseInferenceVariable(override val id: String) : InferenceVariable {
@@ -89,7 +89,7 @@ private class BaseInferenceVariable(override val id: String) : InferenceVariable
 data class BaseBound(
     override val relation: TypeRelation,
     override val variable: InferenceVariable,
-    override val boundingType: Type,
+    override val boundingType: Type
 ) : Bound
 
 sealed class BoundGraphNode {
@@ -105,6 +105,7 @@ class VariableNode(val variable: InferenceVariable) : BoundGraphNode() {
     val equivalentTo: MutableSet<Pair<BoundGraphNode, Bound>> = mutableSetOf()
     val upperBounds: MutableSet<Pair<BoundGraphNode, Bound>> = mutableSetOf()
     val lowerBounds: MutableSet<Pair<BoundGraphNode, Bound>> = mutableSetOf()
+
     /**
      * Determines whether the solution for this variable should be the greatest lower bound rather than the least upper bound.
      */
@@ -281,7 +282,7 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
         inferenceConstraints += constraint
     }
 
-    fun solve(reductionRules: List<ReductionRule>) : InferenceResult {
+    fun solve(reductionRules: List<ReductionRule>): InferenceResult {
         println("Solving")
         val initialConstraints = getInferenceConstraints()
         println(initialConstraints)
@@ -296,11 +297,11 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
             var subIteration = 0
             while (constraints.anyUnresolved()) {
                 subIteration++
-                println("ITERATION: ${iteration}.${subIteration} - Constraints")
+                println("ITERATION: $iteration.$subIteration - Constraints")
                 println(constraints)
                 println(bounds)
                 reduce(reductionRules, constraints, bounds)
-                println("ITERATION: ${iteration}.${subIteration} - Incorporation")
+                println("ITERATION: $iteration.$subIteration - Incorporation")
                 println(constraints)
                 println(bounds)
                 incorporate(constraints, bounds)
@@ -345,7 +346,7 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
                         reductionContext.reduce(currentConstraint)
                     }
                 is VariableConstraint ->
-                    bounds.setPushDown(currentConstraint.variable , currentConstraint.kind == VariableConstraintKind.PUSH_DOWN)
+                    bounds.setPushDown(currentConstraint.variable, currentConstraint.kind == VariableConstraintKind.PUSH_DOWN)
             }
         }
     }
@@ -380,7 +381,7 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
 
                 // if (x < u) && (l < x) then (l > u)
                 variable.upperBounds.forEach { upperBound ->
-                    variable.lowerBounds.forEach {lowerBound ->
+                    variable.lowerBounds.forEach { lowerBound ->
                         constraints.add(lowerBound.first.type subtype upperBound.first.type)
                     }
                 }
@@ -391,18 +392,16 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
 //                    incorporationContext.incorporate(variable, boundSystem.graph.getAllEdges().map { it.data }.toSet())
 //                }
 //            }
-
-
             }
         }
-
     }
 
     private fun resolve(constraints: ConstraintSystem, boundSystem: BoundSystemGraph) {
         // The goal of this method is to generate equality constraints for unresolved variables.
         while (!constraints.anyUnresolved() && boundSystem.getUnresolvedVariables().any()) {
             val toSolve = boundSystem.getUnresolvedVariables().sortedWith {
-                a, b -> a.getDependencies().count() - b.getDependencies().count()
+                    a, b ->
+                a.getDependencies().count() - b.getDependencies().count()
             }.first()
             SimpleConstraintCreator.apply {
                 if (toSolve.pushDown) {
@@ -428,10 +427,5 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
                 }
             }
         }
-
-
     }
 }
-
-
-       

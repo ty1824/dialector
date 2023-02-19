@@ -48,11 +48,11 @@ enum class VariableConstraintKind {
 
 interface InferenceOrigin
 
-sealed class InferenceConstraint {}
+sealed class InferenceConstraint
 
 data class VariableConstraint(
     val variable: InferenceVariable,
-    val kind: VariableConstraintKind,
+    val kind: VariableConstraintKind
 ) : InferenceConstraint()
 
 data class RelationalConstraint(
