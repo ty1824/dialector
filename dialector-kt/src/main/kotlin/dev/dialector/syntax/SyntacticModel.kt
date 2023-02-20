@@ -24,4 +24,3 @@ interface DynamicSyntacticModel : SyntacticModel {
      */
     fun removeRoot(id: RootId)
 }
-

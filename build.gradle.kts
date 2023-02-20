@@ -6,6 +6,7 @@ plugins {
     kotlin("jvm") apply false
     id("org.jetbrains.dokka")
     id("org.jetbrains.kotlinx.kover")
+    id("org.jmailen.kotlinter")
 }
 
 /**
@@ -28,9 +29,12 @@ allprojects {
         // TODO: Probably should do this before passing as a parameter
         version = version.toString().drop(1)
     }
+    if (project == rootProject) println("Using version for build: $version")
 }
 
 subprojects {
+    apply(plugin = "org.jmailen.kotlinter")
+
     repositories {
         mavenCentral()
     }

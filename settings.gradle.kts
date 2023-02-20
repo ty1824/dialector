@@ -4,24 +4,19 @@ pluginManagement {
     val kotlinVersion: String by settings
     val kspVersion: String by settings
     val koverVersion: String by settings
+    val kotlinterVersion: String by settings
     val dokkaVersion: String by settings
 
-    resolutionStrategy {
-        eachPlugin {
-            when (requested.id.id) {
-                "com.google.devtools.ksp" -> useVersion(kspVersion)
-                "org.jetbrains.kotlinx.kover" -> useVersion(koverVersion)
-                "org.jetbrains.dokka" -> useVersion(dokkaVersion)
-            }
-            if (requested.id.id.startsWith("org.jetbrains.kotlin.")) {
-                useVersion(kotlinVersion)
-            }
-        }
+    plugins {
+        id("org.jetbrains.kotlin.jvm") version kotlinVersion
+        id("com.google.devtools.ksp") version kspVersion
+        id("org.jetbrains.kotlinx.kover") version koverVersion
+        id("org.jmailen.kotlinter") version kotlinterVersion
+        id("org.jetbrains.dokka") version dokkaVersion
     }
 
     repositories {
         gradlePluginPortal()
-        google()
         mavenCentral()
     }
 }

@@ -1,22 +1,21 @@
 import kotlin.test.fail
 
 fun assertAll(message: String, vararg blocks: () -> Unit) {
-    val messages = mutableListOf<String>()
-    blocks.forEach {
-        try { it }
-        catch (e: Throwable) {
-            if (e.message != null) {
-                val message = e.message
-                if (message != null) messages.add(message)
-            }
+    val messages = mutableListOf<Pair<Int, String>>()
+    blocks.forEachIndexed { index, block ->
+        try { block() } catch (e: Throwable) {
+            messages += index to e.stackTraceToString()
         }
     }
 
     if (messages.isNotEmpty()) {
-        var failureMessage = "Failed: $message"
-        messages.forEach {
-            failureMessage += "\n$it"
+        val failureMessage = StringBuilder("Failure: $message")
+        messages.forEach { (index, message) ->
+            failureMessage.appendLine("\n  block[$index]:")
+            message.lineSequence().forEach {
+                failureMessage.appendLine("    $it")
+            }
         }
-        fail(failureMessage)
+        fail(failureMessage.toString())
     }
 }

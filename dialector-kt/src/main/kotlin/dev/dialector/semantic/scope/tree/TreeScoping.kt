@@ -27,7 +27,6 @@ interface ScopeContributionRule<T : Node, V : Node> {
     val getContribution: T.() -> Sequence<ScopeElement<V>>
 }
 
-
 /**
  * A rule that defines a scope transformation for a [Node].
  * Transformations impact the current [Node] and all of its children.
@@ -39,7 +38,7 @@ interface ScopeTransformationRule<T : Node> {
     val transformScope: T.(incomingScope: Sequence<ScopeElement<Node>>) -> Sequence<ScopeElement<Node>>
 }
 
-//infix fun <T : Node> NodeClause<T>
+// infix fun <T : Node> NodeClause<T>
 
 fun getPathToRoot(node: Node): List<Node> {
     var current: Node = node
@@ -97,7 +96,6 @@ class SimpleScopeResolver(val configuration: ScopingConfiguration) {
     }
 
     inline fun <reified T : Node> getFilteredScope(node: Node): Sequence<ScopeElement<T>> {
-
         @Suppress("UNCHECKED_CAST")
         return getScope(node).filter { it.content is T } as Sequence<ScopeElement<T>>
     }

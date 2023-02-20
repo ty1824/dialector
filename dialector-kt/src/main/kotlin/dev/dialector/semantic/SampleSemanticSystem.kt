@@ -11,7 +11,7 @@ private class BaseTypeVariable(override val id: String) : TypeVariable {
     override fun toString(): String = "tv.$id"
 }
 
-private class BaseScopeVariable(override val name: String): ScopeVariable {
+private class BaseScopeVariable(override val name: String) : ScopeVariable {
     override fun equals(other: Any?): Boolean = this === other
 
     override fun hashCode(): Int = super.hashCode()
@@ -95,6 +95,5 @@ class SampleSemanticSystem {
         override fun <T : ConstraintCreator> constraint(creator: T, routine: T.() -> SemanticConstraint) {
             constraints += creator.routine()
         }
-
     }
 }

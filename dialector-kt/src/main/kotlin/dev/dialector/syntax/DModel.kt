@@ -82,19 +82,19 @@ public fun <T : Node> Node.getReference(relation: KProperty<NodeReference<T>>): 
 /**
  * Retrieves all children of this node.
  */
-public fun Node.getAllChildren() : List<Node> = children.values.flatten()
+public fun Node.getAllChildren(): List<Node> = children.values.flatten()
 
 /**
  * Retrieves all references from this node.
  */
-public fun Node.getAllReferences() : List<NodeReference<*>> = references.values.toList()
+public fun Node.getAllReferences(): List<NodeReference<*>> = references.values.toList()
 
 /**
  * Returns a sequence that iterates through all descendants of this node in a breadth-first traversal.
  */
-public fun Node.getAllDescendants(inclusive: Boolean = false) : Sequence<Node> = sequence {
+public fun Node.getAllDescendants(inclusive: Boolean = false): Sequence<Node> = sequence {
     val node = this@getAllDescendants
-    if (inclusive) { yield (node) }
+    if (inclusive) { yield(node) }
     val current: MutableList<Node> = node.getAllChildren().toMutableList()
     while (current.isNotEmpty()) {
         val value = current.removeFirst()
@@ -107,7 +107,7 @@ public fun Node.getAllDescendants(inclusive: Boolean = false) : Sequence<Node> =
  * Returns a sequence that iterates through all descendants of this node in a breadth-first traversal, filtered by
  * the given type.
  */
-public inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = false) : Sequence<Node> =
+public inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = false): Sequence<Node> =
     this.getAllDescendants(inclusive).filterIsInstance<T>()
 
 /**
@@ -115,7 +115,7 @@ public inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = fa
  */
 public fun Node.getAllAncestors(inclusive: Boolean = false): Sequence<Node> = sequence {
     val node = this@getAllAncestors
-    if (inclusive) { yield (node) }
+    if (inclusive) { yield(node) }
     var current: Node? = node.parent
     while (current != null) {
         yield(current)
@@ -126,38 +126,5 @@ public fun Node.getAllAncestors(inclusive: Boolean = false): Sequence<Node> = se
 /**
  * Returns a sequence that iterates through all ancestors of this node filtered by the given type.
  */
-public inline fun <reified T : Node> Node.getAncestors(inclusive: Boolean = false) : Sequence<T> =
+public inline fun <reified T : Node> Node.getAncestors(inclusive: Boolean = false): Sequence<T> =
     this.getAllAncestors(inclusive).filterIsInstance<T>()
-
-/**
- * Indicates that the target class defines the structure of a [Node]
- */
-@Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.CLASS)
-public annotation class NodeDefinition(
-    /**
-     * Determines whether this node should be instantiable or not.
-     */
-    val abstract: Boolean = false
-)
-
-/**
- * Represents a non-node property of this node.
- */
-@Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.PROPERTY)
-public annotation class Property
-
-/**
- * Represents a child of this node.
- */
-@Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.PROPERTY)
-public annotation class Child
-
-/**
- * Represents a reference to another node in the model.
- */
-@Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.PROPERTY)
-public annotation class Reference

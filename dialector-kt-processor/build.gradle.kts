@@ -19,6 +19,12 @@ dependencies {
     implementation(kotlin("reflect"))
 }
 
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    }
+}
+
 java {
     withJavadocJar()
     withSourcesJar()

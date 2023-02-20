@@ -1,11 +1,11 @@
 package dev.dialector.semantic.scope
 
-import dev.dialector.syntax.Node
-import dev.dialector.syntax.NodeReference
 import dev.dialector.semantic.Query
 import dev.dialector.semantic.SemanticDataDefinition
 import dev.dialector.semantic.SemanticSystem
 import dev.dialector.semantic.SemanticSystemDefinition
+import dev.dialector.syntax.Node
+import dev.dialector.syntax.NodeReference
 
 interface ScopeElement {
     val name: String
@@ -27,7 +27,7 @@ object ReferencedNode : SemanticDataDefinition<ScopeSystem, NodeReference<*>, No
 
 object ReferenceScope : SemanticDataDefinition<ScopeSystem, NodeReference<*>, Sequence<Pair<Node, String>>>(ScopeSystemDefinition) {
     override fun query(system: ScopeSystem, argument: NodeReference<*>): Query<NodeReference<*>, Sequence<Pair<Node, String>>> {
-        TODO("Not yet implemented") //system.getVisibleDeclarations(argument)
+        TODO("Not yet implemented") // system.getVisibleDeclarations(argument)
     }
 }
 

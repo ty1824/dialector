@@ -2,8 +2,8 @@ package dev.dialector.semantic
 
 import dev.dialector.semantic.type.IdentityType
 import dev.dialector.semantic.type.Type
-import dev.dialector.util.DataGraph
 import dev.dialector.semantic.type.inference.new.InferenceOrigin
+import dev.dialector.util.DataGraph
 
 public object InferredTopType : IdentityType("InferredTop")
 
@@ -58,6 +58,7 @@ public class VariableNode(public val variable: TypeVariable) : BoundGraphNode() 
     public val equivalentTo: MutableSet<Pair<BoundGraphNode, Bound>> = mutableSetOf()
     public val upperBounds: MutableSet<Pair<BoundGraphNode, Bound>> = mutableSetOf()
     public val lowerBounds: MutableSet<Pair<BoundGraphNode, Bound>> = mutableSetOf()
+
     /**
      * Determines whether the solution for this variable should be the greatest lower bound rather than the least upper bound.
      */

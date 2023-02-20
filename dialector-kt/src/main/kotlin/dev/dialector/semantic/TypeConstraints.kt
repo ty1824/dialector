@@ -34,7 +34,7 @@ public enum class VariableConstraintKind {
  */
 public data class TypeVariableConstraint(
     val variable: TypeVariable,
-    val kind: VariableConstraintKind,
+    val kind: VariableConstraintKind
 ) : SemanticConstraint
 
 /**

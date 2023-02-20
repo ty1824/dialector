@@ -55,7 +55,6 @@ class DialectorWorkspaceService(private val server: DialectorServer) : Workspace
 
     override fun didChangeWorkspaceFolders(params: DidChangeWorkspaceFoldersParams?) {
         TODO("Should implement")
-
     }
 }
 
@@ -120,12 +119,10 @@ interface DialectorServer {
     fun <T : LspCapability> get(capability: LspCapabilityDescriptor<T>): T
 }
 
-
-
 class DialectorLanguageServerAdapter(
     private val server: DialectorServer,
     private val workspaceService: DialectorWorkspaceService,
-    private val textDocumentService: DialectorTextDocumentService,
+    private val textDocumentService: DialectorTextDocumentService
 ) : LanguageServer, LanguageClientAware {
 
     lateinit var client: LanguageClient
@@ -148,19 +145,20 @@ class DialectorLanguageServerAdapter(
         return textDocumentService
     }
 
-
     override fun getWorkspaceService(): WorkspaceService = workspaceService
 
     fun getCapabilities(): ServerCapabilities {
         val capabilities = ServerCapabilities().apply {
-            textDocumentSync = Either.forRight(TextDocumentSyncOptions().apply {
-                val opts = server.get(TextDocumentSync)
-                openClose = opts.openClose
-                change = opts.change
-                save = Either.forRight(opts.save?.saveOptions)
-                willSave = opts.willSave != null
-                willSaveWaitUntil = opts.willSaveWaitUntil != null
-            })
+            textDocumentSync = Either.forRight(
+                TextDocumentSyncOptions().apply {
+                    val opts = server.get(TextDocumentSync)
+                    openClose = opts.openClose
+                    change = opts.change
+                    save = Either.forRight(opts.save?.saveOptions)
+                    willSave = opts.willSave != null
+                    willSaveWaitUntil = opts.willSaveWaitUntil != null
+                }
+            )
             completionProvider = CompletionOptions()
         }
         println("CAPABILITIES: $capabilities")

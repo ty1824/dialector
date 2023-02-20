@@ -1,6 +1,5 @@
 package dev.dialector.semantic.type.inference.new
 
-import dev.dialector.syntax.getAllDescendants
 import dev.dialector.semantic.Completed
 import dev.dialector.semantic.IterationResult
 import dev.dialector.semantic.IterativeSolver
@@ -11,7 +10,7 @@ import dev.dialector.semantic.type.Type
 import dev.dialector.semantic.type.TypeSystem
 import dev.dialector.semantic.type.integration.BaseProgramInferenceContext
 import dev.dialector.semantic.type.integration.ProgramInferenceContext
-
+import dev.dialector.syntax.getAllDescendants
 
 class IterativeTypeConstraintSolver(
     private val typeSystem: TypeSystem,
@@ -51,11 +50,11 @@ class IterativeTypeConstraintSolver(
             var subIteration = 0
             while (solverConstraintSystem.anyUnresolved()) {
                 subIteration++
-                println("ITERATION: ${iteration}.${subIteration} - Constraints")
+                println("ITERATION: $iteration.$subIteration - Constraints")
                 println(solverConstraintSystem)
                 println(bounds)
                 reduce(typeSystem.reductionRules, solverConstraintSystem, bounds)
-                println("ITERATION: ${iteration}.${subIteration} - Incorporation")
+                println("ITERATION: $iteration.$subIteration - Incorporation")
                 println(solverConstraintSystem)
                 println(bounds)
                 incorporate(solverConstraintSystem, bounds)
@@ -105,7 +104,7 @@ private fun reduce(
                     reductionContext.reduce(currentConstraint)
                 }
             is VariableConstraint ->
-                bounds.setPushDown(currentConstraint.variable , currentConstraint.kind == VariableConstraintKind.PUSH_DOWN)
+                bounds.setPushDown(currentConstraint.variable, currentConstraint.kind == VariableConstraintKind.PUSH_DOWN)
         }
     }
 }
@@ -140,7 +139,7 @@ private fun incorporate(
 
             // if (x < u) && (l < x) then (l > u)
             variable.upperBounds.forEach { upperBound ->
-                variable.lowerBounds.forEach {lowerBound ->
+                variable.lowerBounds.forEach { lowerBound ->
                     constraints.add(lowerBound.first.type subtype upperBound.first.type)
                 }
             }
@@ -151,18 +150,16 @@ private fun incorporate(
 //                    incorporationContext.incorporate(variable, boundSystem.graph.getAllEdges().map { it.data }.toSet())
 //                }
 //            }
-
-
         }
     }
-
 }
 
 private fun resolve(constraints: ConstraintSystem, boundSystem: BoundSystemGraph): List<Query<*, *>> {
     // The goal of this method is to generate equality constraints for unresolved variables.
     while (!constraints.anyUnresolved() && boundSystem.getUnresolvedVariables().any()) {
         val toSolve = boundSystem.getUnresolvedVariables().sortedWith {
-            a, b -> a.getDependencies().count() - b.getDependencies().count()
+                a, b ->
+            a.getDependencies().count() - b.getDependencies().count()
         }.first()
         SimpleConstraintCreator.apply {
             if (toSolve.pushDown) {

@@ -14,6 +14,7 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.Location
 import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.symbol.Variance
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -27,30 +28,50 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asTypeName
 import dev.dialector.syntax.Child
+import dev.dialector.syntax.ModelConstructorDsl
 import dev.dialector.syntax.Node
 import dev.dialector.syntax.NodeDefinition
 import dev.dialector.syntax.NodeReference
 import dev.dialector.syntax.Property
 import dev.dialector.syntax.Reference
-import dev.dialector.syntax.getAllChildren
 import kotlin.reflect.KClass
 
-class DialectorSymbolProcessorProvider: SymbolProcessorProvider {
+class DialectorSymbolProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor =
         DialectorSymbolProcessor(
             environment.codeGenerator,
-            SymbolProcessingOptions(environment.options["dev.dialector.targetPackage"]!!)
+            SymbolProcessingOptions(
+                environment.options["dev.dialector.targetPackage"]!!,
+                environment.options["dev.dialector.indent"] ?: "    "
+            )
         )
 }
 
-class SymbolProcessingOptions(val targetPackage: String)
+class SymbolProcessingOptions(
+    /**
+     * The package of the generated code.
+     */
+    val targetPackage: String,
+    /**
+     * The character pattern for indentation.
+     */
+    val indent: String
+)
 
-class DialectorSymbolProcessor(val codeGenerator: CodeGenerator, val options: SymbolProcessingOptions) : SymbolProcessor {
+class DialectorSymbolProcessor(
+    val codeGenerator: CodeGenerator,
+    val options: SymbolProcessingOptions
+) : SymbolProcessor {
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(NodeDefinition::class.qualifiedName!!)
         val nodeDefinitions = symbols.filterIsInstance<KSClassDeclaration>()
-        Generator(resolver).generate(options.targetPackage, nodeDefinitions).forEach { (fileSpec, ksClasses) ->
-            val file = codeGenerator.createNewFile(Dependencies(true, *(ksClasses.mapNotNull { it.containingFile }.distinct().toTypedArray())), fileSpec.packageName, fileSpec.name)
+        val generatedFiles = Generator(resolver).generate(options, nodeDefinitions)
+        generatedFiles.forEach { (fileSpec, ksClasses) ->
+            val file = codeGenerator.createNewFile(
+                Dependencies(true, *(ksClasses.mapNotNull { it.containingFile }.distinct().toTypedArray())),
+                fileSpec.packageName,
+                fileSpec.name
+            )
             file.bufferedWriter().use { stream ->
                 fileSpec.writeTo(stream)
             }
@@ -63,7 +84,6 @@ class DialectorSymbolProcessor(val codeGenerator: CodeGenerator, val options: Sy
 TODO:
 - Handle inheritance
 - Mutability through change objects
-- No builder if no properties
  */
 
 class Generator(private val resolver: Resolver) {
@@ -73,25 +93,28 @@ class Generator(private val resolver: Resolver) {
     private val nodeClass = Node::class.getClassDeclaration()!!
     private val nodeType = nodeClass.asType(listOf())
     private val nullableNodeType = nodeClass.asType(listOf()).makeNullable()
-    private val nodeListType = List::class.getClassDeclaration()!!.asType(listOf(
-        resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(nodeType), Variance.COVARIANT)
-    ))
-    private val nodeReferenceType = NodeReference::class.getClassDeclaration()!!.asType(listOf(
-        resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(nodeType), Variance.COVARIANT)
-    )).makeNullable()
+    private val nodeListType = List::class.getClassDeclaration()!!.asType(
+        listOf(
+            resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(nodeType), Variance.COVARIANT)
+        )
+    )
+    private val nodeReferenceType = NodeReference::class.getClassDeclaration()!!.asType(
+        listOf(
+            resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(nodeType), Variance.COVARIANT)
+        )
+    ).makeNullable()
 
-    fun generate(targetPackage: String, classes: Sequence<KSClassDeclaration>): List<Pair<FileSpec, List<KSClassDeclaration>>> =
-        createGenerationModel(targetPackage, classes).assumeSuccess().generate()
+    fun generate(options: SymbolProcessingOptions, classes: Sequence<KSClassDeclaration>): List<Pair<FileSpec, List<KSClassDeclaration>>> =
+        createGenerationModel(options, classes).assumeSuccess().generate()
 
-    private class NodeModel constructor(val nodeClass: KSClassDeclaration) {
+    internal class NodeModel constructor(val nodeClass: KSClassDeclaration) {
 
-        @Suppress("UNCHECKED_CAST")
         val inheritedNodes: List<KSClassDeclaration> = nodeClass.getAllSuperTypes()
-            .asSequence()
             .mapNotNull { it.declaration as? KSClassDeclaration }
             .filter {
-                it.getAllSuperTypes().any { type -> type.declaration.qualifiedName?.asString() == Node::class.qualifiedName }
-                    && it.hasAnnotation(NodeDefinition::class)
+                it.getAllSuperTypes().any { type ->
+                    type.declaration.qualifiedName?.asString() == Node::class.qualifiedName
+                } && it.hasAnnotation(NodeDefinition::class)
             }.toList()
 
         val properties: List<KSPropertyDeclaration> = nodeClass.getAllProperties().filter { it.hasAnnotation(Property::class) }.toList()
@@ -106,19 +129,22 @@ class Generator(private val resolver: Resolver) {
     private fun createNodeModel(nodeClass: KSClassDeclaration): Result<NodeModel, String> {
         val model = NodeModel(nodeClass)
         val problems = model.validate()
-        return if (problems.isEmpty())
-                Success(model)
-            else
-                Failure("Errors found for $nodeClass:\n\t" +
-                    problems.joinToString("\n\t"))
+        return if (problems.isEmpty()) {
+            Success(model)
+        } else {
+            Failure(
+                "Errors found for $nodeClass:\n\t" +
+                    problems.joinToString("\n\t")
+            )
+        }
     }
 
     private class ModelError(val message: String, val location: Location) {
         override fun toString(): String {
-            if (location is FileLocation) {
-                return "$message (${location.filePath}:${location.lineNumber})"
+            return if (location is FileLocation) {
+                "$message (${location.filePath}:${location.lineNumber})"
             } else {
-                return "$message ($location)"
+                "$message ($location)"
             }
         }
     }
@@ -128,8 +154,9 @@ class Generator(private val resolver: Resolver) {
     private fun NodeModel.validate(): List<ModelError> {
         val errors: MutableList<ModelError> = mutableListOf()
 
-        if (!nodeClass.isSubclassOf(Node::class))
+        if (!nodeClass.isSubclassOf(Node::class)) {
             errors += "Input class must have Node as a superinterface" at nodeClass.location
+        }
 
         if (nodeClass.modifiers.contains(Modifier.FINAL) || nodeClass.modifiers.contains(Modifier.SEALED)) {
             errors += "Input class must be extensible." at nodeClass.location
@@ -137,15 +164,17 @@ class Generator(private val resolver: Resolver) {
 
         properties.forEach {
             // A property may be any type besides a Node
-            if (it.type.resolve().isAssignableTo(nullableNodeType))
+            if (it.type.resolve().isAssignableTo(nullableNodeType)) {
                 errors += "'${it.qualifiedName}' Property must not be of type Node" at it.location
+            }
         }
 
         children.forEach {
             // A child must either be of type T? or List<T> where T is a subclass of Node
             val resolvedType = it.type.resolve()
-            if (!(resolvedType.isAssignableTo(nullableNodeType) || resolvedType.isAssignableTo(nodeListType)))
+            if (!(resolvedType.isAssignableTo(nullableNodeType) || resolvedType.isAssignableTo(nodeListType))) {
                 errors += "'${it.qualifiedName}': Child must be of type Node or List<Node>" at it.location
+            }
         }
 
         references.forEach {
@@ -157,8 +186,8 @@ class Generator(private val resolver: Resolver) {
 
         return errors.toList()
     }
-    
-    private fun createGenerationModel(targetPackage: String, classes: Sequence<KSClassDeclaration>): Result<GenerationModel, String> {
+
+    private fun createGenerationModel(options: SymbolProcessingOptions, classes: Sequence<KSClassDeclaration>): Result<GenerationModel, String> {
         val errors: MutableList<String> = mutableListOf()
         val nodeModels: MutableMap<KSClassDeclaration, NodeModel> = mutableMapOf()
         classes.forEach {
@@ -168,23 +197,26 @@ class Generator(private val resolver: Resolver) {
             }
         }
 
-        if (errors.isNotEmpty()) {
-            return Failure("Failed to generate classes, ${errors.size} errors found:\n" +
-                errors.joinToString("\n"))
+        return if (errors.isNotEmpty()) {
+            Failure(
+                "Failed to generate classes, ${errors.size} errors found:\n" +
+                    errors.joinToString("\n")
+            )
         } else {
-            return Success(GenerationModel(targetPackage, nodeModels.toMap()))
+            Success(GenerationModel(options, nodeModels.toMap()))
         }
     }
 
-    private inner class GenerationModel(
-        val genPackage: String,
+    internal inner class GenerationModel(
+        val options: SymbolProcessingOptions,
         val nodeModels: Map<KSClassDeclaration, NodeModel>
     ) {
 
-        fun generate() : List<Pair<FileSpec, List<KSClassDeclaration>>> {
+        fun generate(): List<Pair<FileSpec, List<KSClassDeclaration>>> {
             val files: MutableList<Pair<FileSpec, List<KSClassDeclaration>>> = mutableListOf()
             for (model in nodeModels.values) {
-                val builder = FileSpec.builder(genPackage, "${model.nodeClass.simpleName.getShortName()}Model")
+                val builder = FileSpec.builder(options.targetPackage, "${model.nodeClass.simpleName.getShortName()}Model")
+                builder.indent(options.indent)
                 handleClass(model, builder)
                 files += builder.build() to model.inheritedNodes + model.nodeClass
             }
@@ -203,8 +235,8 @@ class Generator(private val resolver: Resolver) {
 
         fun generateBuilderDsl(model: NodeModel): FunSpec {
             val initializerClassName = ClassName(
-                genPackage,
-                "${model.getBuilderClassName()}"
+                options.targetPackage,
+                model.getBuilderClassName()
             )
             val name = model.nodeClass.simpleName.getShortName().let {
                 val first = it.first()
@@ -220,18 +252,16 @@ class Generator(private val resolver: Resolver) {
                         )
                     )
                     .returns(model.nodeClass.asClassName())
-                    .addStatement("""val node = ${initializerClassName.canonicalName}().apply(init).build()""")
-                    .addStatement("""node.%M().forEach { it.parent = node }""", MemberName("dev.dialector.syntax", "getAllChildren", true))
-                    .addStatement("""return node""")
+                    .addStatement("val node = ${initializerClassName.canonicalName}().apply(init).build()")
+                    .addStatement("node.%M().forEach { it.parent = node }", MemberName("dev.dialector.syntax", "getAllChildren", true))
+                    .addStatement("return node")
                     .build()
-            }else {
+            } else {
                 return FunSpec.builder(name)
                     .returns(model.nodeClass.asClassName())
-                    .addStatement("""return ${ClassName(genPackage, model.getImplClassName())}()""")
+                    .addStatement("""return ${ClassName(options.targetPackage, model.getImplClassName())}()""")
                     .build()
             }
-
-
         }
 
         fun generateImpl(model: NodeModel): TypeSpec =
@@ -245,47 +275,51 @@ class Generator(private val resolver: Resolver) {
                 // Add children
                 .addProperties(model.children.map { generateChild(it) })
                 // Add references
-                .addProperties(model.references.map { generateReference(it)} )
+                .addProperties(model.references.map { generateReference(it) })
                 // Implement Node
                 .apply { this.generateNodeImplementation(model) }
                 .build()
 
         fun TypeSpec.Builder.generateNodeImplementation(model: NodeModel) {
             // parent
-            this.addProperty(Node::parent.let {
-                PropertySpec.builder(it.name, it.returnType.asTypeName())
-                    .addModifiers(KModifier.OVERRIDE)
-                    .initializer("null")
-                    .mutable(true)
-                    .setter(FunSpec.setterBuilder()
-                        .addParameter("value", Node::class.asTypeName())
-                        // TODO: Expand this exception
-                        .addStatement("""if (field != null) throw RuntimeException("A node may not be a child of two nodes.")""")
-                        .addStatement("""field = value""")
+            this.addProperty(
+                Node::parent.let {
+                    PropertySpec.builder(it.name, it.returnType.asTypeName())
+                        .addModifiers(KModifier.OVERRIDE)
+                        .initializer("null")
+                        .mutable(true)
+                        .setter(
+                            FunSpec.setterBuilder()
+                                .addParameter("value", Node::class.asTypeName())
+                                // TODO: Expand this exception
+                                .addStatement("""if (field != null) throw RuntimeException("A node may not be a child of two nodes.")""")
+                                .addStatement("""field = value""")
+                                .build()
+                        )
                         .build()
-                    )
-                    .build()
-            })
+                }
+            )
 
             // properties map
             this.addProperty(
                 PropertySpec.builder(Node::properties.name, Node::properties.returnType.asTypeName())
                     .addModifiers(KModifier.OVERRIDE)
-                    .getter(FunSpec.getterBuilder()
-                        .addCode(
-                            CodeBlock.builder()
-                                .add("return mapOf(")
-                                .indent()
-                                .apply {
-                                    model.properties.forEach { property ->
-                                        add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
+                    .getter(
+                        FunSpec.getterBuilder()
+                            .addCode(
+                                CodeBlock.builder()
+                                    .add("return mapOf(")
+                                    .indent()
+                                    .apply {
+                                        model.properties.forEach { property ->
+                                            add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
+                                        }
                                     }
-                                }
-                                .unindent()
-                                .add(")")
-                                .build()
-                        )
-                        .build()
+                                    .unindent()
+                                    .add(")")
+                                    .build()
+                            )
+                            .build()
                     )
                     .build()
             )
@@ -294,28 +328,30 @@ class Generator(private val resolver: Resolver) {
             this.addProperty(
                 PropertySpec.builder(Node::children.name, Node::children.returnType.asTypeName())
                     .addModifiers(KModifier.OVERRIDE)
-                    .getter(FunSpec.getterBuilder()
-                        .addCode(
-                            CodeBlock.builder()
-                                .add("return mapOf(")
-                                .indent()
-                                .apply {
-                                    model.children.forEach { property ->
-                                        when {
-                                            property.type.resolve().isAssignableTo(nullableNodeType) ->
-                                                add("\"${property.simpleName.asString()}\" to listOfNotNull(${property.simpleName.asString()}), ")
-                                            property.type.resolve().isAssignableTo(nodeListType) ->
-                                                add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
-                                            else ->
-                                                throw RuntimeException("Unexpected child type found: $property : ${property.type}")
+                    .getter(
+                        FunSpec.getterBuilder()
+                            .addCode(
+                                CodeBlock.builder()
+                                    .add("return mapOf(")
+                                    .indent()
+                                    .apply {
+                                        model.children.forEach { property ->
+                                            val resolvedType = property.type.resolve()
+                                            when {
+                                                resolvedType.isAssignableTo(nullableNodeType) ->
+                                                    add("\"${property.simpleName.asString()}\" to listOfNotNull(${property.simpleName.asString()}), ")
+                                                resolvedType.isAssignableTo(nodeListType) ->
+                                                    add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
+                                                else ->
+                                                    throw RuntimeException("Unexpected child type found: $property : ${property.type}")
+                                            }
                                         }
                                     }
-                                }
-                                .unindent()
-                                .add(")")
-                                .build()
-                        )
-                        .build()
+                                    .unindent()
+                                    .add(")")
+                                    .build()
+                            )
+                            .build()
                     )
                     .build()
             )
@@ -324,21 +360,22 @@ class Generator(private val resolver: Resolver) {
             this.addProperty(
                 PropertySpec.builder(Node::references.name, Node::references.returnType.asTypeName())
                     .addModifiers(KModifier.OVERRIDE)
-                    .getter(FunSpec.getterBuilder()
-                        .addCode(
-                            CodeBlock.builder()
-                                .add("return mapOf(")
-                                .indent()
-                                .apply {
-                                    model.references.forEach { property ->
-                                        add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
+                    .getter(
+                        FunSpec.getterBuilder()
+                            .addCode(
+                                CodeBlock.builder()
+                                    .add("return mapOf(")
+                                    .indent()
+                                    .apply {
+                                        model.references.forEach { property ->
+                                            add("\"${property.simpleName.asString()}\" to ${property.simpleName.asString()}, ")
+                                        }
                                     }
-                                }
-                                .unindent()
-                                .add(")")
-                                .build()
-                        )
-                        .build()
+                                    .unindent()
+                                    .add(")")
+                                    .build()
+                            )
+                            .build()
                     )
                     .build()
             )
@@ -348,10 +385,12 @@ class Generator(private val resolver: Resolver) {
             FunSpec.constructorBuilder()
                 .apply {
                     if (model.requiresInit()) {
-                        addParameter(ParameterSpec(
-                            "init",
-                            ClassName(genPackage, "${model.getBuilderClassName()}")
-                        ))
+                        addParameter(
+                            ParameterSpec(
+                                "init",
+                                ClassName(options.targetPackage, model.getBuilderClassName())
+                            )
+                        )
                     }
                 }
                 .build()
@@ -361,7 +400,7 @@ class Generator(private val resolver: Resolver) {
                 .mutable(true)
                 .addModifiers(KModifier.OVERRIDE)
                 .initializer("init.${property.simpleName.asString()}${if (!property.type.resolve().isMarkedNullable) "!!" else ""}")
-                //.delegate("%T", PropertyValue::class.asClassName().parameterizedBy(property.returnType.asTypeName()))
+                // .delegate("%T", PropertyValue::class.asClassName().parameterizedBy(property.returnType.asTypeName()))
                 .build()
 
         fun generateChild(child: KSPropertyDeclaration): PropertySpec {
@@ -381,7 +420,8 @@ class Generator(private val resolver: Resolver) {
                             resolvedType.arguments.map { argument ->
                                 argument.type!!.resolve().asTypeName()
                             }
-                        ))
+                        )
+                    )
                         .addModifiers(KModifier.OVERRIDE)
                         .initializer("init.${child.simpleName.asString()}.toMutableList()")
                         .build()
@@ -405,46 +445,55 @@ class Generator(private val resolver: Resolver) {
         fun generateBuilder(model: NodeModel): TypeSpec {
             val builder = TypeSpec.classBuilder("${model.nodeClass.simpleName.asString()}Initializer")
 
-            builder.addProperties(model.properties.map {
-                PropertySpec.builder(
-                    it.simpleName.asString(),
-                    it.type.resolve().makeNullable().asTypeName()
-                ).mutable(true).initializer("null").build()
-            })
+            builder.addAnnotation(AnnotationSpec.builder(ModelConstructorDsl::class).build())
 
-            builder.addProperties(model.children.map {
-                val resolvedType = it.type.resolve()
-                when {
-                    resolvedType.isAssignableTo(nullableNodeType) ->
-                        PropertySpec.builder(
-                            it.simpleName.asString(),
-                            resolvedType.makeNullable().asTypeName()
-                        ).mutable(true).initializer("null").build()
-                    // If we're dealing with a list of children, create a MutableList
-                    resolvedType.isAssignableTo(nodeListType) ->
-                        PropertySpec.builder(
-                            it.simpleName.asString(),
-                            ClassName("kotlin.collections", "MutableList").parameterizedBy(
-                                resolvedType.arguments.map { argument ->
-                                    argument.type!!.resolve().asTypeName()
-                                }
-                            )
-                        ).initializer("mutableListOf()").build()
-                    else -> throw RuntimeException("Unexpected child type found: $it : ${it.type}")
+            builder.addProperties(
+                model.properties.map {
+                    PropertySpec.builder(
+                        it.simpleName.asString(),
+                        it.type.resolve().makeNullable().asTypeName()
+                    ).mutable(true).initializer("null").build()
                 }
-            })
+            )
 
-            builder.addProperties(model.references.map {
-                PropertySpec.builder(
-                    it.simpleName.asString(),
-                    it.type.resolve().makeNullable().asTypeName()
-                ).mutable(true).initializer("null").build()
-            })
+            builder.addProperties(
+                model.children.map {
+                    val resolvedType = it.type.resolve()
+                    when {
+                        resolvedType.isAssignableTo(nullableNodeType) ->
+                            PropertySpec.builder(
+                                it.simpleName.asString(),
+                                resolvedType.makeNullable().asTypeName()
+                            ).mutable(true).initializer("null").build()
+                        // If we're dealing with a list of children, create a MutableList
+                        resolvedType.isAssignableTo(nodeListType) ->
+                            PropertySpec.builder(
+                                it.simpleName.asString(),
+                                ClassName("kotlin.collections", "MutableList").parameterizedBy(
+                                    resolvedType.arguments.map { argument ->
+                                        argument.type!!.resolve().asTypeName()
+                                    }
+                                )
+                            ).initializer("mutableListOf()").build()
+                        else -> throw RuntimeException("Unexpected child type found: $it : ${it.type}")
+                    }
+                }
+            )
 
-            builder.addFunction(FunSpec.builder("build")
-                .returns(model.nodeClass.asClassName())
-                .addStatement("return ${model.nodeClass.simpleName.asString()}Impl(this)")
-                .build()
+            builder.addProperties(
+                model.references.map {
+                    PropertySpec.builder(
+                        it.simpleName.asString(),
+                        it.type.resolve().makeNullable().asTypeName()
+                    ).mutable(true).initializer("null").build()
+                }
+            )
+
+            builder.addFunction(
+                FunSpec.builder("build")
+                    .returns(model.nodeClass.asClassName())
+                    .addStatement("return ${model.nodeClass.simpleName.asString()}Impl(this)")
+                    .build()
             )
 
             return builder.build()
@@ -454,9 +503,5 @@ class Generator(private val resolver: Resolver) {
             val classBuilder = TypeSpec.classBuilder("${model.nodeClass.simpleName.asString()}Mutator")
             return classBuilder.build()
         }
-
     }
 }
-
-
-

@@ -3,9 +3,7 @@ package dev.dialector.semantic.type.integration
 import dev.dialector.syntax.Node
 import dev.dialector.syntax.NodeClause
 
-interface BoundsContext {
-
-}
+interface BoundsContext
 
 /**
  * A rule that defines inference that should be performed for nodes matching a [NodeClause]

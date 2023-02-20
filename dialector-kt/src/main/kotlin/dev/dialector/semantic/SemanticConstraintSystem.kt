@@ -65,8 +65,7 @@ public interface Namespace {
     public val name: String
 }
 
-public class SimpleNamespace(override val name: String): Namespace
-
+public class SimpleNamespace(override val name: String) : Namespace
 
 /**
  * A constraint indicating that a type variable's value should be assigned to the result
@@ -211,7 +210,6 @@ public interface ReductionRule<T : SemanticConstraint> {
 
 public class ConstraintSolver {
     public fun reduce() {
-
     }
 
     public fun incorporate() {}
@@ -236,11 +234,11 @@ public val redundantElimination: ReductionRule<TypeRelationConstraint> =
 
 public val leftReduction: ReductionRule<TypeRelationConstraint> =
     given<TypeRelationConstraint> { it.left is TypeVariable }.reducesTo("leftReduction") {
-        bound { BaseBound(it.relation, it.left as TypeVariable, it.right)}
+        bound { BaseBound(it.relation, it.left as TypeVariable, it.right) }
     }
 public val rightReduction: ReductionRule<TypeRelationConstraint> =
     given<TypeRelationConstraint> { it.right is TypeVariable }.reducesTo("rightReduction") {
-        bound { BaseBound(it.relation.opposite(), it.right as TypeVariable, it.left)}
+        bound { BaseBound(it.relation.opposite(), it.right as TypeVariable, it.left) }
     }
 
 public val inheritScope: ReductionRule<InheritScopeConstraint> =
@@ -265,7 +263,6 @@ public val referenceIdentifier: ReductionRule<ReferenceIdentifierConstraint> =
 
 public val declareTypeElement: ReductionRule<DeclareElementTypeConstraint> =
     given<DeclareElementTypeConstraint>().reducesTo("declareElementType") {
-
     }
 
 public interface Bound {
@@ -280,7 +277,7 @@ public interface Bound {
 public data class BaseBound(
     override val relation: TypeRelation,
     override val variable: TypeVariable,
-    override val boundingType: Type,
+    override val boundingType: Type
 ) : Bound
 
 /*
@@ -502,4 +499,3 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
     }
 }
  */
-

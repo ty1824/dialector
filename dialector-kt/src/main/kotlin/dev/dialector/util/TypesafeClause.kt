@@ -1,6 +1,5 @@
 package dev.dialector.util
 
-import dev.dialector.syntax.Node
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 import kotlin.reflect.KClass
@@ -35,4 +34,3 @@ public abstract class InstanceClause<T : Any>(public val instance: T) : Typesafe
 public abstract class ClassifierClause<T : Any>(override val clauseClass: KClass<T>) : TypesafeClause<T> {
     override fun constraint(candidate: T): Boolean = true
 }
-

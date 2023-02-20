@@ -1,12 +1,12 @@
 package dev.dialector.semantic.type.integration
 
-import dev.dialector.syntax.Node
 import dev.dialector.semantic.Query
 import dev.dialector.semantic.SemanticAnalysisContext
 import dev.dialector.semantic.type.inference.new.BaseInferenceContext
 import dev.dialector.semantic.type.inference.new.InferenceConstraint
 import dev.dialector.semantic.type.inference.new.InferenceContext
 import dev.dialector.semantic.type.inference.new.InferenceVariable
+import dev.dialector.syntax.Node
 
 /**
  * Extends [InferenceContext] with model-aware functionality
@@ -21,8 +21,6 @@ interface ProgramInferenceContext : InferenceContext {
     fun <N : Node> typeOf(query: Query<*, out N>): InferenceVariable
 
     val semantics: SemanticAnalysisContext
-
-
 }
 
 /**

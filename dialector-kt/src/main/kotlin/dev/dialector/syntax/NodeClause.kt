@@ -4,7 +4,6 @@ import dev.dialector.util.ClassifierClause
 import dev.dialector.util.InstanceClause
 import dev.dialector.util.TypesafeClause
 
-
 /**
  * A clause that matches against [Node]s.
  */

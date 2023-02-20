@@ -78,7 +78,6 @@ public interface SupertypeRelation<T : Type> {
 public fun <T : Type> SupertypeRelation<T>.evaluate(candidate: Type): Sequence<Type> =
     if (this.isValidFor(candidate)) this.supertypes(candidate as T) else sequenceOf()
 
-
 public interface SupertypeRule {
     public fun check(subtype: Type, supertype: Type, lattice: TypeLattice): Boolean
 }
@@ -97,5 +96,3 @@ public infix fun <T : Type> TypeClause<T>.hasSupertype(explicitSupertype: Type):
     override val isValidFor = this@hasSupertype
     override fun supertypes(type: T): Sequence<Type> = sequenceOf(explicitSupertype)
 }
-
-

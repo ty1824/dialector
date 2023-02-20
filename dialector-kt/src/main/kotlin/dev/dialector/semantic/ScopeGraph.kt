@@ -1,20 +1,20 @@
 package dev.dialector.semantic
 
-import dev.dialector.util.DataGraph
 import dev.dialector.syntax.Node
 import dev.dialector.syntax.NodeReference
+import dev.dialector.util.DataGraph
 
 public sealed class ScopeGraphNode
 public class ScopeNode(public val scope: ScopeVariable) : ScopeGraphNode()
-public class ReferenceNode(public val reference: NodeReference<*>): ScopeGraphNode()
-public class ElementNode(public val node: Node): ScopeGraphNode()
+public class ReferenceNode(public val reference: NodeReference<*>) : ScopeGraphNode()
+public class ElementNode(public val node: Node) : ScopeGraphNode()
 
 public sealed class ScopeGraphEdge
 
-public class Declaring(public val name: String, public val namespace: Namespace?): ScopeGraphEdge()
-public class Inheriting(public val label: String): ScopeGraphEdge()
-public class Referencing(public val namespace: Namespace?): ScopeGraphEdge()
-public class ReferencingType(public val namespace: Namespace, public val target: NodeReference<out Node>): ScopeGraphEdge()
+public class Declaring(public val name: String, public val namespace: Namespace?) : ScopeGraphEdge()
+public class Inheriting(public val label: String) : ScopeGraphEdge()
+public class Referencing(public val namespace: Namespace?) : ScopeGraphEdge()
+public class ReferencingType(public val namespace: Namespace, public val target: NodeReference<out Node>) : ScopeGraphEdge()
 
 public class ScopeGraph {
     private val graph: DataGraph<ScopeGraphNode, ScopeGraphEdge> = DataGraph()
@@ -65,7 +65,7 @@ public class ScopeGraph {
         } else {
             val referencingEdge = refNode.getEdgesOfType<Referencing>().first()
             getAllDeclarations((referencingEdge.target.data as ScopeNode).scope, referencingEdge.data.namespace)
-                .first { (name, element) -> reference.targetIdentifier == name}
+                .first { (name, element) -> reference.targetIdentifier == name }
                 .second
         }
     }
