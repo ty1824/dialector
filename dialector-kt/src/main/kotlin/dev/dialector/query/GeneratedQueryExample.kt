@@ -1,73 +1,57 @@
 package dev.dialector.query
 
-import kotlin.reflect.KClass
+@QueryGroup
+internal interface HelloWorldGen  {
+    @Input
+    fun inputString(key: String): String?
 
-public annotation class QueryGroup
+    @Tracked
+    fun length(key: String): Int? {
+        println("Recomputing length for $key")
+        return inputString(key)?.length
+    }
 
-public annotation class Query
+    fun longest(keys: Set<String>): String? {
+        println("recomputing longest")
+        return keys.maxByOrNull { length(it) ?: -1 }?.let { inputString(it) }
+    }
 
-public annotation class Input
-
-public annotation class Tracked
-
-public annotation class DatabaseDef(vararg val groups: KClass<*>)
-
-public interface DatabaseDefinition {
-    public val queryDefinitions: Array<DatabaseQuery<*, *>>
-}
-public open class QueryGroupDef<I : Any>(val definition: KClass<I>)
-public interface DatabaseQuery<K, V> {
-    public val group: QueryGroupDef<*>
-}
-internal fun <K, V> DatabaseQuery<K, V>.createMap(): MutableMap<K, Value<V>> = mutableMapOf()
-
-public open class InputQuery<K, V>(
-    override val group: QueryGroupDef<*>
-) : DatabaseQuery<K, V>
-
-public open class DerivedQuery<K, V>(
-    override val group: QueryGroupDef<*>,
-) : DatabaseQuery<K, V>
-
-
-internal data class QueryKey<K, V>(val queryDef: DatabaseQuery<K, V>, val key: K)
-
-internal sealed interface Value<V> {
-    var value: V
-    var changedAt: Int
 }
 
-internal data class InputValue<V>(override var value: V, override var changedAt: Int): Value<V>
+@DatabaseDef(HelloWorldGen::class)
+internal interface MyDatabase : HelloWorldGen
 
-internal data class DerivedValue<V>(
-    override var value: V,
-    val dependencies: MutableList<QueryKey<*, *>>,
-    var verifiedAt: Int,
-    override var changedAt: Int
-): Value<V>
-
-
-internal class QueryFrame<K>(
-    val queryKey: QueryKey<K, *>,
-    var maxRevision: Int = 0,
-    val dependencies: MutableList<QueryKey<*, *>> = mutableListOf()
-)
-
-public class QueryDatabase(
-    public val definitions: List<DatabaseQuery<*, *>>
-) {
+internal class GeneratedQueryExample : MyDatabase {
+    private companion object : DatabaseDefinition {
+        override val queryDefinitions = arrayOf<DatabaseQuery<*, *>>(
+            InputString,
+            Length,
+            Longest
+        )
+    }
+    private object HelloWorldDef : QueryGroupDef<HelloWorldGen>(HelloWorldGen::class)
+    private object InputString : InputQuery<String, String?>(HelloWorldDef)
+    private object Length : DerivedQuery<String, Int?>(HelloWorldDef)
+    private object Longest : DerivedQuery<Set<String>, String?>(HelloWorldDef)
 
     private var currentRevision = 0
 
-    private val storage: Map<DatabaseQuery<*, *>, MutableMap<*, *>> = definitions.associateWith { it.createMap() }
+    private val storage: Map<DatabaseQuery<*, *>, MutableMap<*, *>> = queryDefinitions.associateWith { it.createMap() }
 
     private val currentlyActiveQuery: MutableList<QueryFrame<*>> = mutableListOf()
 
     private fun <K, V> getQueryStorage(query: DatabaseQuery<K, V>): MutableMap<K, Value<V>> = storage[query] as MutableMap<K, Value<V>>
-
     private fun <K, V> get(queryKey: QueryKey<K, V>): Value<V>? = getQueryStorage(queryKey.queryDef)[queryKey.key]
 
-    public fun <K, V> setInput(inputDef: InputQuery<K, V>, key: K, value: V) {
+    internal fun setInputString(key: String, value: String) = setInput(InputString, key, value)
+
+    override fun inputString(key: String): String? = inputQuery(InputString, key)
+
+    override fun length(key: String): Int? = derivedQuery(Length, key) { super.length(it) }
+
+    override fun longest(keys: Set<String>): String? = derivedQuery(Longest, keys) { super.longest(it) }
+
+    private fun <K, V> setInput(inputDef: InputQuery<K, V>, key: K, value: V) {
         val inputStorage = getQueryStorage(inputDef)
         val inputValue = inputStorage[key]
         if (inputValue == null) {
@@ -78,7 +62,7 @@ public class QueryDatabase(
         }
     }
 
-    public fun <K, V> inputQuery(queryDef: DatabaseQuery<K, V>, key: K): V {
+    private fun <K, V> inputQuery(queryDef: DatabaseQuery<K, V>, key: K): V {
         val current = QueryKey(queryDef, key)
         recordQuery(current)
         return get(current)?.let {
@@ -87,7 +71,7 @@ public class QueryDatabase(
         } ?: throw RuntimeException("No value when running query $queryDef for input $key")
     }
 
-    public fun <K, V> derivedQuery(queryDef: DatabaseQuery<K, V>, key: K, queryLogic: (K) -> V): V {
+    private fun <K, V> derivedQuery(queryDef: DatabaseQuery<K, V>, key: K, queryLogic: (K) -> V): V {
         val current = QueryKey(queryDef, key)
         val derivedStorage = getQueryStorage(queryDef)
         if (currentlyActiveQuery.any { it.queryKey == current }) {
@@ -159,15 +143,54 @@ public class QueryDatabase(
         }
     }
 
-    public fun print() {
+    fun print() {
         println("=========================")
         println("Current revision = $currentRevision")
         storage.forEach { (query, store) ->
             println("Query store: $query")
-            store.forEach { (key, value) ->
-                println("  $key to $value")
+            store.forEach {
+                println("  ${it.key} to ${it.value}")
             }
         }
         println("=========================")
     }
+}
+
+internal fun main() {
+    val db = GeneratedQueryExample()
+    db.setInputString("foo", "hello world")
+
+    println("foo: Length is ${db.length("foo")}")
+    println("foo: Length is ${db.length("foo")} shouldn't recompute!")
+
+    db.setInputString("bar", "bai")
+
+    println("foo: Length is ${db.length("foo")} shouldn't recompute!")
+    println("bar: Length is ${db.length("bar")}")
+    println("bar: Length is ${db.length("bar")} shouldn't recompute!")
+
+    db.setInputString("foo", "oh wow this is very long")
+
+    println("foo: Length is ${db.length("foo")}")
+    println("bar: Length is ${db.length("bar")} shouldn't recompute!")
+
+    println("longest {foo, bar} is: ${db.longest(setOf("foo", "bar"))}")
+    println("longest {foo, bar} is: ${db.longest(setOf("foo", "bar"))}")
+//    db.print()
+    db.setInputString("bar", "super long to verify some stuff hereeeeeeeeee")
+//    db.print()
+    println("longest {foo, bar} is: ${db.longest(setOf("foo", "bar"))}")
+//    db.print()
+    println("longest {foo, bar} is: ${db.longest(setOf("foo", "bar"))}")
+
+    db.setInputString("baz", "the longest there ever was, because it's criticalllll")
+    println("longest {foo, bar, baz} is ${db.longest(setOf("foo", "bar", "baz"))}")
+    println("longest {foo, bar, baz} is ${db.longest(setOf("foo", "bar", "baz"))}")
+
+    db.setInputString("foo", "long")
+    db.setInputString("bar", "med")
+    db.setInputString("baz", "s")
+    println("longest {foo, bar, baz} is ${db.longest(setOf("foo", "bar", "baz"))}")
+    println("longest {foo, bar, baz} is ${db.longest(setOf("foo", "bar", "baz"))}")
+
 }
