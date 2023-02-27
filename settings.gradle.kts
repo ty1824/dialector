@@ -24,3 +24,4 @@ pluginManagement {
 include("dialector-kt")
 include("dialector-lsp")
 include("dialector-kt-processor")
+include("inkt")

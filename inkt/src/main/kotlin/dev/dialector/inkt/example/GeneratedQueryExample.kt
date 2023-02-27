@@ -1,4 +1,15 @@
-package dev.dialector.query
+package dev.dialector.inkt.example
+
+import dev.dialector.inkt.DatabaseDef
+import dev.dialector.inkt.DerivedQuery
+import dev.dialector.inkt.Input
+import dev.dialector.inkt.InputQuery
+import dev.dialector.inkt.NoInputDefinedException
+import dev.dialector.inkt.QueryDatabase
+import dev.dialector.inkt.QueryGroup
+import dev.dialector.inkt.Tracked
+import dev.dialector.inkt.derivedQuery
+import dev.dialector.inkt.inputQuery
 
 @QueryGroup
 internal interface HelloWorldGen {

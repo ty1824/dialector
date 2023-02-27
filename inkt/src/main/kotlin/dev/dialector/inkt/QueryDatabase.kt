@@ -1,78 +1,15 @@
-package dev.dialector.query
+package dev.dialector.inkt
 
-import kotlin.reflect.KClass
-
-public annotation class QueryGroup
-
-public annotation class Query
-
-public annotation class Input
-
-public annotation class Tracked
-
-public annotation class DatabaseDef(vararg val groups: KClass<*>)
-
-public interface DatabaseDefinition {
-    public val queryDefinitions: Array<DatabaseQuery<*, *>>
-}
-
-internal data class QueryKey<K, V>(val queryDef: DatabaseQuery<K, V>, val key: K)
-
-internal sealed interface Value<V> {
-    var value: V
-    var changedAt: Int
-}
-
-internal data class InputValue<V>(override var value: V, override var changedAt: Int) : Value<V>
-
-internal data class DerivedValue<V>(
-    override var value: V,
-    val dependencies: MutableList<QueryKey<*, *>>,
-    var verifiedAt: Int,
-    override var changedAt: Int
-) : Value<V>
-
-internal class QueryFrame<K>(
-    val queryKey: QueryKey<K, *>,
-    var maxRevision: Int = 0,
-    val dependencies: MutableList<QueryKey<*, *>> = mutableListOf()
-)
-
-public interface DatabaseQuery<K, V> {
-    public val name: String
-    public fun get(key: K): V
-}
-
-internal fun <K, V> DatabaseQuery<K, V>.createMap(): MutableMap<K, Value<V>> = mutableMapOf()
-
-public data class InputQuery<K, V>(
-    override val name: String,
-    private val query: (K) -> V
-) : DatabaseQuery<K, V> {
-    override fun get(key: K): V = query(key)
-}
-
-public fun <K, V> inputQuery(name: String, query: (K) -> V): InputQuery<K, V> = InputQuery(name, query)
-public fun <K, V> derivedQuery(name: String, query: (K) -> V): DerivedQuery<K, V> = DerivedQuery(name, query)
-
-public data class DerivedQuery<K, V>(
-    override val name: String,
-    private val query: (K) -> V
-) : DatabaseQuery<K, V> {
-    override fun get(key: K): V = query(key)
-}
-
-public class QueryDatabase(
-    public val definitions: List<DatabaseQuery<*, *>>
-) {
+public class QueryDatabase(public val definitions: List<DatabaseQuery<*, *>>) {
+    private val storage: Map<DatabaseQuery<*, *>, MutableMap<*, *>> = definitions.associateWith { it.createMap() }
 
     private var currentRevision = 0
 
-    private val storage: Map<DatabaseQuery<*, *>, MutableMap<*, *>> = definitions.associateWith { it.createMap() }
-
     private val currentlyActiveQuery: MutableList<QueryFrame<*>> = mutableListOf()
 
-    private fun <K, V> getQueryStorage(query: DatabaseQuery<K, V>): MutableMap<K, Value<V>> = storage[query] as MutableMap<K, Value<V>>
+    @Suppress("UNCHECKED_CAST")
+    private fun <K, V> getQueryStorage(query: DatabaseQuery<K, V>): MutableMap<K, Value<V>> =
+        storage[query] as MutableMap<K, Value<V>>
 
     private fun <K, V> get(queryKey: QueryKey<K, V>): Value<V>? = getQueryStorage(queryKey.queryDef)[queryKey.key]
 
