@@ -1,6 +1,6 @@
 package dev.dialector.query
 
-internal interface HelloWorld  {
+internal interface HelloWorld {
     fun inputString(key: String): String?
 
     fun length(key: String): Int? {
@@ -12,23 +12,23 @@ internal interface HelloWorld  {
         println("recomputing longest")
         return keys.maxByOrNull { length(it) ?: -1 }?.let { inputString(it) }
     }
-
 }
 
+public class NoInputDefinedException(message: String) : RuntimeException(message)
+
 internal class DefinedQueryExample : HelloWorld {
-    private object HelloWorldDef : QueryGroupDef<HelloWorld>(HelloWorld::class)
-    private object InputString : InputQuery<String, String?>(HelloWorldDef)
-    private object Length : DerivedQuery<String, Int?>(HelloWorldDef)
-    private object Longest : DerivedQuery<Set<String>, String?>(HelloWorldDef)
-    val database = QueryDatabase(listOf(InputString, Length, Longest))
+    private val inputString: InputQuery<String, String?> = inputQuery("inputString") { throw NoInputDefinedException("Input not provided for inputString($it)") }
+    private val length: DerivedQuery<String, Int?> = derivedQuery("length") { super.length(it) }
+    private val longest: DerivedQuery<Set<String>, String?> = derivedQuery("longest") { super.longest(it) }
+    private val database = QueryDatabase(listOf(inputString, length, longest))
 
-    fun setInputString(key: String, value: String?) = database.setInput(InputString, key, value)
+    fun setInputString(key: String, value: String?) = database.setInput(inputString, key, value)
 
-    override fun inputString(key: String): String? = database.inputQuery(InputString, key)
+    override fun inputString(key: String): String? = database.inputQuery(inputString, key)
 
-    override fun length(key: String): Int? = database.derivedQuery(Length, key) { super.length(key) }
+    override fun length(key: String): Int? = database.derivedQuery(length, key)
 
-    override fun longest(keys: Set<String>): String? = database.derivedQuery(Longest, keys) { super.longest(keys) }
+    override fun longest(keys: Set<String>): String? = database.derivedQuery(longest, keys)
 }
 
 internal fun main() {
@@ -67,5 +67,4 @@ internal fun main() {
     db.setInputString("baz", "s")
     println("longest {foo, bar, baz} is ${db.longest(setOf("foo", "bar", "baz"))}")
     println("longest {foo, bar, baz} is ${db.longest(setOf("foo", "bar", "baz"))}")
-
 }

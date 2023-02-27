@@ -15,20 +15,6 @@ public annotation class DatabaseDef(vararg val groups: KClass<*>)
 public interface DatabaseDefinition {
     public val queryDefinitions: Array<DatabaseQuery<*, *>>
 }
-public open class QueryGroupDef<I : Any>(val definition: KClass<I>)
-public interface DatabaseQuery<K, V> {
-    public val group: QueryGroupDef<*>
-}
-internal fun <K, V> DatabaseQuery<K, V>.createMap(): MutableMap<K, Value<V>> = mutableMapOf()
-
-public open class InputQuery<K, V>(
-    override val group: QueryGroupDef<*>
-) : DatabaseQuery<K, V>
-
-public open class DerivedQuery<K, V>(
-    override val group: QueryGroupDef<*>,
-) : DatabaseQuery<K, V>
-
 
 internal data class QueryKey<K, V>(val queryDef: DatabaseQuery<K, V>, val key: K)
 
@@ -37,21 +23,44 @@ internal sealed interface Value<V> {
     var changedAt: Int
 }
 
-internal data class InputValue<V>(override var value: V, override var changedAt: Int): Value<V>
+internal data class InputValue<V>(override var value: V, override var changedAt: Int) : Value<V>
 
 internal data class DerivedValue<V>(
     override var value: V,
     val dependencies: MutableList<QueryKey<*, *>>,
     var verifiedAt: Int,
     override var changedAt: Int
-): Value<V>
-
+) : Value<V>
 
 internal class QueryFrame<K>(
     val queryKey: QueryKey<K, *>,
     var maxRevision: Int = 0,
     val dependencies: MutableList<QueryKey<*, *>> = mutableListOf()
 )
+
+public interface DatabaseQuery<K, V> {
+    public val name: String
+    public fun get(key: K): V
+}
+
+internal fun <K, V> DatabaseQuery<K, V>.createMap(): MutableMap<K, Value<V>> = mutableMapOf()
+
+public data class InputQuery<K, V>(
+    override val name: String,
+    private val query: (K) -> V
+) : DatabaseQuery<K, V> {
+    override fun get(key: K): V = query(key)
+}
+
+public fun <K, V> inputQuery(name: String, query: (K) -> V): InputQuery<K, V> = InputQuery(name, query)
+public fun <K, V> derivedQuery(name: String, query: (K) -> V): DerivedQuery<K, V> = DerivedQuery(name, query)
+
+public data class DerivedQuery<K, V>(
+    override val name: String,
+    private val query: (K) -> V
+) : DatabaseQuery<K, V> {
+    override fun get(key: K): V = query(key)
+}
 
 public class QueryDatabase(
     public val definitions: List<DatabaseQuery<*, *>>
@@ -87,7 +96,7 @@ public class QueryDatabase(
         } ?: throw RuntimeException("No value when running query $queryDef for input $key")
     }
 
-    public fun <K, V> derivedQuery(queryDef: DatabaseQuery<K, V>, key: K, queryLogic: (K) -> V): V {
+    public fun <K, V> derivedQuery(queryDef: DatabaseQuery<K, V>, key: K): V {
         val current = QueryKey(queryDef, key)
         val derivedStorage = getQueryStorage(queryDef)
         if (currentlyActiveQuery.any { it.queryKey == current }) {
@@ -100,7 +109,7 @@ public class QueryDatabase(
         } else {
             currentlyActiveQuery += QueryFrame(current)
             try {
-                val result = queryLogic(key)
+                val result = queryDef.get(key)
                 val frame = currentlyActiveQuery.last()
 
                 derivedStorage[key] = DerivedValue(result, frame.dependencies.toMutableList(), currentRevision, frame.maxRevision)
@@ -117,7 +126,10 @@ public class QueryDatabase(
         return when (value) {
             is InputValue<*> -> value.changedAt <= asOfRevision
             is DerivedValue<*> ->
-                if (value.verifiedAt == currentRevision) {
+                if (value.changedAt > asOfRevision) {
+                    // This value has been updated more recently than the expected revision
+                    false
+                } else if (value.verifiedAt == currentRevision) {
                     true
                 } else {
                     // Recurse through dependencies and verify them
