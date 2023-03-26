@@ -25,7 +25,7 @@ public interface Node {
     public var parent: Node?
     public val properties: Map<String, Any?>
     public val children: Map<String, List<Node>>
-    public val references: Map<String, NodeReference<*>>
+    public val references: Map<String, NodeReference<*>?>
 }
 
 public interface ReferenceResolver {
@@ -43,15 +43,35 @@ public interface ReferenceResolutionContext {
  * A reference to another [Node]. References must be resolved by an external resolver.
  */
 public interface NodeReference<T : Node> {
+    /**
+     * The [Node] owning this reference
+     */
     public val sourceNode: Node
+
+    /**
+     * The relation (property) defining this reference
+     */
+    public val relation: KProperty<NodeReference<T>?>
+
+    /**
+     * The identifier of the target [Node]
+     */
     public val targetIdentifier: String
 }
 
-internal class SimpleNodeReference<T : Node>(override val targetIdentifier: String) : NodeReference<T> {
+internal class IncompleteNodeReference<T : Node>(override val targetIdentifier: String) : NodeReference<T> {
     override lateinit var sourceNode: Node
+    override lateinit var relation: KProperty<NodeReference<T>>
 }
 
-public fun <T : Node> nodeReference(targetIdentifier: String): NodeReference<T> = SimpleNodeReference<T>(targetIdentifier)
+public data class NodeReferenceImpl<T : Node>(
+    override val sourceNode: Node,
+    override val relation: KProperty<NodeReference<T>?>,
+    override val targetIdentifier: String
+) : NodeReference<T>
+
+@Deprecated("Direct creation of node references is not supported by default, use generated reference builders or a custom implementation")
+public fun <T : Node> nodeReference(targetIdentifier: String): NodeReference<T> = IncompleteNodeReference(targetIdentifier)
 
 /**
  * Retrieves the root of the tree containing this node.
@@ -87,7 +107,7 @@ public fun Node.getAllChildren(): List<Node> = children.values.flatten()
 /**
  * Retrieves all references from this node.
  */
-public fun Node.getAllReferences(): List<NodeReference<*>> = references.values.toList()
+public fun Node.getAllReferences(): List<NodeReference<*>> = references.values.filterNotNull().toList()
 
 /**
  * Returns a sequence that iterates through all descendants of this node in a breadth-first traversal.

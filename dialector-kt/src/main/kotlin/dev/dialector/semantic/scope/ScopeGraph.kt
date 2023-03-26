@@ -79,7 +79,7 @@ class SingleRootScopeGraph private constructor(
                         it(this, node, scope)
                     }
                 } else {
-                    node.references.forEach { scope.reference(Default, it.value, it.value.targetIdentifier) }
+                    node.references.values.filterNotNull().forEach { scope.reference(Default, it, it.targetIdentifier) }
                     node.children.forEach { child -> child.value.forEach { traverse(it, scope) } }
                 }
             })
@@ -291,7 +291,7 @@ class LinearScopeGraph private constructor(
                         it(this, node, scope)
                     }
                 } else {
-                    node.references.forEach { scope.reference(Default, it.value, it.value.targetIdentifier) }
+                    node.references.values.filterNotNull().forEach { scope.reference(Default, it, it.targetIdentifier) }
                     node.children.forEach { child -> child.value.forEach { traverse(it, scope) } }
                 }
             })
