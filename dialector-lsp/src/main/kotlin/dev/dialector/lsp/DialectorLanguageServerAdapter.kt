@@ -4,9 +4,6 @@ import dev.dialector.lsp.capabilities.LspCapability
 import dev.dialector.lsp.capabilities.LspCapabilityDescriptor
 import dev.dialector.lsp.capabilities.TextDocumentSync
 import dev.dialector.semantic.type.Type
-import dev.dialector.server.DocumentLocation
-import dev.dialector.server.TextPosition
-import dev.dialector.server.TextRange
 import dev.dialector.syntax.Node
 import dev.dialector.syntax.NodeReference
 import org.eclipse.lsp4j.CompletionOptions
@@ -31,6 +28,21 @@ import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.services.WorkspaceService
 import java.util.concurrent.CompletableFuture
+
+/**
+ * A position in a document
+ */
+data class TextPosition(val line: Int, val column: Int)
+
+/**
+ * A range of text within a document
+ */
+data class TextRange(val start: TextPosition, val end: TextPosition)
+
+/**
+ * A location in a particular document identified by URI
+ */
+data class DocumentLocation(val uri: String, val range: TextRange)
 
 class DialectorWorkspace {
     fun onFilesChanged(): Nothing = TODO()

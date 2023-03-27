@@ -78,7 +78,7 @@ public class QueryDatabase(public val definitions: List<DatabaseQuery<*, *>>) {
                         }
                     }
                     // TODO: If dependencies are invalid, recompute the query and check if the result is equivalent.
-                    // If so, we can still "verify", preventing dependents from recalculating.
+                    //   If so, we can still "verify", preventing dependents from recalculating.
                 }
         }
     }
