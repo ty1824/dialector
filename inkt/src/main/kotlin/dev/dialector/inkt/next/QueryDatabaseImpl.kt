@@ -1,8 +1,4 @@
-package dev.dialector.inkt.better
-
-public interface DatabaseContext : QueryContext {
-    public operator fun <K, V> QueryDefinition<K, V>.set(key: K, value: V)
-}
+package dev.dialector.inkt.next
 
 internal data class QueryKey<K, V>(val queryDef: QueryDefinition<K, V>, val key: K)
 
@@ -26,31 +22,28 @@ internal class QueryFrame<K>(
     val dependencies: MutableList<QueryKey<*, *>> = mutableListOf()
 )
 
-internal class QueryDatabaseContext(val db: QueryDatabase) : DatabaseContext {
+internal class QueryDatabaseContext(val db: QueryDatabaseImpl) : DatabaseContext {
     override fun <K, V> QueryDefinition<K, V>.set(key: K, value: V) = db.set(this, key, value)
+
+    override fun <K, V> QueryDefinition<K, V>.remove(key: K) = db.remove(this, key)
 
     override fun <K, V> QueryDefinition<K, V>.invoke(key: K): V = db.query(this@QueryDatabaseContext, this, key)
 }
 
-public class QueryDatabase {
+public class QueryDatabaseImpl : QueryDatabase {
     private val storage: MutableMap<QueryDefinition<*, *>, MutableMap<*, out Value<*>>> = mutableMapOf()
 
     private var currentRevision = 0
 
     private val currentlyActiveQuery: MutableList<QueryFrame<*>> = mutableListOf()
 
-    @Suppress("UNCHECKED_CAST")
-    private fun <K, V> getQueryStorage(query: QueryDefinition<K, V>): MutableMap<K, Value<V>> =
-        storage.getOrPut(query) { mutableMapOf<K, Value<V>>() } as MutableMap<K, Value<V>>
-
-    public fun <T> go(body: DatabaseContext.() -> T): T {
+    public override fun <T> run(body: DatabaseContext.() -> T): T {
         return QueryDatabaseContext(this).body()
     }
 
-    public operator fun <K, V> QueryDefinition<K, V>.set(key: K, value: V): Unit = set(this, key, value)
-
-    public operator fun <K, V> QueryDefinition<K, V>.invoke(key: K): V =
-        query(QueryDatabaseContext(this@QueryDatabase), this, key)
+    @Suppress("UNCHECKED_CAST")
+    private fun <K, V> getQueryStorage(query: QueryDefinition<K, V>): MutableMap<K, Value<V>> =
+        storage.getOrPut(query) { mutableMapOf<K, Value<V>>() } as MutableMap<K, Value<V>>
 
     private fun <K, V> get(queryKey: QueryKey<K, V>): Value<V>? = getQueryStorage(queryKey.queryDef)[queryKey.key]
 
@@ -68,13 +61,8 @@ public class QueryDatabase {
         }
     }
 
-    public fun <K, V> inputQuery(queryDef: QueryDefinition<K, V>, key: K): V {
-        val current = QueryKey(queryDef, key)
-        recordQuery(current)
-        return get(current)?.let {
-            trackRevision(it.changedAt)
-            it.value
-        } ?: throw RuntimeException("No value when running query $queryDef for input $key")
+    internal fun <K, V> remove(inputDef: QueryDefinition<K, V>, key: K) {
+        getQueryStorage(inputDef).remove(key)
     }
 
     public fun <K, V> query(context: QueryContext, queryDef: QueryDefinition<K, V>, key: K): V {

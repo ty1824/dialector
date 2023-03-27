@@ -1,10 +1,10 @@
 package dev.dialector.inkt.example
 
-import dev.dialector.inkt.better.QueryDatabase
-import dev.dialector.inkt.better.defineQuery
 import dev.dialector.inkt.example.HelloWorldShort.inputString
 import dev.dialector.inkt.example.HelloWorldShort.length
 import dev.dialector.inkt.example.HelloWorldShort.longest
+import dev.dialector.inkt.next.QueryDatabaseImpl
+import dev.dialector.inkt.next.defineQuery
 
 internal object HelloWorldShort {
     /**
@@ -21,7 +21,7 @@ internal object HelloWorldShort {
      */
     val length by defineQuery { key: String ->
         println("Recomputing length for $key")
-        inputString(key)?.length
+        inputString(key).length
     }
 
     /**
@@ -29,14 +29,15 @@ internal object HelloWorldShort {
      */
     val longest by defineQuery { keys: Set<String> ->
         println("Recomputing longest")
-        keys.maxByOrNull { length(it) ?: -1 }?.let { inputString(it) }
+        keys.maxByOrNull { length(it) }?.let { inputString(it) }
     }
 }
 
 internal fun main() {
-    val db = QueryDatabase()
-    db.apply {
+    val db = QueryDatabaseImpl()
+    db.run {
         inputString["foo"] = "hello"
+        inputString.remove("foo")
 
         println("foo: Length is ${length("foo")}")
         println("foo: Length is ${length("foo")} shouldn't recompute!")

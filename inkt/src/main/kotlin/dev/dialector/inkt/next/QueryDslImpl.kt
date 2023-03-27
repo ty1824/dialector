@@ -1,4 +1,4 @@
-package dev.dialector.inkt.better
+package dev.dialector.inkt.next
 
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty

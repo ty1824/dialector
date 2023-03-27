@@ -21,7 +21,7 @@ internal interface HelloWorld {
     fun inputString(key: String): String?
 
     /**
-     * Derived queries are composed from other queries - in this case, [length] returns the length
+     * Derived queries are composed of other queries - in this case, [length] returns the length
      * of the input string for the given key.
      */
     fun length(key: String): Int? {
