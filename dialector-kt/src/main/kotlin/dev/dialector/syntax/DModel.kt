@@ -29,13 +29,16 @@ public interface Node {
 }
 
 public interface ReferenceResolver {
-    public fun <T : Node> resolve(reference: NodeReference<T>): T?
+    public fun resolveTarget(reference: NodeReference<*>): Any?
 }
+public inline fun <reified T : Node> ReferenceResolver.resolve(reference: NodeReference<T>): T? =
+    resolveTarget(reference) as T?
 
 /**
  * A context that provides a resolution mechanism for [NodeReference]s
  */
 public interface ReferenceResolutionContext {
+    public fun NodeReference<*>.resolveTarget(reference: NodeReference<*>): Any?
     public fun <T : Node> NodeReference<T>.resolve(): T?
 }
 
@@ -127,7 +130,7 @@ public fun Node.getAllDescendants(inclusive: Boolean = false): Sequence<Node> = 
  * Returns a sequence that iterates through all descendants of this node in a breadth-first traversal, filtered by
  * the given type.
  */
-public inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = false): Sequence<Node> =
+public inline fun <reified T : Node> Node.getDescendants(inclusive: Boolean = false): Sequence<T> =
     this.getAllDescendants(inclusive).filterIsInstance<T>()
 
 /**

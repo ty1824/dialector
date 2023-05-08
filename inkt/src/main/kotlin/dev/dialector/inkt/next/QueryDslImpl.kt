@@ -7,7 +7,7 @@ import kotlin.reflect.KProperty
 /**
  * A delegate provider that extracts the property name to use as the query name.
  */
-internal class QueryDefinitionInitializer<K, V> internal constructor(
+internal class QueryDefinitionInitializer<K : Any, V> internal constructor(
     private val name: String?,
     private val logic: QueryContext.(K) -> V
 ) : PropertyDelegateProvider<Any?, QueryDefinitionDelegate<K, V>> {
@@ -18,15 +18,14 @@ internal class QueryDefinitionInitializer<K, V> internal constructor(
 /**
  * A property delegate that allows queries defined as properties to self-reference/recurse.
  */
-internal class QueryDefinitionDelegate<K, V>(private val value: QueryDefinition<K, V>) :
+internal class QueryDefinitionDelegate<K : Any, V>(private val value: QueryDefinition<K, V>) :
     ReadOnlyProperty<Any?, QueryDefinition<K, V>> {
-    public override operator fun getValue(thisRef: Any?, property: KProperty<*>): QueryDefinition<K, V> = value
+    override operator fun getValue(thisRef: Any?, property: KProperty<*>): QueryDefinition<K, V> = value
 }
 
-internal data class QueryDefinitionImpl<K, V>(
+internal data class QueryDefinitionImpl<K : Any, V>(
     override val name: String,
     val logic: QueryContext.(K) -> V
-) : QueryDefinition<K, V>, ReadOnlyProperty<Any?, QueryDefinition<K, V>> {
-    override fun getValue(thisRef: Any?, property: KProperty<*>): QueryDefinition<K, V> = this
+) : QueryDefinition<K, V> {
     override fun execute(context: QueryContext, key: K): V = context.logic(key)
 }

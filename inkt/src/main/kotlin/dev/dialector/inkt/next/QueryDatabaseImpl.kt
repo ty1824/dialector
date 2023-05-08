@@ -1,6 +1,6 @@
 package dev.dialector.inkt.next
 
-internal data class QueryKey<K, V>(val queryDef: QueryDefinition<K, V>, val key: K)
+internal data class QueryKey<K : Any, V>(val queryDef: QueryDefinition<K, V>, val key: K)
 
 internal sealed interface Value<V> {
     var value: V
@@ -11,136 +11,198 @@ internal data class InputValue<V>(override var value: V, override var changedAt:
 
 internal data class DerivedValue<V>(
     override var value: V,
-    val dependencies: MutableList<QueryKey<*, *>>,
+    var dependencies: List<QueryKey<*, *>>,
     var verifiedAt: Int,
     override var changedAt: Int
 ) : Value<V>
 
-internal class QueryFrame<K>(
+internal class QueryFrame<K : Any>(
     val queryKey: QueryKey<K, *>,
     var maxRevision: Int = 0,
     val dependencies: MutableList<QueryKey<*, *>> = mutableListOf()
 )
 
-internal class QueryDatabaseContext(val db: QueryDatabaseImpl) : DatabaseContext {
-    override fun <K, V> QueryDefinition<K, V>.set(key: K, value: V) = db.set(this, key, value)
+internal interface QueryExecutionContext : QueryContext {
+    fun pushFrame(key: QueryKey<*, *>)
+    fun popFrame(): QueryFrame<*>
 
-    override fun <K, V> QueryDefinition<K, V>.remove(key: K) = db.remove(this, key)
+    /**
+     * Adds a dependency and adds its changedAt revision to the current frame.
+     */
+    fun addDependency(key: QueryKey<*, *>, revision: Int)
+}
 
-    override fun <K, V> QueryDefinition<K, V>.invoke(key: K): V = db.query(this@QueryDatabaseContext, this, key)
+internal inline fun <T> QueryExecutionContext.withFrame(key: QueryKey<*, *>, block: () -> T): Pair<T, QueryFrame<*>> {
+    pushFrame(key)
+    return block() to popFrame()
 }
 
 public class QueryDatabaseImpl : QueryDatabase {
     private val storage: MutableMap<QueryDefinition<*, *>, MutableMap<*, out Value<*>>> = mutableMapOf()
-
     private var currentRevision = 0
 
-    private val currentlyActiveQuery: MutableList<QueryFrame<*>> = mutableListOf()
+    private val lock = Object()
 
-    public override fun <T> run(body: DatabaseContext.() -> T): T {
-        return QueryDatabaseContext(this).body()
+    public override fun <T> readTransaction(body: QueryContext.() -> T): T {
+        synchronized(lock) {
+            return object : QueryContext {
+                override fun <K : Any, V> query(definition: QueryDefinition<K, V>, key: K): V =
+                    this@QueryDatabaseImpl.query(definition, key)
+            }.body()
+        }
+    }
+
+    public override fun <T> writeTransaction(body: DatabaseContext.() -> T): T {
+        synchronized(lock) {
+            return object : DatabaseContext {
+                override fun <K : Any, V> query(definition: QueryDefinition<K, V>, key: K): V =
+                    this@QueryDatabaseImpl.query(definition, key)
+
+                override fun <K : Any, V> set(definition: QueryDefinition<K, V>, key: K, value: V) =
+                    this@QueryDatabaseImpl.set(definition, key, value)
+
+                override fun <K : Any, V> remove(definition: QueryDefinition<K, V>, key: K) =
+                    this@QueryDatabaseImpl.remove(definition, key)
+            }.body()
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <K, V> getQueryStorage(query: QueryDefinition<K, V>): MutableMap<K, Value<V>> =
-        storage.getOrPut(query) { mutableMapOf<K, Value<V>>() } as MutableMap<K, Value<V>>
+    private fun <K : Any, V> getQueryStorage(query: QueryDefinition<K, V>): MutableMap<K, Value<V>> =
+        storage.computeIfAbsent(query) { mutableMapOf<K, Value<V>>() } as MutableMap<K, Value<V>>
 
-    private fun <K, V> get(queryKey: QueryKey<K, V>): Value<V>? = getQueryStorage(queryKey.queryDef)[queryKey.key]
+    private fun <K : Any, V> get(queryKey: QueryKey<K, V>): Value<V>? = getQueryStorage(queryKey.queryDef)[queryKey.key]
 
-    internal fun <K, V> set(inputDef: QueryDefinition<K, V>, key: K, value: V) {
+    private fun <K : Any, V> set(inputDef: QueryDefinition<K, V>, key: K, value: V) {
         val queryStorage = getQueryStorage(inputDef)
         when (val currentValue = queryStorage[key]) {
             is InputValue -> {
                 currentValue.value = value
                 currentValue.changedAt = ++currentRevision
             }
-
             else -> {
                 queryStorage[key] = InputValue(value, ++currentRevision)
             }
         }
     }
 
-    internal fun <K, V> remove(inputDef: QueryDefinition<K, V>, key: K) {
+    private fun <K : Any, V> remove(inputDef: QueryDefinition<K, V>, key: K) {
         getQueryStorage(inputDef).remove(key)
     }
 
-    public fun <K, V> query(context: QueryContext, queryDef: QueryDefinition<K, V>, key: K): V {
-        val current = QueryKey(queryDef, key)
+    private fun <K : Any, V> query(queryDef: QueryDefinition<K, V>, key: K): V = synchronized(lock) {
+        fetch(QueryExecutionContextImpl(this), queryDef, key)
+    }
+
+    private fun <K : Any, V> fetch(context: QueryExecutionContext, queryDef: QueryDefinition<K, V>, key: K): V {
+        val queryKey = QueryKey(queryDef, key)
         val queryStorage = getQueryStorage(queryDef)
-        if (currentlyActiveQuery.any { it.queryKey == current }) {
-            throw RuntimeException("Cycle detected: $current already in $currentlyActiveQuery")
-        }
-        recordQuery(current)
-        val existingValue = queryStorage[key]
-        return if (existingValue is InputValue<V>) {
-            trackRevision(existingValue.changedAt)
-            existingValue.value
-        } else if (existingValue is DerivedValue<V> && verify(existingValue, existingValue.verifiedAt)) {
-            existingValue.value
-        } else {
-            currentlyActiveQuery += QueryFrame(current)
-            try {
-                val result = queryDef.execute(context, key)
-                val frame = currentlyActiveQuery.last()
 
-                queryStorage[key] = DerivedValue(result, frame.dependencies.toMutableList(), currentRevision, frame.maxRevision)
-                result
-            } finally {
-                val frame = currentlyActiveQuery.removeLast()
-                recordDependencies(frame.dependencies)
-                trackRevision(frame.maxRevision)
+        return when (val existingValue = queryStorage[key]) {
+            is InputValue<V> -> {
+                context.addDependency(queryKey, existingValue.changedAt)
+                existingValue.value
             }
-        }
-    }
 
-    private fun verify(value: Value<*>, asOfRevision: Int): Boolean {
-        return when (value) {
-            is InputValue<*> -> value.changedAt <= asOfRevision
-            is DerivedValue<*> ->
-                if (value.changedAt > asOfRevision) {
-                    // This value has been updated more recently than the expected revision
-                    false
-                } else if (value.verifiedAt == currentRevision) {
-                    true
+            is DerivedValue<V> -> {
+                if (deepVerify(context, existingValue)) {
+                    context.addDependency(queryKey, existingValue.changedAt)
+                    existingValue.value
                 } else {
-                    // Recurse through dependencies and verify them
-                    value.dependencies.all { dep ->
-                        get(dep)?.let { verify(it, value.verifiedAt) } ?: true
-                    }.also {
-                        if (it) {
-                            value.verifiedAt = currentRevision
-                        }
-                    }
-                    // TODO: If dependencies are invalid, recompute the query and check if the result is equivalent.
-                    // If so, we can still "verify", preventing dependents from recalculating.
+                    execute(context, queryKey, existingValue)
                 }
+            }
+
+            null -> execute(context, queryKey)
         }
     }
 
-    private fun recordQuery(key: QueryKey<*, *>) {
-        if (currentlyActiveQuery.isNotEmpty()) {
-            val deps = currentlyActiveQuery.last().dependencies
-            if (!deps.contains(key)) deps += key
+    private fun <K : Any, V> execute(
+        context: QueryExecutionContext,
+        queryKey: QueryKey<K, V>,
+        storage: DerivedValue<V>? = null
+    ): V {
+        val queryRevision = currentRevision
+        val (definition, key) = queryKey
+        val (value, frame) = context.withFrame(queryKey) {
+            definition.execute(context, key)
+        }
+        // Sanity check - a query must not modify the database
+        assert(queryRevision == currentRevision) { "Database revision was modified during query execution." }
+
+        val queryStorage = getQueryStorage(definition)
+        val changedAt = if (storage?.value != null && storage.value == value) {
+            // If the new value is equivalent to the previous value, backdate to the previous value's changedAt
+            storage.changedAt
+        } else {
+            frame.maxRevision
+        }
+        queryStorage[key] = DerivedValue(value, frame.dependencies.toList(), queryRevision, changedAt)
+
+        return value
+    }
+
+    /**
+     * Checks whether a value is guaranteed to be up-to-date as of this revision. Does not check dependencies.
+     */
+    private fun shallowVerify(value: Value<*>): Boolean {
+        return when (value) {
+            is InputValue<*> -> value.changedAt <= currentRevision
+            is DerivedValue<*> -> value.verifiedAt == currentRevision
         }
     }
 
-    private fun trackRevision(revision: Int) {
-        if (currentlyActiveQuery.isNotEmpty()) {
-            val currentFrame = currentlyActiveQuery.last()
-            if (currentFrame.maxRevision < revision) {
-                currentFrame.maxRevision = revision
+    /**
+     * Checks whether a value is up-to-date based on its dependencies.
+     */
+    private fun deepVerify(context: QueryExecutionContext, value: Value<*>): Boolean {
+        return when (value) {
+            is InputValue<*> -> shallowVerify(value)
+            is DerivedValue<*> -> {
+                if (shallowVerify(value)) {
+                    return true
+                }
+
+                val anyDepsChanged = value.dependencies.any { dep ->
+                    get(dep)?.let { maybeChangedAfter(context, dep, it, value.verifiedAt) } ?: true
+                }
+
+                if (!anyDepsChanged) {
+                    value.verifiedAt = currentRevision
+                }
+
+                return false
             }
         }
     }
 
-    private fun recordDependencies(dependencies: List<QueryKey<*, *>>) {
-        if (currentlyActiveQuery.isNotEmpty()) {
-            val deps = currentlyActiveQuery.last().dependencies
-            dependencies.forEach { key ->
-                if (!deps.contains(key)) deps += key
-            }
+    /**
+     * Checks if a value may have changed as of the given revision.
+     */
+    private fun maybeChangedAfter(
+        context: QueryExecutionContext,
+        key: QueryKey<*, *>,
+        value: Value<*>,
+        asOfRevision: Int
+    ): Boolean {
+        if (value is InputValue<*>) {
+            return shallowVerify(value)
         }
+
+        if (shallowVerify(value)) {
+            return value.changedAt > asOfRevision
+        }
+
+        if (deepVerify(context, value)) {
+            return value.changedAt > asOfRevision
+        }
+
+        val newValue = execute(context, key)
+        if (value == newValue) {
+            return false
+        }
+
+        return true
     }
 
     public fun print() {
@@ -153,5 +215,42 @@ public class QueryDatabaseImpl : QueryDatabase {
             }
         }
         println("=========================")
+    }
+
+    internal class QueryExecutionContextImpl(val database: QueryDatabaseImpl) : QueryExecutionContext {
+        private val queryStack: MutableList<QueryFrame<*>> = mutableListOf()
+
+        override fun <K : Any, V> query(definition: QueryDefinition<K, V>, key: K): V = database.fetch(this, definition, key)
+
+        private fun checkCanceled() {}
+
+        override fun pushFrame(key: QueryKey<*, *>) {
+            checkCanceled()
+            if (queryStack.any { it.queryKey == key }) {
+                throw IllegalStateException("Cycle detected: $key already in ${queryStack.joinToString { it.queryKey.queryDef.name }}")
+            }
+            queryStack.add(QueryFrame(key))
+        }
+
+        override fun popFrame(): QueryFrame<*> {
+            val endedFrame = queryStack.removeLast()
+            queryStack.lastOrNull()?.let { priorFrame ->
+                // the completed query is a dependency of the one above it
+                priorFrame.dependencies += endedFrame.queryKey
+                if (priorFrame.maxRevision < endedFrame.maxRevision) {
+                    priorFrame.maxRevision = endedFrame.maxRevision
+                }
+            }
+            return endedFrame
+        }
+
+        override fun addDependency(key: QueryKey<*, *>, revision: Int) {
+            queryStack.lastOrNull()?.let { frame ->
+                frame.dependencies += key
+                if (frame.maxRevision < revision) {
+                    frame.maxRevision = revision
+                }
+            }
+        }
     }
 }

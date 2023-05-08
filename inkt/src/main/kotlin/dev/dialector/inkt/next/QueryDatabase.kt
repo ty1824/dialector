@@ -1,16 +1,30 @@
 package dev.dialector.inkt.next
 
+/**
+ * A context that allows modifying entries in a [QueryDatabase].
+ */
 public interface DatabaseContext : QueryContext {
     /**
      * Assigns an explicit value that will be returned when running this query with the specified key.
      */
-    public operator fun <K, V> QueryDefinition<K, V>.set(key: K, value: V)
+    public fun <K : Any, V> set(definition: QueryDefinition<K, V>, key: K, value: V)
+
+    /**
+     * Assigns an explicit value that will be returned when running this no-arg query.
+     */
+    public fun <V> set(definition: QueryDefinition<Unit, V>, value: V): Unit = set(definition, Unit, value)
 
     /**
      * Clears the query's value for the specified key. If it was explicitly assigned, it will revert back to
      * its original behavior.
      */
-    public fun <K, V> QueryDefinition<K, V>.remove(key: K)
+    public fun <K : Any, V> remove(definition: QueryDefinition<K, V>, key: K)
+
+    /**
+     * Clears the query's value for the specified no-arg query. If it was explicitly assigned, it will revert back to
+     * its original behavior.
+     */
+    public fun <V> remove(definition: QueryDefinition<Unit, V>): Unit = remove(definition, Unit)
 }
 
 /**
@@ -18,7 +32,12 @@ public interface DatabaseContext : QueryContext {
  */
 public interface QueryDatabase {
     /**
-     * Execute commands (set input, invoke queries) on this database.
+     * Creates a read-only transaction against this database. A transaction may not be multithreaded.
      */
-    public fun <T> run(body: DatabaseContext.() -> T): T
+    public fun <T> readTransaction(body: QueryContext.() -> T): T
+
+    /**
+     * Creates a read/write transaction against this database. A transaction may not be multithreaded.
+     */
+    public fun <T> writeTransaction(body: DatabaseContext.() -> T): T
 }
