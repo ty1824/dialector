@@ -94,8 +94,8 @@ class SingleRootScopeGraph private constructor(
         }
     }
 
-    override fun <T : Node> resolve(reference: NodeReference<T>): T? =
-        targets[reference] as T?
+    override fun resolveTarget(reference: NodeReference<*>): Node? =
+        targets[reference]
 
     override fun getVisibleDeclarations(reference: NodeReference<*>): Sequence<Pair<Node, String>> =
         visibleElements[reference].orEmpty()
@@ -306,8 +306,8 @@ class LinearScopeGraph private constructor(
         }
     }
 
-    override fun <T : Node> resolve(reference: NodeReference<T>): T? =
-        referenceScopes[reference]?.getReferenceTarget(reference) as T?
+    override fun resolveTarget(reference: NodeReference<*>): Node? =
+        referenceScopes[reference]?.getReferenceTarget(reference)
 
     override fun getVisibleDeclarations(reference: NodeReference<*>): Sequence<Pair<Node, String>> =
         referenceScopes[reference]?.getReferenceableElements(reference).orEmpty()

@@ -17,7 +17,6 @@ internal object HelloWorldShort {
      */
     val inputs by defineQuery<List<Pair<String, String>>>()
 
-
     val inputString by defineQuery<String, String?> { key: String ->
         query(inputs).find { it.first == key }?.second
     }

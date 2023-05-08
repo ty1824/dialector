@@ -12,7 +12,7 @@ public interface DatabaseContext : QueryContext {
     /**
      * Assigns an explicit value that will be returned when running this no-arg query.
      */
-    public fun <V> set(definition: QueryDefinition<Unit, V>, value: V) = set(definition, Unit, value)
+    public fun <V> set(definition: QueryDefinition<Unit, V>, value: V): Unit = set(definition, Unit, value)
 
     /**
      * Clears the query's value for the specified key. If it was explicitly assigned, it will revert back to
@@ -24,7 +24,7 @@ public interface DatabaseContext : QueryContext {
      * Clears the query's value for the specified no-arg query. If it was explicitly assigned, it will revert back to
      * its original behavior.
      */
-    public fun <V> remove(definition: QueryDefinition<Unit, V>) = remove(definition, Unit)
+    public fun <V> remove(definition: QueryDefinition<Unit, V>): Unit = remove(definition, Unit)
 }
 
 /**

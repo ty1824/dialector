@@ -3,7 +3,6 @@ package dev.dialector.inkt.next
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty
 
-
 /**
  * A query that Inkt can track and incrementalize.
  */
