@@ -163,11 +163,11 @@ public class QueryDatabaseImpl : QueryDatabase {
                     return true
                 }
 
-                val anyDepsChanged = value.dependencies.any { dep ->
+                val noDepsChanged = value.dependencies.none { dep ->
                     get(dep)?.let { maybeChangedAfter(context, dep, it, value.verifiedAt) } ?: true
                 }
 
-                if (!anyDepsChanged) {
+                if (noDepsChanged) {
                     value.verifiedAt = currentRevision
                 }
 

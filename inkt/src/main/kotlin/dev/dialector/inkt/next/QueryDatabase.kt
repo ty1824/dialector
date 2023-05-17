@@ -41,3 +41,23 @@ public interface QueryDatabase {
      */
     public fun <T> writeTransaction(body: DatabaseContext.() -> T): T
 }
+
+/**
+ * Convenience function to execute a single query in a read transaction.
+ */
+public fun <K : Any, V> QueryDatabase.query(definition: QueryDefinition<K, V>, key: K): V =
+    readTransaction { query(definition, key) }
+
+/**
+ * Convenience function to set a single query value in a write transaction.
+ */
+public fun <K : Any, V> QueryDatabase.set(definition: QueryDefinition<K, V>, key: K, value: V) {
+    writeTransaction { set(definition, key, value) }
+}
+
+/**
+ * Convenience function to remove a single query value in a write transaction.
+ */
+public fun <K : Any, V> QueryDatabase.remove(definition: QueryDefinition<K, V>, key: K) {
+    writeTransaction { remove(definition, key) }
+}
