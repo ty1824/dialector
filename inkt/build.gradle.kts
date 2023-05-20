@@ -28,6 +28,14 @@ tasks.withType<Test> {
 }
 
 kover {
+    filters {
+        classes {
+            excludes += listOf(
+                "dev.dialector.inkt.example.*"
+            )
+        }
+    }
+
     xmlReport {
         onCheck.set(true)
     }

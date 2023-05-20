@@ -34,22 +34,6 @@ kover {
     }
 }
 
-//val dokkaOutputDir = "$buildDir/dokka"
-//
-//tasks.getByName("dokkaHtml", DokkaTask::class) {
-//    outputDirectory.set(file(dokkaOutputDir))
-//}
-//
-//val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
-//    delete(dokkaOutputDir)
-//}
-//
-//val javadocJar = tasks.register<Jar>("javadocJar") {
-//    dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
-//    archiveClassifier.set("javadoc")
-//    from(dokkaOutputDir)
-//}
-
 publishing {
     repositories {
         maven {
@@ -69,7 +53,6 @@ publishing {
             }
         }
     }
-    repositories.forEach { println((it as MavenArtifactRepository).url)}
     publications {
         register<MavenPublication>("default") {
             from(components["java"])
