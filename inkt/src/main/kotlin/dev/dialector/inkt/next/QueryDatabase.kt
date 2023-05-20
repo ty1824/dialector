@@ -32,12 +32,14 @@ public interface DatabaseContext : QueryContext {
  */
 public interface QueryDatabase {
     /**
-     * Creates a read-only transaction against this database. A transaction may not be multithreaded.
+     * Creates a read-only transaction against this database.
+     * The entirety of a transaction must run on a single thread.
      */
     public fun <T> readTransaction(body: QueryContext.() -> T): T
 
     /**
-     * Creates a read/write transaction against this database. A transaction may not be multithreaded.
+     * Creates a read/write transaction against this database.
+     * The entirety of a transaction must run on a single thread.
      */
     public fun <T> writeTransaction(body: DatabaseContext.() -> T): T
 }
