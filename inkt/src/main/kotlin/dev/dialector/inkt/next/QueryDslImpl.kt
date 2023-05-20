@@ -11,13 +11,15 @@ internal class QueryDefinitionInitializer<K : Any, V> internal constructor(
     private val name: String?,
     private val logic: QueryFunction<K, V>?
 ) : PropertyDelegateProvider<Any?, QueryDefinitionDelegate<K, V>> {
-    override operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): QueryDefinitionDelegate<K, V> =
-        QueryDefinitionDelegate(
+    override operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): QueryDefinitionDelegate<K, V> {
+        val actualName = name ?: property.name
+        return QueryDefinitionDelegate(
             QueryDefinitionImpl(
-                name ?: property.name,
-                logic ?: { throw NotImplementedError("Query '$name' not implemented or value not set for key '$it'") }
+                actualName,
+                logic ?: { throw NotImplementedError("Query '$actualName' not implemented or value not set for key '$it'") }
             )
         )
+    }
 }
 
 /**
