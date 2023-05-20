@@ -9,10 +9,15 @@ import kotlin.reflect.KProperty
  */
 internal class QueryDefinitionInitializer<K : Any, V> internal constructor(
     private val name: String?,
-    private val logic: QueryContext.(K) -> V
+    private val logic: QueryFunction<K, V>?
 ) : PropertyDelegateProvider<Any?, QueryDefinitionDelegate<K, V>> {
     override operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): QueryDefinitionDelegate<K, V> =
-        QueryDefinitionDelegate(QueryDefinitionImpl(name ?: property.name, logic))
+        QueryDefinitionDelegate(
+            QueryDefinitionImpl(
+                name ?: property.name,
+                logic ?: { throw NotImplementedError("Query '$name' not implemented or value not set for key '$it'") }
+            )
+        )
 }
 
 /**
@@ -25,7 +30,7 @@ internal class QueryDefinitionDelegate<K : Any, V>(private val value: QueryDefin
 
 internal data class QueryDefinitionImpl<K : Any, V>(
     override val name: String,
-    val logic: QueryContext.(K) -> V
+    val logic: QueryFunction<K, V>
 ) : QueryDefinition<K, V> {
     override fun execute(context: QueryContext, key: K): V = context.logic(key)
 }
