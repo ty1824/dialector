@@ -4,6 +4,9 @@ import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
+internal fun <K : Any> notImplementedMessage(name: String, key: K) =
+    "Query '$name' not implemented or value not set for key '$key'"
+
 /**
  * A delegate provider that extracts the property name to use as the query name.
  */
@@ -16,7 +19,7 @@ internal class QueryDefinitionInitializer<K : Any, V> internal constructor(
         return QueryDefinitionDelegate(
             QueryDefinitionImpl(
                 actualName,
-                logic ?: { throw NotImplementedError("Query '$actualName' not implemented or value not set for key '$it'") }
+                logic ?: { throw NotImplementedError(notImplementedMessage(actualName, it)) }
             )
         )
     }

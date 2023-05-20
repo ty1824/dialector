@@ -51,6 +51,12 @@ public fun <K : Any, V> QueryDatabase.query(definition: QueryDefinition<K, V>, k
     readTransaction { query(definition, key) }
 
 /**
+ * Convenience function to execute a single query in a read transaction.
+ */
+public fun <V> QueryDatabase.query(definition: QueryDefinition<Unit, V>): V =
+    readTransaction { query(definition) }
+
+/**
  * Convenience function to set a single query value in a write transaction.
  */
 public fun <K : Any, V> QueryDatabase.set(definition: QueryDefinition<K, V>, key: K, value: V) {
@@ -58,8 +64,22 @@ public fun <K : Any, V> QueryDatabase.set(definition: QueryDefinition<K, V>, key
 }
 
 /**
+ * Convenience function to set a single query value in a write transaction.
+ */
+public fun <V> QueryDatabase.set(definition: QueryDefinition<Unit, V>, value: V) {
+    writeTransaction { set(definition, value) }
+}
+
+/**
  * Convenience function to remove a single query value in a write transaction.
  */
 public fun <K : Any, V> QueryDatabase.remove(definition: QueryDefinition<K, V>, key: K) {
     writeTransaction { remove(definition, key) }
+}
+
+/**
+ * Convenience function to remove a single query value in a write transaction.
+ */
+public fun <V> QueryDatabase.remove(definition: QueryDefinition<Unit, V>) {
+    writeTransaction { remove(definition) }
 }

@@ -80,20 +80,25 @@ public class QueryDatabaseImpl : QueryDatabase {
                 currentValue.value = value
                 currentValue.changedAt = ++currentRevision
             }
-            else -> {
-                queryStorage[key] = InputValue(value, ++currentRevision)
-            }
+            else -> queryStorage[key] = InputValue(value, ++currentRevision)
         }
     }
 
     private fun <K : Any, V> remove(inputDef: QueryDefinition<K, V>, key: K) {
         getQueryStorage(inputDef).remove(key)
+        ++currentRevision
     }
 
+    /**
+     * Obtains a value for a given query def and key
+     */
     private fun <K : Any, V> query(queryDef: QueryDefinition<K, V>, key: K): V = synchronized(lock) {
         fetch(QueryExecutionContextImpl(this), queryDef, key)
     }
 
+    /**
+     * Obtains a value for a given query def and key using an existing QueryExecutionContext
+     */
     private fun <K : Any, V> fetch(context: QueryExecutionContext, queryDef: QueryDefinition<K, V>, key: K): V {
         val queryKey = QueryKey(queryDef, key)
         val queryStorage = getQueryStorage(queryDef)
@@ -154,6 +159,8 @@ public class QueryDatabaseImpl : QueryDatabase {
 
     /**
      * Checks whether a value is up-to-date based on its dependencies.
+     *
+     * Returns true if the value is considered up-to-date, false if it must be recomputed.
      */
     private fun deepVerify(context: QueryExecutionContext, value: Value<*>): Boolean {
         return when (value) {
@@ -164,7 +171,11 @@ public class QueryDatabaseImpl : QueryDatabase {
                 }
 
                 val noDepsChanged = value.dependencies.none { dep ->
-                    get(dep)?.let { maybeChangedAfter(context, dep, it, value.verifiedAt) } ?: true
+                    // If the dependency exists, check if it may have changed.
+                    // If it does not exist, it has "changed" (likely removed) and thus must be recomputed.
+                    get(dep)?.let {
+                        maybeChangedAfter(context, dep, it, value.verifiedAt)
+                    } ?: true
                 }
 
                 if (noDepsChanged) {
@@ -217,7 +228,7 @@ public class QueryDatabaseImpl : QueryDatabase {
         println("=========================")
     }
 
-    internal class QueryExecutionContextImpl(val database: QueryDatabaseImpl) : QueryExecutionContext {
+    internal class QueryExecutionContextImpl(private val database: QueryDatabaseImpl) : QueryExecutionContext {
         private val queryStack: MutableList<QueryFrame<*>> = mutableListOf()
 
         override fun <K : Any, V> query(definition: QueryDefinition<K, V>, key: K): V = database.fetch(this, definition, key)
@@ -227,7 +238,9 @@ public class QueryDatabaseImpl : QueryDatabase {
         override fun pushFrame(key: QueryKey<*, *>) {
             checkCanceled()
             if (queryStack.any { it.queryKey == key }) {
-                throw IllegalStateException("Cycle detected: $key already in ${queryStack.joinToString { it.queryKey.queryDef.name }}")
+                throw IllegalStateException(
+                    "Cycle detected: $key already in ${queryStack.joinToString { it.queryKey.queryDef.name }}"
+                )
             }
             queryStack.add(QueryFrame(key))
         }
