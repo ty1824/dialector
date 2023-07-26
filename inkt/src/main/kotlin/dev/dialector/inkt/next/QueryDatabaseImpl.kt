@@ -1,6 +1,8 @@
 package dev.dialector.inkt.next
 
-internal data class QueryKey<K : Any, V>(val queryDef: QueryDefinition<K, V>, val key: K)
+internal data class QueryKey<K : Any, V>(val queryDef: QueryDefinition<K, V>, val key: K) {
+    fun presentation(): String = "(${queryDef.name}, $key"
+}
 
 internal sealed interface Value<V> {
     var value: V
@@ -239,7 +241,7 @@ public class QueryDatabaseImpl : QueryDatabase {
             checkCanceled()
             if (queryStack.any { it.queryKey == key }) {
                 throw IllegalStateException(
-                    "Cycle detected: $key already in ${queryStack.joinToString { it.queryKey.queryDef.name }}"
+                    "Cycle detected: ${key.presentation()} already in ${queryStack.joinToString { it.queryKey.presentation() }}"
                 )
             }
             queryStack.add(QueryFrame(key))
