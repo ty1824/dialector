@@ -37,4 +37,15 @@ subprojects {
     repositories {
         mavenCentral()
     }
+
+    // configure Kotlin to allow these opt-in features throughout the project
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            freeCompilerArgs.addAll(
+                "-opt-in=kotlin.time.ExperimentalTime",
+                "-opt-in=kotlin.contracts.ExperimentalContracts",
+                "-Xcontext-receivers"
+            )
+        }
+    }
 }

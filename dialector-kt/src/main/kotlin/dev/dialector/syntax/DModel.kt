@@ -32,15 +32,18 @@ public interface ReferenceResolver {
     public fun resolveTarget(reference: NodeReference<*>): Any?
 }
 public inline fun <reified T : Node> ReferenceResolver.resolve(reference: NodeReference<T>): T? =
-    resolveTarget(reference) as T?
+    resolveTarget(reference) as? T
 
 /**
  * A context that provides a resolution mechanism for [NodeReference]s
  */
 public interface ReferenceResolutionContext {
     public fun NodeReference<*>.resolveTarget(reference: NodeReference<*>): Any?
-    public fun <T : Node> NodeReference<T>.resolve(): T?
 }
+
+context(ReferenceResolutionContext)
+public inline fun <reified T : Node> NodeReference<*>.resolve(reference: NodeReference<T>): T? =
+        resolveTarget(reference) as? T
 
 /**
  * A reference to another [Node]. References must be resolved by an external resolver.
