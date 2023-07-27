@@ -48,7 +48,8 @@ interface CompletionProvider : LspCapability {
      */
     val resolveProvider: ResolveProvider?
 
-    fun completion(server: DialectorServer, params: CompletionParams /* TODO: make this specific to Dialector */): CompletionList
+    /* TODO: make API specific to Dialector rather than using CompletionParams */
+    fun completion(server: DialectorServer, params: CompletionParams): CompletionList
 }
 
 abstract class DefaultCompletionProvider : CompletionProvider {

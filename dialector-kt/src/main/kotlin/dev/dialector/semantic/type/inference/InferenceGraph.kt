@@ -59,7 +59,7 @@ class InferenceSys {
  * An [InferenceVariable] is a special [Type] that represents a "hole" in the type system.
  */
 class InferenceVariable internal constructor(
-    val id: Int
+    val id: Int,
     /*val context: VariableContext*/
 ) : Type {
     override fun equals(other: Any?): Boolean = this === other
@@ -88,12 +88,12 @@ enum class Directionality {
     /**
      * The effect is mutually applied, from "left" to "right" and "right" to "left".
      */
-    Bidirectional
+    Bidirectional,
 }
 
 data class InferenceConstraint(
     val left: Term,
-    val right: Term
+    val right: Term,
     /*val directionality: Directionality = Directionality.Left,*/
     /*val context: ConstraintContext*/
 )
@@ -154,7 +154,7 @@ interface IncorporationRule
 class InferenceState(
     val lattice: TypeLattice,
     val reductionRules: List<ReductionRule>,
-    val incorporationRules: List<IncorporationRule>
+    val incorporationRules: List<IncorporationRule>,
 ) {
     val constraints: MutableSet<InferenceConstraint> = mutableSetOf()
     val currentConstraints: MutableList<InferenceConstraint> = mutableListOf()

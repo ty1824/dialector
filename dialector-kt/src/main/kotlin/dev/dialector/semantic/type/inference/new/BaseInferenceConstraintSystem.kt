@@ -59,7 +59,7 @@ typealias ReductionRoutine = ReductionContext.(constraint: RelationalConstraint)
 
 private class SimpleReductionRule(
     override val isValidFor: RelationalConstraintClause,
-    override val reduce: ReductionRoutine
+    override val reduce: ReductionRoutine,
 ) : ReductionRule
 
 infix fun RelationalConstraintClause.reducesTo(routine: ReductionRoutine): ReductionRule = SimpleReductionRule(this, routine)
@@ -89,7 +89,7 @@ private class BaseInferenceVariable(override val id: String) : InferenceVariable
 data class BaseBound(
     override val relation: TypeRelation,
     override val variable: InferenceVariable,
-    override val boundingType: Type
+    override val boundingType: Type,
 ) : Bound
 
 sealed class BoundGraphNode {
@@ -218,7 +218,7 @@ class BoundSystemGraph {
 
 class BaseInferenceContext(
     val createVariable: () -> InferenceVariable,
-    val addConstraint: (InferenceConstraint) -> Unit
+    val addConstraint: (InferenceConstraint) -> Unit,
 ) : InferenceContext, ConstraintCreator by SimpleConstraintCreator {
     override fun typeVar(): InferenceVariable = createVariable()
 
@@ -233,7 +233,7 @@ class BaseReductionContext(
     constraint: RelationalConstraint,
     rule: ReductionRule,
     private val addConstraint: (RelationalConstraint, InferenceOrigin) -> Unit,
-    private val addBound: (Bound, InferenceOrigin) -> Unit
+    private val addBound: (Bound, InferenceOrigin) -> Unit,
 ) : ReductionContext {
     private val origin = ReducedFromConstraint(constraint, rule)
     override fun constraint(routine: ConstraintCreator.() -> RelationalConstraint) {
@@ -324,7 +324,7 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
     private fun reduce(
         reductionRules: List<ReductionRule>,
         constraints: ConstraintSystem,
-        bounds: BoundSystemGraph
+        bounds: BoundSystemGraph,
     ) {
         constraints.reduce { constraint ->
             when (val currentConstraint = constraint) {
@@ -341,7 +341,7 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
                             },
                             { bound, origin ->
                                 bounds.addBound(bound, origin)
-                            }
+                            },
                         )
                         reductionContext.reduce(currentConstraint)
                     }
@@ -353,7 +353,7 @@ class BaseInferenceConstraintSystem : InferenceConstraintSystem {
 
     private fun incorporate(
         constraints: ConstraintSystem,
-        boundSystem: BoundSystemGraph
+        boundSystem: BoundSystemGraph,
     ) {
         SimpleConstraintCreator.apply {
             // TODO: Handle constraint origin once supported

@@ -56,6 +56,6 @@ public class DataGraph<N, E> {
         public val data: E,
         public val source: Node<N, E>,
         public val target: Node<N, E>,
-        public val bidirectional: Boolean = false
+        public val bidirectional: Boolean = false,
     )
 }

@@ -16,7 +16,7 @@ public class SimpleTypeLattice(
     supertypeRelations: Collection<SupertypeRelation<*>>,
     subtypeRules: Collection<SupertypeRule>,
     override val topType: Type = AnyType,
-    override val bottomType: Type = NoneType
+    override val bottomType: Type = NoneType,
 ) : TypeLattice {
     private val supertypeRelations: List<SupertypeRelation<*>> = supertypeRelations.toList()
     private val supertypeRule: List<SupertypeRule> = subtypeRules.toList()

@@ -42,7 +42,7 @@ class InferenceEngineTest {
             "variable results",
             { assertEquals(booleanType, (result[var1] as TypeResult.Success).type) },
             { assertEquals(booleanType, (result[var2] as TypeResult.Success).type) },
-            { assertEquals(stringType, (result[var3] as TypeResult.Success).type) }
+            { assertEquals(stringType, (result[var3] as TypeResult.Success).type) },
         )
     }
 
@@ -73,9 +73,9 @@ class InferenceEngineTest {
                 // integer < number
                 type(integerType) hasSupertypes sequenceOf(numberType),
                 // ~all types~ < any
-                typeClass<Type>() hasSupertypes sequenceOf(anyType)
+                typeClass<Type>() hasSupertypes sequenceOf(anyType),
             ),
-            listOf()
+            listOf(),
         )
 
         val system = BaseInferenceSystem(lattice)
@@ -93,7 +93,7 @@ class InferenceEngineTest {
         assertAll(
             "variable results",
             { assertEquals(integerType, result typeFor var1) },
-            { assertEquals(integerType, result typeFor var2) }
+            { assertEquals(integerType, result typeFor var2) },
         )
     }
 
@@ -104,9 +104,9 @@ class InferenceEngineTest {
                 // integer < number
                 type(integerType) hasSupertypes sequenceOf(numberType),
                 // ~all types~ < any
-                typeClass<Type>() hasSupertypes sequenceOf(anyType)
+                typeClass<Type>() hasSupertypes sequenceOf(anyType),
             ),
-            listOf()
+            listOf(),
         )
 
         val system = BaseInferenceSystem(lattice)
@@ -138,7 +138,7 @@ class InferenceEngineTest {
             { assertEquals(numberType, result typeFor numberVar) },
             { assertEquals(anyType, result typeFor anyVar) },
             { assertEquals(numberType, result typeFor inferredNumberVar) },
-            { assertEquals(anyType, result typeFor inferredAnyVar) }
+            { assertEquals(anyType, result typeFor inferredAnyVar) },
         )
     }
 
@@ -149,9 +149,9 @@ class InferenceEngineTest {
                 // integer < number
                 type(integerType) hasSupertypes sequenceOf(numberType),
                 // ~all types~ < any
-                typeClass<Type>() hasSupertypes sequenceOf(anyType)
+                typeClass<Type>() hasSupertypes sequenceOf(anyType),
             ),
-            listOf()
+            listOf(),
         )
 
         val system = BaseInferenceSystem(lattice)
@@ -187,7 +187,7 @@ class InferenceEngineTest {
             { assertEquals(numberType, result typeFor numberVar) },
             { assertEquals(anyType, result typeFor anyVar) },
             { assertEquals(numberType, result typeFor inferredNumberVar) },
-            { assertEquals(anyType, result typeFor inferredAnyVar) }
+            { assertEquals(anyType, result typeFor inferredAnyVar) },
         )
     }
 }

@@ -21,7 +21,7 @@ internal class MutableInferenceGroup(
     variableTerms: Set<VariableTerm>,
     typeTerms: Set<TypeTerm> = setOf(),
     upperBounds: Set<MutableInferenceGroup> = setOf(),
-    lowerBounds: Set<MutableInferenceGroup> = setOf()
+    lowerBounds: Set<MutableInferenceGroup> = setOf(),
 ) : InferenceGroup {
     override val variableTerms: MutableSet<VariableTerm> = variableTerms.toMutableSet()
     override val typeTerms: MutableSet<TypeTerm> = typeTerms.toMutableSet()

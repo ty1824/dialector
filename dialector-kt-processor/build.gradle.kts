@@ -10,6 +10,7 @@ plugins {
 }
 
 val kspVersion: String by project
+val ktlintVersion: String by project
 
 repositories {
     google()
@@ -22,6 +23,9 @@ dependencies {
     implementation("com.squareup:kotlinpoet-ksp:1.12.0")
     implementation("com.google.devtools.ksp:symbol-processing-api:$kspVersion")
     implementation(kotlin("reflect"))
+    implementation("com.pinterest.ktlint:ktlint-core:$ktlintVersion")
+    implementation("com.pinterest.ktlint:ktlint-rule-engine:$ktlintVersion")
+    implementation("com.pinterest.ktlint:ktlint-ruleset-standard:$ktlintVersion")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation(project(":dialector-kt"))

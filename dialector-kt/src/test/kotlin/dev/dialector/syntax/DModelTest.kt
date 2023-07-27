@@ -70,14 +70,14 @@ class DModelTest {
 
             assertContentEquals(
                 sequenceOf(root, childOne, childTwo, grandchildThree, grandchildOne, grandchildTwo),
-                allRootDescendantsInclusive
+                allRootDescendantsInclusive,
             )
 
             val allChildDescendantsInclusive = childTwo.getAllDescendants(true)
             assertContains(
                 allChildDescendantsInclusive,
                 childTwo,
-                "Expected to find $childOne in $allRootDescendantsInclusive"
+                "Expected to find $childOne in $allRootDescendantsInclusive",
             )
             val allChildDescendants = childTwo.getAllDescendants()
             assertFalse(allChildDescendants.contains(childTwo), "Expected to not find $root in $allRootDescendants")
@@ -119,14 +119,14 @@ class DModelTest {
 
         assertContentEquals(
             sequenceOf(grandchildTwo, childTwo, root),
-            grandchildTwoAncestorsInclusive
+            grandchildTwoAncestorsInclusive,
         )
 
         val childTwoAncestorsInclusive = childTwo.getAllAncestors(true)
         assertContains(
             childTwoAncestorsInclusive,
             childTwo,
-            "Expected to find $childOne in $childTwoAncestorsInclusive"
+            "Expected to find $childOne in $childTwoAncestorsInclusive",
         )
         val childTwoAncestors = childTwo.getAllAncestors()
         assertFalse(childTwoAncestors.contains(childTwo), "Expected to not find $childTwo in $childTwoAncestors")

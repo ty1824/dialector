@@ -134,7 +134,7 @@ interface DialectorServer {
 class DialectorLanguageServerAdapter(
     private val server: DialectorServer,
     private val workspaceService: DialectorWorkspaceService,
-    private val textDocumentService: DialectorTextDocumentService
+    private val textDocumentService: DialectorTextDocumentService,
 ) : LanguageServer, LanguageClientAware {
 
     lateinit var client: LanguageClient
@@ -169,7 +169,7 @@ class DialectorLanguageServerAdapter(
                     save = Either.forRight(opts.save?.saveOptions)
                     willSave = opts.willSave != null
                     willSaveWaitUntil = opts.willSaveWaitUntil != null
-                }
+                },
             )
             completionProvider = CompletionOptions()
         }

@@ -29,7 +29,7 @@ interface ProgramInferenceContext : InferenceContext {
 class BaseProgramInferenceContext(
     override val semantics: SemanticAnalysisContext,
     createVariable: () -> InferenceVariable,
-    addConstraint: (InferenceConstraint) -> Unit
+    addConstraint: (InferenceConstraint) -> Unit,
 ) : InferenceContext by BaseInferenceContext(createVariable, addConstraint), ProgramInferenceContext {
     val nodeVariables: MutableMap<Node, InferenceVariable> = mutableMapOf()
 

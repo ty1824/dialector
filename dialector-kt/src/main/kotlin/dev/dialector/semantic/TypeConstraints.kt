@@ -10,7 +10,8 @@ public interface TypeVariable : Type, SemanticVariable {
 public enum class TypeRelation(public val symbol: String) {
     SUBTYPE("<"),
     SUPERTYPE(">"),
-    EQUIVALENT("=");
+    EQUIVALENT("="),
+    ;
 
     public fun opposite(): TypeRelation = when (this) {
         SUBTYPE -> SUPERTYPE
@@ -23,7 +24,7 @@ public enum class TypeRelation(public val symbol: String) {
 
 public enum class VariableConstraintKind {
     PULL_UP,
-    PUSH_DOWN
+    PUSH_DOWN,
 }
 
 /**
@@ -34,7 +35,7 @@ public enum class VariableConstraintKind {
  */
 public data class TypeVariableConstraint(
     val variable: TypeVariable,
-    val kind: VariableConstraintKind
+    val kind: VariableConstraintKind,
 ) : SemanticConstraint
 
 /**
@@ -47,7 +48,7 @@ public data class TypeRelationConstraint(
     val relation: TypeRelation,
     val left: Type,
     val right: Type,
-    val mutual: Boolean = false
+    val mutual: Boolean = false,
 ) : SemanticConstraint
 
 public object Types : ConstraintCreator {

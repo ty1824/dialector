@@ -1,6 +1,8 @@
 package dev.dialector.inkt.next
 
-internal data class QueryKey<K : Any, V>(val queryDef: QueryDefinition<K, V>, val key: K)
+internal data class QueryKey<K : Any, V>(val queryDef: QueryDefinition<K, V>, val key: K) {
+    fun presentation(): String = "(${queryDef.name}, $key"
+}
 
 internal sealed interface Value<V> {
     var value: V
@@ -13,13 +15,13 @@ internal data class DerivedValue<V>(
     override var value: V,
     var dependencies: List<QueryKey<*, *>>,
     var verifiedAt: Int,
-    override var changedAt: Int
+    override var changedAt: Int,
 ) : Value<V>
 
 internal class QueryFrame<K : Any>(
     val queryKey: QueryKey<K, *>,
     var maxRevision: Int = 0,
-    val dependencies: MutableList<QueryKey<*, *>> = mutableListOf()
+    val dependencies: MutableList<QueryKey<*, *>> = mutableListOf(),
 )
 
 internal interface QueryExecutionContext : QueryContext {
@@ -125,7 +127,7 @@ public class QueryDatabaseImpl : QueryDatabase {
     private fun <K : Any, V> execute(
         context: QueryExecutionContext,
         queryKey: QueryKey<K, V>,
-        storage: DerivedValue<V>? = null
+        storage: DerivedValue<V>? = null,
     ): V {
         val queryRevision = currentRevision
         val (definition, key) = queryKey
@@ -194,7 +196,7 @@ public class QueryDatabaseImpl : QueryDatabase {
         context: QueryExecutionContext,
         key: QueryKey<*, *>,
         value: Value<*>,
-        asOfRevision: Int
+        asOfRevision: Int,
     ): Boolean {
         if (value is InputValue<*>) {
             return shallowVerify(value)
@@ -239,7 +241,7 @@ public class QueryDatabaseImpl : QueryDatabase {
             checkCanceled()
             if (queryStack.any { it.queryKey == key }) {
                 throw IllegalStateException(
-                    "Cycle detected: $key already in ${queryStack.joinToString { it.queryKey.queryDef.name }}"
+                    "Cycle detected: ${key.presentation()} already in ${queryStack.joinToString { it.queryKey.presentation() }}",
                 )
             }
             queryStack.add(QueryFrame(key))

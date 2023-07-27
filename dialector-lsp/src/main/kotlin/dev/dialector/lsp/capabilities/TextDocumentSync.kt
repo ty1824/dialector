@@ -66,7 +66,7 @@ interface TextDocumentSync : LspCapability {
 open class DefaultTextDocumentSync(
     override val save: TextDocumentSync.SaveCapability? = null,
     override val willSave: TextDocumentSync.WillSaveCapability? = null,
-    override val willSaveWaitUntil: TextDocumentSync.WillSaveWaitUntilCapability? = null
+    override val willSaveWaitUntil: TextDocumentSync.WillSaveWaitUntilCapability? = null,
 ) : TextDocumentSync {
     override val openClose = true
     override val change = TextDocumentSyncKind.Full

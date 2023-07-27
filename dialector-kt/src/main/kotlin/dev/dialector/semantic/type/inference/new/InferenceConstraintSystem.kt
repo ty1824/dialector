@@ -30,7 +30,8 @@ interface InferenceVariable : Type {
 enum class TypeRelation(val symbol: String) {
     SUBTYPE("<"),
     SUPERTYPE(">"),
-    EQUIVALENT("=");
+    EQUIVALENT("="),
+    ;
 
     fun opposite(): TypeRelation = when (this) {
         SUBTYPE -> SUPERTYPE
@@ -43,7 +44,7 @@ enum class TypeRelation(val symbol: String) {
 
 enum class VariableConstraintKind {
     PULL_UP,
-    PUSH_DOWN
+    PUSH_DOWN,
 }
 
 interface InferenceOrigin
@@ -52,14 +53,14 @@ sealed class InferenceConstraint
 
 data class VariableConstraint(
     val variable: InferenceVariable,
-    val kind: VariableConstraintKind
+    val kind: VariableConstraintKind,
 ) : InferenceConstraint()
 
 data class RelationalConstraint(
     val relation: TypeRelation,
     val left: Type,
     val right: Type,
-    val mutual: Boolean = false
+    val mutual: Boolean = false,
 ) : InferenceConstraint()
 
 interface Bound {
