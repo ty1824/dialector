@@ -35,7 +35,7 @@ class InferenceEngineTest {
                 "variable results",
                 { assertEquals(listOf(booleanType), result[var1]) },
                 { assertEquals(listOf(booleanType), result[var2]) },
-                { assertEquals(listOf(stringType), result[var3]) }
+                { assertEquals(listOf(stringType), result[var3]) },
             )
         }
     }
@@ -77,7 +77,7 @@ class InferenceEngineTest {
             assertAll(
                 "variable results",
                 { assertEquals(listOf(integerType), result[var1]) },
-                { assertEquals(listOf(integerType), result[var2]) }
+                { assertEquals(listOf(integerType), result[var2]) },
             )
         }
     }
@@ -111,7 +111,7 @@ class InferenceEngineTest {
                 { assertEquals(listOf(numberType), result[numberVar]) },
                 { assertEquals(listOf(anyType), result[anyVar]) },
                 { assertEquals(listOf(numberType), result[inferredNumberVar]) },
-                { assertEquals(listOf(anyType), result[inferredAnyVar]) }
+                { assertEquals(listOf(anyType), result[inferredAnyVar]) },
             )
         }
     }
@@ -149,7 +149,7 @@ class InferenceEngineTest {
                 { assertEquals(listOf(numberType), result[numberVar]) },
                 { assertEquals(listOf(anyType), result[anyVar]) },
                 { assertEquals(listOf(numberType), result[inferredNumberVar]) },
-                { assertEquals(listOf(anyType), result[inferredAnyVar]) }
+                { assertEquals(listOf(anyType), result[inferredAnyVar]) },
             )
         }
     }

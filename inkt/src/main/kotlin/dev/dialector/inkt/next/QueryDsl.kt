@@ -44,7 +44,7 @@ public typealias NoArgQueryFunction<V> = QueryContext.() -> V
  */
 public fun <K : Any, V> defineQuery(
     name: String? = null,
-    implementation: QueryFunction<K, V>? = null
+    implementation: QueryFunction<K, V>? = null,
 ): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, QueryDefinition<K, V>>> =
     QueryDefinitionInitializer(name, implementation)
 
@@ -59,9 +59,9 @@ public fun <K : Any, V> defineQuery(
  */
 public fun <V> defineQuery(
     name: String? = null,
-    implementation: NoArgQueryFunction<V>? = null
+    implementation: NoArgQueryFunction<V>? = null,
 ): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, QueryDefinition<Unit, V>>> =
     QueryDefinitionInitializer(
         name,
-        if (implementation != null) { { implementation() } } else null
+        if (implementation != null) { { implementation() } } else null,
     )

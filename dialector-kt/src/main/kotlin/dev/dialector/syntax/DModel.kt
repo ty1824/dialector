@@ -43,7 +43,7 @@ public interface ReferenceResolutionContext {
 
 context(ReferenceResolutionContext)
 public inline fun <reified T : Node> NodeReference<*>.resolve(reference: NodeReference<T>): T? =
-        resolveTarget(reference) as? T
+    resolveTarget(reference) as? T
 
 /**
  * A reference to another [Node]. References must be resolved by an external resolver.
@@ -73,7 +73,7 @@ internal class IncompleteNodeReference<T : Node>(override val targetIdentifier: 
 public data class NodeReferenceImpl<T : Node>(
     override val sourceNode: Node,
     override val relation: KProperty<NodeReference<T>?>,
-    override val targetIdentifier: String
+    override val targetIdentifier: String,
 ) : NodeReference<T>
 
 @Deprecated("Direct creation of node references is not supported by default, use generated reference builders or a custom implementation")

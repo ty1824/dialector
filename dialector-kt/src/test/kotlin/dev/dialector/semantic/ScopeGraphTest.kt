@@ -67,7 +67,7 @@ class ScopeGraphTest {
 
         assertFalse(
             graph.getDeclarations(childScope).contains(name to element),
-            "Immediate child scope should not contain parent element"
+            "Immediate child scope should not contain parent element",
         )
         assertContains(graph.getAllDeclarations(childScope), name to element)
     }

@@ -18,7 +18,7 @@ public annotation class NodeDefinition(
     /**
      * Determines whether this node should be instantiable or not.
      */
-    val abstract: Boolean = false
+    val abstract: Boolean = false,
 )
 
 /**
@@ -26,7 +26,13 @@ public annotation class NodeDefinition(
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.PROPERTY)
-public annotation class Property
+public annotation class Property(
+    /**
+     * Indicates that this property has a default value defined. A generated builder
+     * use the default if no value was assigned.
+     */
+    val hasDefault: Boolean = false,
+)
 
 /**
  * Represents a child of this node.

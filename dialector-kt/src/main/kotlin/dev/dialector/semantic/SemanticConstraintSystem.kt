@@ -75,7 +75,7 @@ public data class ReferencedTypeConstraint(
     val scope: ScopeVariable,
     val namespace: Namespace,
     val reference: NodeReference<out Node>,
-    val variable: TypeVariable
+    val variable: TypeVariable,
 ) : SemanticConstraint
 
 /**
@@ -88,7 +88,7 @@ public data class TypeScopeConstraint(
     /** The type from which to derive the scope. */
     val type: Type,
     /** Describes this inheritance relation for debugging purposes. */
-    val label: String
+    val label: String,
 ) : SemanticConstraint
 
 /**
@@ -100,7 +100,7 @@ public data class DeclareElementTypeConstraint(
     val scope: ScopeVariable,
     val namespace: Namespace,
     val name: String,
-    val type: Type
+    val type: Type,
 ) : SemanticConstraint
 
 public object TypeScopes : ConstraintCreator {
@@ -221,7 +221,7 @@ public typealias ReductionRoutine = ReductionContext.(constraint: TypeRelationCo
 private class SimpleReductionRule<T : SemanticConstraint>(
     override val name: String,
     override val isValidFor: ConstraintClause<T>,
-    override val reduce: ReductionContext.(T) -> Unit
+    override val reduce: ReductionContext.(T) -> Unit,
 ) : ReductionRule<T>
 
 public fun <T : SemanticConstraint> ConstraintClause<T>.reducesTo(name: String, routine: ReductionContext.(T) -> Unit): ReductionRule<T> =
@@ -277,7 +277,7 @@ public interface Bound {
 public data class BaseBound(
     override val relation: TypeRelation,
     override val variable: TypeVariable,
-    override val boundingType: Type
+    override val boundingType: Type,
 ) : Bound
 
 /*

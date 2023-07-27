@@ -14,7 +14,7 @@ import dev.dialector.syntax.getAllDescendants
 
 class IterativeTypeConstraintSolver(
     private val typeSystem: TypeSystem,
-    private val onComplete: (InferenceResult) -> Unit
+    private val onComplete: (InferenceResult) -> Unit,
 ) : IterativeSolver {
 
     private lateinit var inferenceConstraintSystem: BaseInferenceConstraintSystem
@@ -82,7 +82,7 @@ class IterativeTypeConstraintSolver(
 private fun reduce(
     reductionRules: List<ReductionRule>,
     constraints: ConstraintSystem,
-    bounds: BoundSystemGraph
+    bounds: BoundSystemGraph,
 ) {
     constraints.reduce { constraint ->
         when (val currentConstraint = constraint) {
@@ -99,7 +99,7 @@ private fun reduce(
                         },
                         { bound, origin ->
                             bounds.addBound(bound, origin)
-                        }
+                        },
                     )
                     reductionContext.reduce(currentConstraint)
                 }
@@ -111,7 +111,7 @@ private fun reduce(
 
 private fun incorporate(
     constraints: ConstraintSystem,
-    boundSystem: BoundSystemGraph
+    boundSystem: BoundSystemGraph,
 ) {
     SimpleConstraintCreator.apply {
         // TODO: Handle constraint origin once supported

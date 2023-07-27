@@ -60,7 +60,7 @@ interface ScopeGraph : ReferenceResolver {
 
 class SingleRootScopeGraph private constructor(
     private val targets: Map<NodeReference<*>, Node>,
-    private val visibleElements: Map<NodeReference<*>, Sequence<Pair<Node, String>>>
+    private val visibleElements: Map<NodeReference<*>, Sequence<Pair<Node, String>>>,
 ) : ScopeGraph {
     companion object {
         suspend operator fun invoke(root: Node, rules: List<ScopeTraversalRule<out Node>>): SingleRootScopeGraph {
@@ -166,13 +166,13 @@ class LinearScopeDescriptor(private val onReference: ReferenceHandler) : ScopeDe
     private data class ExplicitDeclaration(
         override val namespace: Namespace,
         override val node: Node,
-        override val identifier: String
+        override val identifier: String,
     ) : Declaration
 
     private data class AliasDeclaration(
         val forDeclaration: Declaration,
         override val namespace: Namespace,
-        override val identifier: String
+        override val identifier: String,
     ) : Declaration {
         override val node: Node
             get() = forDeclaration.node
@@ -180,7 +180,7 @@ class LinearScopeDescriptor(private val onReference: ReferenceHandler) : ScopeDe
 
     private data class IncomingReference(
         val namespace: Namespace,
-        val index: Int
+        val index: Int,
     )
 
     private val declarations: MutableList<Declaration> = mutableListOf()
@@ -263,7 +263,7 @@ class LinearScopeDescriptor(private val onReference: ReferenceHandler) : ScopeDe
 
 class SimpleScopeTraversalContext(
     val createScope: () -> ScopeDescriptor,
-    val onTraversal: suspend ScopeTraversalContext.(node: Node, scope: ScopeDescriptor) -> Unit
+    val onTraversal: suspend ScopeTraversalContext.(node: Node, scope: ScopeDescriptor) -> Unit,
 ) : ScopeTraversalContext {
 
     override val semantics: SemanticAnalysisContext =
@@ -275,7 +275,7 @@ class SimpleScopeTraversalContext(
 }
 
 class LinearScopeGraph private constructor(
-    private val referenceScopes: Map<NodeReference<*>, LinearScopeDescriptor>
+    private val referenceScopes: Map<NodeReference<*>, LinearScopeDescriptor>,
 ) : ScopeGraph {
     companion object {
         suspend operator fun invoke(root: Node, rules: List<ScopeTraversalRule<out Node>>): LinearScopeGraph {

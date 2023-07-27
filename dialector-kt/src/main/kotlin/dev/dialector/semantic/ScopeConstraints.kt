@@ -23,7 +23,7 @@ public interface ScopeVariable : SemanticVariable {
 public data class InheritScopeConstraint(
     val scope: ScopeVariable,
     val inheritFrom: ScopeVariable,
-    val label: String
+    val label: String,
 ) : SemanticConstraint
 
 /**
@@ -33,7 +33,7 @@ public data class DeclareElementConstraint(
     val scope: ScopeVariable,
     val namespace: Namespace,
     val element: Node,
-    val name: String
+    val name: String,
 ) : SemanticConstraint
 
 /**
@@ -44,7 +44,7 @@ public data class AliasElementConstraint(
     val namespace: Namespace,
     val original: String,
     val aliasNamespace: Namespace,
-    val alias: String
+    val alias: String,
 ) : SemanticConstraint
 
 /**
@@ -56,7 +56,7 @@ public data class ReferenceIdentifierConstraint(
     /** The [Namespace] the search should use */
     val namespace: Namespace,
     /** The [NodeReference] to resolve */
-    val reference: NodeReference<out Node>
+    val reference: NodeReference<out Node>,
 ) : SemanticConstraint
 
 public object Scopes : ConstraintCreator {

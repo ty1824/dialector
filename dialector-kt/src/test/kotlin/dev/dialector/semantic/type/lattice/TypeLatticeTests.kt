@@ -25,9 +25,9 @@ class TypeLatticeTests {
         val lattice = SimpleTypeLattice(
             listOf(
                 type(A) hasSupertypes sequenceOf(B),
-                type(B) hasSupertypes sequenceOf(C)
+                type(B) hasSupertypes sequenceOf(C),
             ),
-            listOf()
+            listOf(),
         )
 
         assertAll(
@@ -40,7 +40,7 @@ class TypeLatticeTests {
             { assertTrue(lattice.isSubtypeOf(A, C), "Type c should be transitive supertype of a") },
             { assertFalse(lattice.isSubtypeOf(C, A), "Type c should not be subtype of a") },
             { assertFalse(lattice.isSubtypeOf(C, B), "Type c should not be subtype of a") },
-            { assertFalse(lattice.isSubtypeOf(B, A), "Type c should not be subtype of a") }
+            { assertFalse(lattice.isSubtypeOf(B, A), "Type c should not be subtype of a") },
         )
     }
 
@@ -52,16 +52,16 @@ class TypeLatticeTests {
                 type(A) hasSupertypes sequenceOf(C),
                 type(B) hasSupertypes sequenceOf(C),
                 type(D) hasSupertypes sequenceOf(C, E),
-                type(F) hasSupertypes sequenceOf(A, E)
+                type(F) hasSupertypes sequenceOf(A, E),
             ),
-            listOf()
+            listOf(),
         )
 
         assertAll(
             "leastCommonSupertypes test",
             { assertEquals(setOf(C), lattice.leastCommonSupertypes(listOf(A, B)), "Type c is the common supertype of a and d") },
             { assertEquals(setOf(C), lattice.leastCommonSupertypes(listOf(A, C)), "Degenerate input case") },
-            { assertEquals(setOf(Any), lattice.leastCommonSupertypes(listOf(A, B, D, E)), "All inputs only share the any supertype") }
+            { assertEquals(setOf(Any), lattice.leastCommonSupertypes(listOf(A, B, D, E)), "All inputs only share the any supertype") },
         )
     }
 
@@ -72,9 +72,9 @@ class TypeLatticeTests {
                 typeClass<Type>() hasSupertypes sequenceOf(Any),
                 type(A) hasSupertypes sequenceOf(G, F),
                 type(B) hasSupertypes sequenceOf(G, F),
-                type(C) hasSupertypes sequenceOf(G, F)
+                type(C) hasSupertypes sequenceOf(G, F),
             ),
-            listOf()
+            listOf(),
         )
         assertEquals(setOf(G, F), lattice.leastCommonSupertypes(listOf(A, B, C)))
     }

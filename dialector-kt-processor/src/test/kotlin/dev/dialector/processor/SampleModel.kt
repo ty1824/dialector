@@ -15,6 +15,10 @@ interface SimpleNode : Node {
     @Property
     val optionalProperty: String?
 
+    @Property(hasDefault = true)
+    val defaultProperty: String
+        get() = "default"
+
     @Child
     val singleChild: ChildNode
 

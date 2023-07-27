@@ -31,6 +31,7 @@ class DialectorSymbolProcessorTest {
         // Verify raw values
         assertEquals("hello", node.property)
         assertEquals("provided", node.optionalProperty)
+        assertEquals("default", node.defaultProperty)
         assertEquals(singleChildValue, node.singleChild)
         assertEquals(optionalChildValue, node.optionalChild)
         assertEquals(listOf(pluralFirstChildValue, pluralSecondChildValue, pluralThirdChildValue), node.pluralChildren)
