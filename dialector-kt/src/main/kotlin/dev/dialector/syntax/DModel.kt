@@ -28,22 +28,22 @@ public interface Node {
     public val references: Map<String, NodeReference<*>?>
 }
 
-public interface ReferenceResolver {
+public fun interface ReferenceResolver {
     public fun resolveTarget(reference: NodeReference<*>): Any?
 }
+
+/**
+ * Resolve a reference using this resolver. If the resolved target is not of the correct type, returns null.
+ */
 public inline fun <reified T : Node> ReferenceResolver.resolve(reference: NodeReference<T>): T? =
     resolveTarget(reference) as? T
 
 /**
- * A context that provides a resolution mechanism for [NodeReference]s
+ * Resolve a reference using this resolver. If the resolved target is not of the correct type, returns null.
  */
-public interface ReferenceResolutionContext {
-    public fun NodeReference<*>.resolveTarget(reference: NodeReference<*>): Any?
-}
-
-context(ReferenceResolutionContext)
-public inline fun <reified T : Node> NodeReference<*>.resolve(reference: NodeReference<T>): T? =
-    resolveTarget(reference) as? T
+context(ReferenceResolver)
+public inline fun <reified T : Node> NodeReference<T>.resolveTarget(): T? =
+    resolveTarget(this) as? T
 
 /**
  * A reference to another [Node]. References must be resolved by an external resolver.
@@ -65,45 +65,16 @@ public interface NodeReference<T : Node> {
     public val targetIdentifier: String
 }
 
-internal class IncompleteNodeReference<T : Node>(override val targetIdentifier: String) : NodeReference<T> {
-    override lateinit var sourceNode: Node
-    override lateinit var relation: KProperty<NodeReference<T>>
-}
-
 public data class NodeReferenceImpl<T : Node>(
     override val sourceNode: Node,
     override val relation: KProperty<NodeReference<T>?>,
     override val targetIdentifier: String,
 ) : NodeReference<T>
 
-@Deprecated("Direct creation of node references is not supported by default, use generated reference builders or a custom implementation")
-public fun <T : Node> nodeReference(targetIdentifier: String): NodeReference<T> = IncompleteNodeReference(targetIdentifier)
-
 /**
  * Retrieves the root of the tree containing this node.
  */
 public fun Node.getRoot(): Node = parent?.getRoot() ?: this
-
-/**
- * Retrieves the Node property defined by the given [KProperty]
- */
-@Suppress("UNCHECKED_CAST")
-public fun <T> Node.getProperty(property: KProperty<T>): T =
-    properties[property.name] as T
-
-/**
- * Retrieves the list of children as defined by the given property.
- */
-@Suppress("UNCHECKED_CAST")
-public fun <T : Node> Node.getChildren(child: KProperty<List<T>>): List<T> =
-    children[child.name] as List<T>
-
-/**
- * Retrieves the reference defined by the given property.
- */
-@Suppress("UNCHECKED_CAST")
-public fun <T : Node> Node.getReference(relation: KProperty<NodeReference<T>>): NodeReference<T> =
-    references[relation.name] as NodeReference<T>
 
 /**
  * Retrieves all children of this node.

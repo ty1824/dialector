@@ -7,7 +7,6 @@ plugins {
 
 dependencies {
     implementation(kotlin("reflect"))
-
     testImplementation(kotlin("test"))
 }
 
@@ -27,17 +26,11 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-kover {
+koverReport {
     filters {
-        classes {
-            excludes += listOf(
-                "dev.dialector.inkt.example.*"
-            )
+        excludes {
+            packages("dev.dialector.inkt.example")
         }
-    }
-
-    xmlReport {
-        onCheck.set(true)
     }
 }
 

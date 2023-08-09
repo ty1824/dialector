@@ -1,11 +1,9 @@
 package dev.dialector.diagnostic
 
-import dev.dialector.semantic.SemanticModel
 import dev.dialector.syntax.Node
-import dev.dialector.syntax.NodeClause
-import dev.dialector.syntax.SyntacticModel
+import dev.dialector.syntax.NodePredicate
 
-public interface DiagnosticEvaluationContext : SyntacticModel, SemanticModel {
+public interface DiagnosticContext {
     /**
      * Registers a diagnostic for the given node.
      */
@@ -13,20 +11,28 @@ public interface DiagnosticEvaluationContext : SyntacticModel, SemanticModel {
 }
 
 /**
- * A rule that defines [ModelDiagnostics] that should be produced for nodes matching a [NodeClause]
+ * A rule that defines [ModelDiagnostics] that should be produced for nodes matching a [NodePredicate]
  */
-public interface DiagnosticRule<T : Node> {
-    public val isValidFor: NodeClause<T>
-    public val diagnostics: DiagnosticEvaluationContext.(node: T) -> Unit
+public interface DiagnosticRule<T : Node, C : DiagnosticContext> {
+    public val isValidFor: NodePredicate<T, in C>
+    public val diagnostics: C.(node: T) -> Unit
 
-    public operator fun invoke(context: DiagnosticEvaluationContext, node: Node) {
+    public operator fun invoke(node: Node, context: C) {
         @Suppress("UNCHECKED_CAST")
-        if (isValidFor(node)) context.diagnostics(node as T)
+        if (isValidFor(node, context)) context.diagnostics(node as T)
     }
 }
 
-public infix fun <T : Node> NodeClause<T>.check(check: DiagnosticEvaluationContext.(node: T) -> Unit): DiagnosticRule<T> =
-    object : DiagnosticRule<T> {
-        override val isValidFor: NodeClause<T> = this@check
-        override val diagnostics: DiagnosticEvaluationContext.(node: T) -> Unit = check
+/**
+ * Produces a [DiagnosticRule] from the given [NodePredicate] and checking function.
+ *
+ * @param T The node type being checked.
+ * @param C The [DiagnosticContext] type
+ */
+public infix fun <T : Node, C : DiagnosticContext> NodePredicate<T, in C>.check(
+    check: C.(node: T) -> Unit,
+): DiagnosticRule<T, C> =
+    object : DiagnosticRule<T, C> {
+        override val isValidFor: NodePredicate<T, in C> = this@check
+        override val diagnostics: C.(node: T) -> Unit = check
     }

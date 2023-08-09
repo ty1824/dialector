@@ -26,13 +26,13 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results
-          path: '**/test-results/test/*.xml'
+          path: '**/build/test-results/test/*.xml'
           reporter: java-junit
 
       - name: Coverage Report
         uses: mi-kas/kover-report@v1
         with:
-          path: 'dialector-kt/build/reports/kover/xml/report.xml'
+          path: 'build/reports/kover/report.xml'
           title: Coverage Results
           token: ${{ secrets.GITHUB_TOKEN }}
           update-comment: true

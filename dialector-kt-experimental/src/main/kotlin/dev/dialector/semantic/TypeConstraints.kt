@@ -1,7 +1,6 @@
 package dev.dialector.semantic
 
 import dev.dialector.semantic.type.Type
-import dev.dialector.semantic.type.inference.new.VariableConstraintKind
 
 public interface TypeVariable : Type, SemanticVariable {
     public val id: String
