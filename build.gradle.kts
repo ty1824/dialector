@@ -1,6 +1,7 @@
 import java.time.LocalDateTime
 
 plugins {
+    base
     idea
     kotlin("jvm") apply false
     id("org.jetbrains.dokka")
@@ -13,15 +14,15 @@ plugins {
  */
 fun getVersionTimestamp(): String = with(LocalDateTime.now()) {
     year.toString() +
-            monthValue.toString().padStart(0, '0') +
-            dayOfMonth.toString().padStart(0, '0') +
-            hour.toString().padStart(0, '0') +
-            minute.toString().padStart(0, '0') +
-            second.toString().padStart(0, '0')
+            monthValue.toString().padStart(2, '0') +
+            dayOfMonth.toString().padStart(2, '0') +
+            hour.toString().padStart(2, '0') +
+            minute.toString().padStart(2, '0') +
+            second.toString().padStart(2, '0')
 }
 
 allprojects {
-    if (version.toString().isNullOrBlank()) {
+    if (version.toString().isBlank() || version.toString() == "unspecified") {
         // If the version hasn't been specified, set it to a timestamped default
         version = "LOCAL-${getVersionTimestamp()}"
     } else if (version.toString().startsWith("v")) {
@@ -29,14 +30,14 @@ allprojects {
         version = version.toString().drop(1)
     }
     if (project == rootProject) println("Using version for build: $version")
-}
-
-subprojects {
-    apply(plugin = "org.jmailen.kotlinter")
 
     repositories {
         mavenCentral()
     }
+}
+
+subprojects {
+    apply(plugin = "org.jmailen.kotlinter")
 
     // configure Kotlin to allow these opt-in features throughout the project
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
@@ -46,6 +47,28 @@ subprojects {
                 "-opt-in=kotlin.contracts.ExperimentalContracts",
                 "-Xcontext-receivers"
             )
+        }
+    }
+}
+
+dependencies {
+    kover(project(":dialector-kt"))
+    kover(project(":inkt"))
+}
+
+koverReport {
+    filters {
+        excludes {
+            packages("dev.dialector.inkt.example")
+        }
+    }
+
+    defaults {
+        xml {
+            onCheck = true
+        }
+        html {
+            onCheck = true
         }
     }
 }

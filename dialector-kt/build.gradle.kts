@@ -28,12 +28,6 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-kover {
-    xmlReport {
-        onCheck.set(true)
-    }
-}
-
 publishing {
     repositories {
         maven {

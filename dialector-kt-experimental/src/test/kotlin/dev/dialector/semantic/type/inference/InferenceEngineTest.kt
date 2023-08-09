@@ -2,6 +2,7 @@ package dev.dialector.semantic.type.inference
 
 import assertAll
 import dev.dialector.semantic.type.IdentityType
+import dev.dialector.semantic.type.RuleContextProvider
 import dev.dialector.semantic.type.Type
 import dev.dialector.semantic.type.lattice.SimpleTypeLattice
 import dev.dialector.semantic.type.lattice.TypeLattice
@@ -13,7 +14,7 @@ import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class InferenceEngineTest {
+class InferenceEngineTest : RuleContextProvider<Nothing> {
     private val booleanType = object : IdentityType("boolean") {}
     private val stringType = object : IdentityType("string") {}
     private val integerType = object : IdentityType("integer") {}

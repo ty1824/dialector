@@ -43,19 +43,20 @@ public interface Origin
 
 public interface ConstraintCreator
 
-public interface SemanticRule<T : Node> {
+public interface SemanticRule<T : Node, C : SemanticRuleContext> {
     public val name: String
-    public val isValidFor: NodeClause<T>
-    public val rule: SemanticRuleContext.(node: T) -> Unit
+    public val isValidFor: NodeClause<T, C>
+    public val rule: C.(node: T) -> Unit
 
     @Suppress("UNCHECKED_CAST")
-    public operator fun invoke(context: SemanticRuleContext, node: Node) {
-        if (isValidFor(node)) context.rule(node as T)
+    public operator fun invoke(node: Node, context: C) {
+        if (isValidFor(node, context)) context.rule(node as T)
     }
 }
 
-public fun <T : Node> NodeClause<T>.evaluateSemantics(name: String, semantics: SemanticRuleContext.(node: T) -> Unit): SemanticRule<T> =
-    object : SemanticRule<T> {
+context(RuleContextProvider<C>)
+public fun <T : Node, C : SemanticRuleContext> NodeClause<T, C>.evaluateSemantics(name: String, semantics: C.(node: T) -> Unit): SemanticRule<T, C> =
+    object : SemanticRule<T, C> {
         override val name = name
         override val isValidFor = this@evaluateSemantics
         override val rule = semantics

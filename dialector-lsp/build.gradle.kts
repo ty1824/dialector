@@ -27,12 +27,6 @@ kotlin {
     }
 }
 
-kover {
-    xmlReport {
-        onCheck.set(true)
-    }
-}
-
 tasks.withType<Test> {
     useJUnitPlatform()
 }

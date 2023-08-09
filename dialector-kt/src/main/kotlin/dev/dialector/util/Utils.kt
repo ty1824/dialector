@@ -3,7 +3,7 @@ package dev.dialector.util
 internal typealias Cache<K, V> = MutableMap<K, V>
 
 public class LeastRecentlyAddedCache<K, V>(private val capacity: Int?) : LinkedHashMap<K, V>() {
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean = capacity == null || this.size > capacity
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean = capacity != null && this.size > capacity
 }
 
 /**

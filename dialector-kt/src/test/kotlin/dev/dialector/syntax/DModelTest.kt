@@ -1,5 +1,6 @@
 package dev.dialector.syntax
 
+import dev.dialector.TestNode
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -8,6 +9,8 @@ import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 interface NodeOne : Node
 
@@ -108,9 +111,6 @@ class DModelTest {
         val grandchildTwo = mockk<NodeTwo> {
             every { parent } returns childTwo
         }
-        val grandchildThree = mockk<NodeThree> {
-            every { parent } returns childOne
-        }
 
         val grandchildTwoAncestorsInclusive = grandchildTwo.getAllAncestors(true)
         assertContains(grandchildTwoAncestorsInclusive, grandchildTwo, "Expected to find $grandchildTwo in $grandchildTwoAncestorsInclusive")
@@ -137,5 +137,62 @@ class DModelTest {
 
         val typedAncestors = grandchildOne.getAncestors<NodeOne>(true)
         assertContentEquals(sequenceOf(grandchildOne, root), typedAncestors)
+    }
+
+    class SourceNode(refTarget: String) : TestNode() {
+        val ref: NodeReference<TargetNode> = NodeReferenceImpl(this, SourceNode::ref, refTarget)
+    }
+
+    class TargetNode : TestNode()
+
+    @Test
+    fun referenceResolution() {
+        val source = SourceNode("abc")
+        val target = TargetNode()
+        val invalidTarget = TestNode()
+        val validResolver = ReferenceResolver { _ -> target }
+        val invalidResolver = ReferenceResolver { _ -> invalidTarget }
+
+        val validResolved: TargetNode? = validResolver.resolve(source.ref)
+        assertNotNull(validResolved)
+        assertEquals(target, validResolved)
+
+        val invalidResolved: TargetNode? = invalidResolver.resolve(source.ref)
+        assertNull(invalidResolved)
+
+        with(validResolver) {
+            val validResolvedContextual = source.ref.resolveTarget()
+            assertNotNull(validResolvedContextual)
+            assertEquals(target, validResolvedContextual)
+        }
+
+        with(invalidResolver) {
+            val invalidResolvedContextual: TargetNode? = source.ref.resolveTarget()
+            assertNull(invalidResolvedContextual)
+        }
+    }
+
+    @Test
+    fun getAllChildren() {
+        val a = TestNode()
+        val m = TestNode()
+        val n = TestNode()
+        val x = TestNode()
+        val y = TestNode()
+        a.children["one"] = listOf(m, n)
+        a.children["two"] = listOf(x, y)
+
+        assertEquals(setOf(m, n, x, y), a.getAllChildren().toSet())
+    }
+
+    @Test
+    fun getAllReferences() {
+        val a = TestNode()
+        val x = mockk<NodeReference<Node>>()
+        val y = mockk<NodeReference<Node>>()
+        a.references["one"] = x
+        a.references["two"] = y
+
+        assertEquals(setOf(x, y), a.getAllReferences().toSet())
     }
 }

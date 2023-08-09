@@ -1,4 +1,15 @@
+package dev.dialector
+
+import dev.dialector.syntax.Node
+import dev.dialector.syntax.NodeReference
 import kotlin.test.fail
+
+open class TestNode : Node {
+    override var parent: Node? = null
+    override val properties: MutableMap<String, Any?> = mutableMapOf()
+    override val children: MutableMap<String, List<Node>> = mutableMapOf()
+    override val references: MutableMap<String, NodeReference<*>?> = mutableMapOf()
+}
 
 fun assertAll(message: String, vararg blocks: () -> Unit) {
     val messages = mutableListOf<Pair<Int, String>>()
