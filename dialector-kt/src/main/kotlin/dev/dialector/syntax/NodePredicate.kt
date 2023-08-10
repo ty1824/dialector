@@ -9,15 +9,15 @@ import kotlin.reflect.KClass
 /**
  * A clause that matches against [Node]s.
  */
-public interface NodePredicate<T : Node, C> : TypesafePredicate<T, C>
+public interface NodePredicate<T : Node, in C> : TypesafePredicate<T, C>
 
-public class NodeInstancePredicate<T : Node>(forNode: T) : NodePredicate<T, Any>, InstancePredicate<T, Any>(forNode)
+public class NodeInstancePredicate<T : Node>(forNode: T) : NodePredicate<T, Any>, InstancePredicate<T>(forNode)
 
 public class NodeClassifierPredicate<T : Node>(
     forClass: KClass<T>,
-) : NodePredicate<T, Any>, ClassifierPredicate<T, Any>(forClass)
+) : NodePredicate<T, Any>, ClassifierPredicate<T>(forClass)
 
-public class NodeLogicalPredicate<T : Node, C>(
+public class NodeLogicalPredicate<T : Node, in C>(
     forClass: KClass<T>,
     predicate: C.(T) -> Boolean,
 ) : NodePredicate<T, C>, LogicalPredicate<T, C>(forClass, predicate)

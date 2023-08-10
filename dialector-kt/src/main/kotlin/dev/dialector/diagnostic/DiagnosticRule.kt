@@ -11,10 +11,10 @@ public interface DiagnosticContext {
 }
 
 /**
- * A rule that defines [ModelDiagnostics] that should be produced for nodes matching a [NodePredicate]
+ * A rule that produces diagnostics for nodes matching a [NodePredicate]
  */
 public interface DiagnosticRule<T : Node, C : DiagnosticContext> {
-    public val isValidFor: NodePredicate<T, in C>
+    public val isValidFor: NodePredicate<T, C>
     public val diagnostics: C.(node: T) -> Unit
 
     public operator fun invoke(node: Node, context: C) {
@@ -29,10 +29,10 @@ public interface DiagnosticRule<T : Node, C : DiagnosticContext> {
  * @param T The node type being checked.
  * @param C The [DiagnosticContext] type
  */
-public infix fun <T : Node, C : DiagnosticContext> NodePredicate<T, in C>.check(
+public infix fun <T : Node, C : DiagnosticContext> NodePredicate<T, C>.check(
     check: C.(node: T) -> Unit,
 ): DiagnosticRule<T, C> =
     object : DiagnosticRule<T, C> {
-        override val isValidFor: NodePredicate<T, in C> = this@check
+        override val isValidFor: NodePredicate<T, C> = this@check
         override val diagnostics: C.(node: T) -> Unit = check
     }

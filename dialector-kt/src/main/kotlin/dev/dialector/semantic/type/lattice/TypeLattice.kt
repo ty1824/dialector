@@ -58,12 +58,12 @@ public interface TypeLattice<C> : ExtremumSolver<C> {
     public fun isEquivalent(candidate: Type, other: Type, context: C): Boolean
 
     /**
-     * Returns supertypes defined by [SupertypingRelation]s, does not include implicit supertypes derived from
-     * [SubtypeRule]s
+     * Returns supertypes defined by [SupertypeRelation]s, does not include implicit supertypes derived from
+     * [SupertypeRule]s
      */
     public fun directSupertypes(type: Type, context: C): Set<Type>
 }
 
-public interface SupertypeRule<C> {
+public interface SupertypeRule<in C> {
     public fun check(subtype: Type, supertype: Type, context: C): Boolean
 }
