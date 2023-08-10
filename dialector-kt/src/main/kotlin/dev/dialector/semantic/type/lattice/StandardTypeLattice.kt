@@ -12,13 +12,13 @@ public data class AndType(val members: Set<Type>) : Type
 public data class OrType(val members: Set<Type>) : Type
 
 public class StandardTypeLattice<C>(
-    supertypeRelations: Collection<SupertypeRelation<*, in C>>,
-    subtypeRules: Collection<SupertypeRule<in C>>,
+    supertypeRelations: Collection<SupertypeRelation<*, C>>,
+    subtypeRules: Collection<SupertypeRule<C>>,
     override val topType: Type = AnyType,
     override val bottomType: Type = NoneType,
 ) : TypeLattice<C> {
-    private val supertypeRelations: List<SupertypeRelation<*, in C>> = supertypeRelations.toList()
-    private val supertypeRule: List<SupertypeRule<in C>> = subtypeRules.toList()
+    private val supertypeRelations: List<SupertypeRelation<*, C>> = supertypeRelations.toList()
+    private val supertypeRule: List<SupertypeRule<C>> = subtypeRules.toList()
     private val supertypes: MutableMap<Type, Set<Type>> = mutableMapOf()
     private val subtypeCache: Cache<Pair<Type, Type>, Boolean> = lraCache(100)
 

@@ -6,7 +6,7 @@ import kotlin.reflect.safeCast
 /**
  * Represents a type-safe constraint that can be used as a basis for conditional rules.
  */
-public interface TypesafePredicate<T : Any, C> {
+public interface TypesafePredicate<T : Any, in C> {
     public val clauseClass: KClass<out T>
     public fun predicate(candidate: T, context: C): Boolean
 
@@ -33,22 +33,22 @@ public fun <T : Any, C, R> TypesafePredicate<T, C>.runIfValid(candidate: Any, co
 /**
  * A specialized [TypesafePredicate] that matches against a specific instance using standard equality.
  */
-public abstract class InstancePredicate<T : Any, C>(public val instance: T) : TypesafePredicate<T, C> {
+public abstract class InstancePredicate<T : Any>(public val instance: T) : TypesafePredicate<T, Any> {
     override val clauseClass: KClass<out T> = instance::class
-    override fun predicate(candidate: T, context: C): Boolean = instance == candidate
+    override fun predicate(candidate: T, context: Any): Boolean = instance == candidate
 }
 
 /**
  * A specialized [TypesafePredicate] that matches against instances of a class (or its subclasses).
  */
-public abstract class ClassifierPredicate<T : Any, C>(override val clauseClass: KClass<T>) : TypesafePredicate<T, C> {
-    override fun predicate(candidate: T, context: C): Boolean = true
+public abstract class ClassifierPredicate<T : Any>(override val clauseClass: KClass<T>) : TypesafePredicate<T, Any> {
+    override fun predicate(candidate: T, context: Any): Boolean = true
 }
 
 /**
  * A generalized [TypesafePredicate] that matches against a predicate function.
  */
-public abstract class LogicalPredicate<T : Any, C>(
+public abstract class LogicalPredicate<T : Any, in C>(
     override val clauseClass: KClass<T>,
     private val predicate: C.(T) -> Boolean,
 ) : TypesafePredicate<T, C> {

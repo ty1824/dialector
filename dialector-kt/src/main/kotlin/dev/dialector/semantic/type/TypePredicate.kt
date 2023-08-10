@@ -9,25 +9,25 @@ import kotlin.reflect.KClass
 /**
  * A clause that describes a type.
  */
-public interface TypePredicate<T : Type, C> : TypesafePredicate<T, C>
+public interface TypePredicate<T : Type, in C> : TypesafePredicate<T, C>
 
 /**
  * A special TypeClause that matches against a specific Type.
  *
  * This specialization facilitates optimizations in TypeLattice implementation.
  */
-public class TypeObjectPredicate<T : Type, C>(type: T) : TypePredicate<T, C>, InstancePredicate<T, C>(type)
+public class TypeObjectPredicate<T : Type>(type: T) : TypePredicate<T, Any>, InstancePredicate<T>(type)
 
 /**
  * A special TypeClause that matches against a specific Typeclass
  *
  * This specialization facilitates optimizations in TypeLattice implementation.
  */
-public class TypeClassPredicate<T : Type, C>(
+public class TypeClassPredicate<T : Type>(
     typeClass: KClass<T>,
-) : TypePredicate<T, C>, ClassifierPredicate<T, C>(typeClass)
+) : TypePredicate<T, Any>, ClassifierPredicate<T>(typeClass)
 
-public class TypeLogicalPredicate<T : Type, C>(
+public class TypeLogicalPredicate<T : Type, in C>(
     typeClass: KClass<T>,
     predicate: C.(T) -> Boolean,
 ) : TypePredicate<T, C>, LogicalPredicate<T, C>(typeClass, predicate)

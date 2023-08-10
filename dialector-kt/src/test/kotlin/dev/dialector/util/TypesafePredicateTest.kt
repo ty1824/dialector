@@ -19,7 +19,7 @@ class TypesafePredicateTests {
 
     @Test
     fun instancePredicate() {
-        val predicate = object : InstancePredicate<C, Ctx>(C(1)) {}
+        val predicate = object : InstancePredicate<C>(C(1)) {}
         val context = Ctx("hi")
 
         assertTrue(predicate(C(1), context))
@@ -29,7 +29,7 @@ class TypesafePredicateTests {
 
     @Test
     fun classifierPredicate() {
-        val predicate = object : ClassifierPredicate<B, Ctx>(B::class) {}
+        val predicate = object : ClassifierPredicate<B>(B::class) {}
         val context = Ctx("hi")
 
         assertTrue(predicate(B(), context))
