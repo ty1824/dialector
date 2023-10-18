@@ -32,7 +32,7 @@ class DiagnosticRuleTest {
 
     class TestContext : DiagnosticContext {
         var lastDiagnostic: Pair<String, Node>? = null
-        override fun diagnostic(message: String, node: Node) {
+        override fun diagnostic(message: String, node: Node, severity: DiagnosticSeverity) {
             lastDiagnostic = message to node
         }
     }
@@ -40,34 +40,34 @@ class DiagnosticRuleTest {
     @Test
     fun testDiagnosticRule() {
         with(TestContext()) {
-            rule1(B(5), this)
+            rule1(B(5), this, this)
             assertNull(lastDiagnostic)
         }
 
         with(TestContext()) {
-            rule1(B(-1), this)
+            rule1(B(-1), this, this)
             val result = assertNotNull(lastDiagnostic)
             assertEquals(bFail, result.first)
         }
 
         with(TestContext()) {
-            rule1(A(), this)
+            rule1(A(), this, this)
             assertNull(lastDiagnostic)
         }
 
         with(TestContext()) {
-            rule2(B(5), this)
+            rule2(B(5), this, this)
             assertNull(lastDiagnostic)
         }
 
         with(TestContext()) {
-            rule2(B(15), this)
+            rule2(B(15), this, this)
             val result = assertNotNull(lastDiagnostic)
             assertEquals(bSubFail, result.first)
         }
 
         with(TestContext()) {
-            rule2(A(), this)
+            rule2(A(), this, this)
             val result = assertNotNull(lastDiagnostic)
             assertEquals(aFail, result.first)
         }
