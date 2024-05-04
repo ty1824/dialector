@@ -53,7 +53,6 @@ publishing {
             }
         }
     }
-    repositories.forEach { println((it as MavenArtifactRepository).url)}
     publications {
         register<MavenPublication>("default") {
             from(components["java"])

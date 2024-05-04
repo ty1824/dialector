@@ -33,9 +33,12 @@ internal class QueryDefinitionDelegate<K : Any, V>(private val value: QueryDefin
     override operator fun getValue(thisRef: Any?, property: KProperty<*>): QueryDefinition<K, V> = value
 }
 
-internal data class QueryDefinitionImpl<K : Any, V>(
+internal class QueryDefinitionImpl<K : Any, V>(
     override val name: String,
     val logic: QueryFunction<K, V>,
 ) : QueryDefinition<K, V> {
+
+    override fun toString(): String = "QueryDefinition($name)"
+
     override fun execute(context: QueryContext, key: K): V = context.logic(key)
 }
