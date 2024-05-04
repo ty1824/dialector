@@ -1,7 +1,8 @@
 package dev.dialector.inkt.next
 
 internal data class QueryKey<K : Any, V>(val queryDef: QueryDefinition<K, V>, val key: K) {
-    fun presentation(): String = "(${queryDef.name}, $key"
+    override fun toString(): String =
+        "(${queryDef.name}, $key)"
 }
 
 internal sealed interface Value<V> {
@@ -78,11 +79,23 @@ public class QueryDatabaseImpl : QueryDatabase {
     private fun <K : Any, V> set(inputDef: QueryDefinition<K, V>, key: K, value: V) {
         val queryStorage = getQueryStorage(inputDef)
         when (val currentValue = queryStorage[key]) {
+            null -> queryStorage[key] = InputValue(value, ++currentRevision)
             is InputValue -> {
-                currentValue.value = value
-                currentValue.changedAt = ++currentRevision
+                // Only register a change if the value actually has changed
+                if (currentValue.value != value) {
+                    currentValue.value = value
+                    currentValue.changedAt = ++currentRevision
+                }
             }
-            else -> queryStorage[key] = InputValue(value, ++currentRevision)
+            else -> {
+                // If the new input value is equivalent to the existing value, backdate it.
+                val revision = if (currentValue.value != value) {
+                    ++currentRevision
+                } else {
+                    currentValue.changedAt
+                }
+                queryStorage[key] = InputValue(value, revision)
+            }
         }
     }
 
@@ -112,7 +125,7 @@ public class QueryDatabaseImpl : QueryDatabase {
             }
 
             is DerivedValue<V> -> {
-                if (deepVerify(context, existingValue)) {
+                if (verify(context, existingValue)) {
                     context.addDependency(queryKey, existingValue.changedAt)
                     existingValue.value
                 } else {
@@ -150,42 +163,29 @@ public class QueryDatabaseImpl : QueryDatabase {
     }
 
     /**
-     * Checks whether a value is guaranteed to be up-to-date as of this revision. Does not check dependencies.
-     */
-    private fun shallowVerify(value: Value<*>): Boolean {
-        return when (value) {
-            is InputValue<*> -> value.changedAt <= currentRevision
-            is DerivedValue<*> -> value.verifiedAt == currentRevision
-        }
-    }
-
-    /**
-     * Checks whether a value is up-to-date based on its dependencies.
+     * Checks whether a derived value is up-to-date based on its dependencies.
      *
      * Returns true if the value is considered up-to-date, false if it must be recomputed.
      */
-    private fun deepVerify(context: QueryExecutionContext, value: Value<*>): Boolean {
-        return when (value) {
-            is InputValue<*> -> shallowVerify(value)
-            is DerivedValue<*> -> {
-                if (shallowVerify(value)) {
-                    return true
-                }
+    private fun verify(context: QueryExecutionContext, value: DerivedValue<*>): Boolean {
+        // Short-circuit if possible
+        if (value.verifiedAt == currentRevision) {
+            return true
+        }
 
-                val noDepsChanged = value.dependencies.none { dep ->
-                    // If the dependency exists, check if it may have changed.
-                    // If it does not exist, it has "changed" (likely removed) and thus must be recomputed.
-                    get(dep)?.let {
-                        maybeChangedAfter(context, dep, it, value.verifiedAt)
-                    } ?: true
-                }
+        val noDepsChanged = value.dependencies.none { dep ->
+            // If the dependency exists, check if it may have changed.
+            // If it does not exist, it has "changed" (likely removed) and thus must be recomputed.
+            get(dep)?.let {
+                maybeChangedAfter(context, dep, it, value.verifiedAt)
+            } ?: true
+        }
 
-                if (noDepsChanged) {
-                    value.verifiedAt = currentRevision
-                }
-
-                return false
-            }
+        return if (noDepsChanged) {
+            value.verifiedAt = currentRevision
+            true
+        } else {
+            false
         }
     }
 
@@ -198,24 +198,14 @@ public class QueryDatabaseImpl : QueryDatabase {
         value: Value<*>,
         asOfRevision: Int,
     ): Boolean {
-        if (value is InputValue<*>) {
-            return shallowVerify(value)
-        }
-
-        if (shallowVerify(value)) {
+        // If the value is not derived (is an input) or is a verified derived value, return if it has changed
+        if (value !is DerivedValue<*> || verify(context, value)) {
             return value.changedAt > asOfRevision
         }
 
-        if (deepVerify(context, value)) {
-            return value.changedAt > asOfRevision
-        }
-
+        // If the value is not verified, re-run and check if it produces the same result.
         val newValue = execute(context, key)
-        if (value == newValue) {
-            return false
-        }
-
-        return true
+        return value.value != newValue
     }
 
     public fun print() {
@@ -241,7 +231,7 @@ public class QueryDatabaseImpl : QueryDatabase {
             checkCanceled()
             if (queryStack.any { it.queryKey == key }) {
                 throw IllegalStateException(
-                    "Cycle detected: ${key.presentation()} already in ${queryStack.joinToString { it.queryKey.presentation() }}",
+                    "Cycle detected: $key already in ${queryStack.joinToString { it.queryKey.toString() }}",
                 )
             }
             queryStack.add(QueryFrame(key))
