@@ -18,7 +18,7 @@ public class StandardTypeLattice<C>(
     override val bottomType: Type = NoneType,
 ) : TypeLattice<C> {
     private val supertypeRelations: List<SupertypeRelation<*, C>> = supertypeRelations.toList()
-    private val supertypeRule: List<SupertypeRule<C>> = subtypeRules.toList()
+    private val supertypeRules: List<SupertypeRule<C>> = subtypeRules.toList()
     private val supertypes: MutableMap<Type, Set<Type>> = mutableMapOf()
     private val subtypeCache: Cache<Pair<Type, Type>, Boolean> = lraCache(100)
 
@@ -35,7 +35,7 @@ public class StandardTypeLattice<C>(
         val directSupertypes = directSupertypes(candidate, context)
         // Check supertypes first, if none apply then check if types are replaceable
         return directSupertypes.contains(supertype) ||
-            supertypeRule.any { it.check(candidate, supertype, context) } ||
+            supertypeRules.any { it.check(candidate, supertype, context) } ||
             // If no match found, recurse on supertypes.
             directSupertypes.asSequence()
                 .minus(visited)
@@ -49,7 +49,7 @@ public class StandardTypeLattice<C>(
     public fun leastCommonSupertypes(types: Iterable<Type>, context: C): Set<Type> {
         assert(!types.none()) { "May not call leastCommonSupertypes without at least one argument type" }
 
-        val initialTypes = types.asSequence().filterRedundantSubtypes(context)
+        val initialTypes = types.asSequence().filterRedundantSubtypes(context).toList()
 
         if (initialTypes.none() || initialTypes.drop(1).none()) {
             return initialTypes.toSet()
@@ -77,18 +77,18 @@ public class StandardTypeLattice<C>(
     }
 
     override fun leastCommonSupertype(types: Iterable<Type>, context: C): Type {
-        assert(!types.none()) { "May not call leastCommonSupertype without at least one argument type" }
+        require(types.any()) { "May not call leastCommonSupertype without at least one argument type" }
         val commonSupertypes = leastCommonSupertypes(types, context)
 
-        return if (commonSupertypes.size > 1) {
-            OrType(commonSupertypes)
-        } else {
-            commonSupertypes.first()
+        return when {
+            commonSupertypes.isEmpty() -> topType
+            commonSupertypes.size > 1 -> OrType(commonSupertypes)
+            else -> commonSupertypes.first()
         }
     }
 
     override fun greatestCommonSubtype(types: Iterable<Type>, context: C): Type {
-        assert(!types.none()) { "May not call greatestCommonSubtype without at least one argument type" }
+        require(types.any()) { "May not call greatestCommonSubtype without at least one argument type" }
         val filteredTypes = types.asSequence().filterRedundantSupertypes(context).toSet()
 
         return if (filteredTypes.size > 1) {

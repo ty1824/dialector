@@ -1,15 +1,17 @@
+import jdk.tools.jlink.resources.plugins
+
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.jvm)
     id("maven-publish")
     signing
 }
 
 dependencies {
     implementation(project(":dialector-kt"))
-    implementation(kotlin("reflect"))
+    implementation(libs.kotlin.reflect)
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("io.mockk:mockk:1.12.0")
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.mockk)
 }
 
 kotlin {

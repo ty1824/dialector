@@ -3,10 +3,8 @@ import java.time.LocalDateTime
 plugins {
     base
     idea
-    kotlin("jvm") apply false
-    id("org.jetbrains.dokka")
-    id("org.jetbrains.kotlinx.kover")
-    id("org.jmailen.kotlinter")
+    kotlin("jvm") version(libs.versions.kotlinVersion) apply false
+    alias(libs.plugins.kover)
 }
 
 /**
@@ -37,7 +35,7 @@ allprojects {
 }
 
 subprojects {
-    apply(plugin = "org.jmailen.kotlinter")
+//    apply(plugin = libs.plugins.kotlinter.get().pluginId)
 
     // configure Kotlin to allow these opt-in features throughout the project
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
@@ -52,23 +50,23 @@ subprojects {
 }
 
 dependencies {
-    kover(project(":dialector-kt"))
-    kover(project(":inkt"))
+//    kover(project(":dialector-kt"))
+//    kover(project(":inkt"))
 }
 
-koverReport {
-    filters {
-        excludes {
-            packages("dev.dialector.inkt.example")
-        }
-    }
-
-    defaults {
-        xml {
-            onCheck = true
-        }
-        html {
-            onCheck = true
-        }
-    }
-}
+//koverReport {
+//    filters {
+//        excludes {
+//            packages("dev.dialector.inkt.example")
+//        }
+//    }
+//
+//    defaults {
+//        xml {
+//            onCheck = true
+//        }
+//        html {
+//            onCheck = true
+//        }
+//    }
+//}

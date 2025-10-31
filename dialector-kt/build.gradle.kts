@@ -1,21 +1,22 @@
 plugins {
-    kotlin("jvm")
-    id("org.jetbrains.kotlinx.kover")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kover)
     id("maven-publish")
     signing
 }
 
 dependencies {
-    implementation(kotlin("reflect"))
+    implementation(libs.kotlin.reflect)
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("io.mockk:mockk:1.12.0")
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.mockk)
 }
 
+val javaLanguageVersion: String by project
 kotlin {
     explicitApiWarning()
     jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(javaLanguageVersion))
     }
 }
 

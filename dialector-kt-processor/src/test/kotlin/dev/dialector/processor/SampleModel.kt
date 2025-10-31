@@ -23,7 +23,7 @@ interface SimpleNode : Node {
     val singleChild: ChildNode
 
     @Child
-    val optionalChild: ChildNode
+    val optionalChild: ChildNode?
 
     @Child
     val pluralChildren: List<ChildNode>

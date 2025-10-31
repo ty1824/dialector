@@ -2,12 +2,6 @@ package dev.dialector.syntax
 
 import kotlin.reflect.KProperty
 
-/*
- * Notes:
- *
- * "Augmentations" kinda like Node Attributes? Slots for externally-driven additional content.
- */
-
 /**
  * Represents an element in a program graph.
  *
@@ -22,9 +16,25 @@ import kotlin.reflect.KProperty
  * node.
  */
 public interface Node {
+    /**
+     * The parent of this [Node]. If null, this node represents the root of an AST, but may not be a top-level root.
+     */
     public var parent: Node?
+
+    /**
+     * Properties are value-based members of a [Node].
+     * These represent any arbitrary data, but should not include other nodes.
+     */
     public val properties: Map<String, Any?>
+
+    /**
+     * Children are other [Node]s that are "owned" by this [Node]. The relat
+     */
     public val children: Map<String, List<Node>>
+
+    /**
+     * References point to other [Node]s in the program graph.
+     */
     public val references: Map<String, NodeReference<*>?>
 }
 
@@ -56,6 +66,7 @@ public interface NodeReference<T : Node> {
 
     /**
      * The relation (property) defining this reference
+     * TODO: Refactor to a string
      */
     public val relation: KProperty<NodeReference<T>?>
 

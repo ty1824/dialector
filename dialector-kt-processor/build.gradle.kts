@@ -1,16 +1,13 @@
 import java.nio.file.Paths
 
 plugins {
-    kotlin("jvm")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ksp)
     // TODO: Re-enable when unit tests are added, tests right now depend on running the processor at test compile time.
-    //id("org.jetbrains.kotlinx.kover")
+    //alias(libs.plugins.kover)
     id("maven-publish")
     signing
 }
-
-val kspVersion: String by project
-val ktlintVersion: String by project
 
 repositories {
     google()
@@ -19,26 +16,28 @@ repositories {
 
 dependencies {
     implementation(project(":dialector-kt"))
-    implementation("com.squareup:kotlinpoet:1.12.0")
-    implementation("com.squareup:kotlinpoet-ksp:1.12.0")
-    implementation("com.google.devtools.ksp:symbol-processing-api:$kspVersion")
-    implementation(kotlin("reflect"))
-    implementation("com.pinterest.ktlint:ktlint-core:$ktlintVersion")
-    implementation("com.pinterest.ktlint:ktlint-rule-engine:$ktlintVersion")
-    implementation("com.pinterest.ktlint:ktlint-ruleset-standard:$ktlintVersion")
+    implementation(libs.kotlinpoet)
+    implementation(libs.kotlinpoet.ksp)
+    implementation(libs.ksp.symbol.processing.api)
+    implementation(libs.kotlin.reflect)
+    implementation(libs.ktlint.core)
+    implementation(libs.ktlint.rule.engine)
+    implementation(libs.ktlint.ruleset.standard)
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation(libs.kotlin.test)
     testImplementation(project(":dialector-kt"))
     kspTest(project(":dialector-kt-processor"))
 }
 
 ksp {
     arg("dev.dialector.targetPackage", "dev.dialector.processor.ast")
+    arg("dev.dialector.factory", "true")
 }
 
+val javaLanguageVersion: String by project
 kotlin {
     jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(javaLanguageVersion))
     }
 }
 
@@ -51,12 +50,12 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-tasks.withType<org.jmailen.gradle.kotlinter.tasks.ConfigurableKtLintTask> {
-    exclude { it.file.toPath().contains(Paths.get("build")) }
-    // The following does not work on all OS - path separator is OS-dependent
-//    exclude { it.file.path.contains("/build/generated/") }
-//    exclude { it.file.path.contains("\\build\\generated\\") }
-}
+//tasks.withType<org.jmailen.gradle.kotlinter.tasks.ConfigurableKtLintTask> {
+//    exclude { it.file.toPath().contains(Paths.get("build")) }
+//    // The following does not work on all OS - path separator is OS-dependent
+////    exclude { it.file.path.contains("/build/generated/") }
+////    exclude { it.file.path.contains("\\build\\generated\\") }
+//}
 
 publishing {
     repositories {

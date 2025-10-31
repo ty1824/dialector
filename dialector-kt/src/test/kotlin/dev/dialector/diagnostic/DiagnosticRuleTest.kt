@@ -15,6 +15,7 @@ class DiagnosticRuleTest {
 
     val bFail = "bFail"
     val rule1 = given<B>() check {
+
         if (it.data < 0) {
             diagnostic(bFail, it)
         }
