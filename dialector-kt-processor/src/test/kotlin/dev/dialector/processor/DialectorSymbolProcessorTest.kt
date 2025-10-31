@@ -46,4 +46,41 @@ class DialectorSymbolProcessorTest {
         assertEquals(SimpleNode::reference, node.reference.relation)
         assertEquals(SimpleNode::optionalReference, node.optionalReference?.relation)
     }
+
+    @Test
+    fun factoryApi() {
+        val singleChildValue = childNode()
+        val optionalChildValue = childNode()
+        val pluralFirstChildValue = childNode()
+        val pluralSecondChildValue = childNode()
+        val pluralThirdChildValue = childNode()
+        val node = simpleNode(
+            "hello",
+            "provided",
+            null,
+            singleChildValue,
+            optionalChildValue,
+            listOf(pluralFirstChildValue, pluralSecondChildValue, pluralThirdChildValue),
+            "target.id",
+            "target.otherId"
+        )
+
+        // Verify raw values
+        assertEquals("hello", node.property)
+        assertEquals("provided", node.optionalProperty)
+        assertEquals("default", node.defaultProperty)
+        assertEquals(singleChildValue, node.singleChild)
+        assertEquals(optionalChildValue, node.optionalChild)
+        assertEquals(listOf(pluralFirstChildValue, pluralSecondChildValue, pluralThirdChildValue), node.pluralChildren)
+        assertEquals("target.id", node.reference.targetIdentifier)
+        assertEquals("target.otherId", node.optionalReference?.targetIdentifier)
+
+        // Verify parent assignment
+        assertEquals(node, singleChildValue.parent)
+
+        // Verify reference property assignment
+        assertEquals(node, node.reference.sourceNode)
+        assertEquals(SimpleNode::reference, node.reference.relation)
+        assertEquals(SimpleNode::optionalReference, node.optionalReference?.relation)
+    }
 }

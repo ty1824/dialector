@@ -41,7 +41,6 @@ import dev.dialector.syntax.Property
 import dev.dialector.syntax.Reference
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 import kotlin.io.path.exists
 import kotlin.reflect.KClass
 
@@ -82,6 +81,7 @@ class DialectorSymbolProcessorProvider : SymbolProcessorProvider {
                 req("targetPackage", "must provide a target package"),
                 opt("indent") ?: "    ",
                 formatterOptions,
+                opt("factory").toBoolean()
             ),
         )
     }
@@ -107,6 +107,10 @@ class GenerationOptions(
      * Options for ktlint formatting. If present, formatting is enabled.
      */
     val formatter: FormatterOptions?,
+    /**
+     * Whether to generate factory functions.
+     */
+    val factory: Boolean = false
 )
 
 /**
@@ -196,8 +200,6 @@ class Generator(private val resolver: Resolver) {
 
         val properties: List<PropertyModel> = nodeClass.getAllProperties().mapNotNull { property ->
             property.findAnnotations(Property::class).firstOrNull()?.let {
-                println(it.defaultArguments)
-                println(it.arguments)
                 PropertyModel(property, it.arguments[0].value as? Boolean ?: false)
             }
         }.toList()
@@ -314,6 +316,7 @@ class Generator(private val resolver: Resolver) {
                 builder.addType(generateBuilder(model))
             }
             builder.addFunction(generateBuilderDsl(model))
+            generateFactory(model)?.let { builder.addFunction(it) }
         }
 
         fun generateBuilderDsl(model: NodeModel): FunSpec {
@@ -342,6 +345,108 @@ class Generator(private val resolver: Resolver) {
                     .addStatement("""return ${ClassName(options.targetPackage, model.getImplClassName())}()""")
                     .build()
             }
+        }
+
+        fun generateFactory(model: NodeModel): FunSpec? {
+            if (options.factory && model.requiresInit()) {
+                val initializerClassName = ClassName(
+                    options.targetPackage,
+                    model.getBuilderClassName(),
+                )
+                val name = model.getDslFunctionName()
+                return FunSpec.builder(name)
+                    .apply {
+                        addParameters(
+                            model.properties.map { prop ->
+                                ParameterSpec.builder(
+                                    prop.forProperty.simpleName.asString(),
+                                    prop.resolvedType.let {
+                                        if (prop.hasDefault) {
+                                            it.makeNullable()
+                                        } else it
+                                    }.toTypeName(),
+                                ).apply {
+                                    if (prop.hasDefault || prop.resolvedType.isMarkedNullable) { defaultValue("null") }
+                                }.build()
+                            },
+                        )
+
+                        addParameters(
+                            model.children.map {
+                                val resolvedType = it.type.resolve()
+                                when {
+                                    resolvedType.isAssignableTo(nullableNodeType) ->
+                                        ParameterSpec.builder(
+                                            it.simpleName.asString(),
+                                            resolvedType.toTypeName(),
+                                        ).apply {
+                                            if (resolvedType.isMarkedNullable) { defaultValue("null") }
+                                        }.build()
+                                    // If we're dealing with a list of children, create a MutableList
+                                    resolvedType.isAssignableTo(nodeListType) ->
+                                        ParameterSpec.builder(
+                                            it.simpleName.asString(),
+                                            ClassName("kotlin.collections", "List").parameterizedBy(
+                                                resolvedType.arguments.map { argument ->
+                                                    argument.type!!.resolve().toTypeName()
+                                                },
+                                            ),
+                                        ).defaultValue("listOf()").build()
+                                    else -> throw RuntimeException("Unexpected child type found: $it : ${it.type}")
+                                }
+                            },
+                        )
+
+                        // References are initialized using the target identifier
+                        addParameters(
+                            model.references.map { ref ->
+                                ParameterSpec.builder(
+                                    ref.simpleName.asString(),
+                                    String::class.asTypeName().let {
+                                        if (ref.type.resolve().isMarkedNullable) {
+                                            it.copy(nullable = true)
+                                        } else {
+                                          it
+                                        }
+                                    },
+                                ).build()
+                            },
+                        )
+                    }
+                    .returns(model.nodeClass.toClassName())
+                    .addCode(CodeBlock.builder()
+                        .beginControlFlow("return $name {")
+                        .apply {
+                            model.properties.forEach { prop ->
+                                val propName = prop.forProperty.simpleName.asString()
+                                addStatement("this.%N = %N", propName, propName)
+                            }
+                            model.children.forEach { child ->
+                                val childName = child.simpleName.asString()
+                                val resolvedType = child.type.resolve()
+                                when {
+                                    resolvedType.isAssignableTo(nullableNodeType) ->
+                                        addStatement("this.%N = %N", childName, childName)
+
+                                    resolvedType.isAssignableTo(nodeListType) ->
+                                        addStatement("this.%N += %N", childName, childName)
+
+                                    else -> throw RuntimeException("Unexpected child type found: $child : ${child.type}")
+                                }
+
+                            }
+
+                            model.references.forEach { ref ->
+                                val refName = ref.simpleName.asString()
+                                addStatement("this.%N = %N", refName, refName)
+                            }
+                        }
+                        .endControlFlow()
+                        .build()
+                    )
+                    .build()
+            }
+            return null
         }
 
         fun generateImpl(model: NodeModel): TypeSpec =

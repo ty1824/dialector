@@ -1,19 +1,20 @@
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.kotlinx.kover")
+    alias(libs.plugins.kover)
     id("maven-publish")
     signing
 }
 
 dependencies {
-    implementation(kotlin("reflect"))
-    testImplementation(kotlin("test"))
+    implementation(libs.kotlin.reflect)
+    testImplementation(libs.kotlin.test)
 }
 
+val javaLanguageVersion: String by project
 kotlin {
     explicitApiWarning()
     jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(javaLanguageVersion))
     }
 }
 
@@ -26,10 +27,12 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-koverReport {
-    filters {
-        excludes {
-            packages("dev.dialector.inkt.example")
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("dev.dialector.inkt.example")
+            }
         }
     }
 }
