@@ -35,8 +35,6 @@ allprojects {
 }
 
 subprojects {
-//    apply(plugin = libs.plugins.kotlinter.get().pluginId)
-
     // configure Kotlin to allow these opt-in features throughout the project
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
@@ -50,23 +48,24 @@ subprojects {
 }
 
 dependencies {
-//    kover(project(":dialector-kt"))
-//    kover(project(":inkt"))
+    kover(project(":dialector-kt"))
+    kover(project(":inkt"))
 }
 
-//koverReport {
-//    filters {
-//        excludes {
-//            packages("dev.dialector.inkt.example")
-//        }
-//    }
-//
-//    defaults {
-//        xml {
-//            onCheck = true
-//        }
-//        html {
-//            onCheck = true
-//        }
-//    }
-//}
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("dev.dialector.inkt.example")
+            }
+        }
+        total {
+            html {
+                onCheck = true
+            }
+            xml {
+                onCheck = true
+            }
+        }
+    }
+}
