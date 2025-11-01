@@ -5,6 +5,7 @@ plugins {
     idea
     kotlin("jvm") version(libs.versions.kotlinVersion) apply false
     alias(libs.plugins.kover)
+    alias(libs.plugins.gradle.maven.publish) apply false
 }
 
 /**
@@ -19,15 +20,14 @@ fun getVersionTimestamp(): String = with(LocalDateTime.now()) {
             second.toString().padStart(2, '0')
 }
 
+if (version.toString().isBlank() || version.toString() == "unspecified") {
+    // If the version hasn't been specified, set it to a timestamped default
+    version = "LOCAL-${getVersionTimestamp()}"
+}
+
 allprojects {
-    if (version.toString().isBlank() || version.toString() == "unspecified") {
-        // If the version hasn't been specified, set it to a timestamped default
-        version = "LOCAL-${getVersionTimestamp()}"
-    } else if (version.toString().startsWith("v")) {
-        // TODO: Probably should do this before passing as a parameter
-        version = version.toString().drop(1)
-    }
     if (project == rootProject) println("Using version for build: $version")
+    version = rootProject.version
 
     repositories {
         mavenCentral()
