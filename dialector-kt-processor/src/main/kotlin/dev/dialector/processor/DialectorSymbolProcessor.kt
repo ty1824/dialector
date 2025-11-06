@@ -415,7 +415,7 @@ class Generator(private val resolver: Resolver) {
                     }
                     .returns(model.nodeClass.toClassName())
                     .addCode(CodeBlock.builder()
-                        .beginControlFlow("return $name {")
+                        .beginControlFlow("return $name")
                         .apply {
                             model.properties.forEach { prop ->
                                 val propName = prop.forProperty.simpleName.asString()
