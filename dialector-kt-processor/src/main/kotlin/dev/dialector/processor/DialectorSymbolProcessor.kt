@@ -349,13 +349,10 @@ class Generator(private val resolver: Resolver) {
 
         fun generateFactory(model: NodeModel): FunSpec? {
             if (options.factory && model.requiresInit()) {
-                val initializerClassName = ClassName(
-                    options.targetPackage,
-                    model.getBuilderClassName(),
-                )
                 val name = model.getDslFunctionName()
                 return FunSpec.builder(name)
                     .apply {
+                        // Add properties
                         addParameters(
                             model.properties.map { prop ->
                                 ParameterSpec.builder(
@@ -371,6 +368,7 @@ class Generator(private val resolver: Resolver) {
                             },
                         )
 
+                        // Add children
                         addParameters(
                             model.children.map {
                                 val resolvedType = it.type.resolve()
@@ -397,7 +395,7 @@ class Generator(private val resolver: Resolver) {
                             },
                         )
 
-                        // References are initialized using the target identifier
+                        // Add references - initialized using the target identifier
                         addParameters(
                             model.references.map { ref ->
                                 ParameterSpec.builder(
@@ -415,7 +413,7 @@ class Generator(private val resolver: Resolver) {
                     }
                     .returns(model.nodeClass.toClassName())
                     .addCode(CodeBlock.builder()
-                        .beginControlFlow("return $name")
+                        .beginControlFlow("return %N", name)
                         .apply {
                             model.properties.forEach { prop ->
                                 val propName = prop.forProperty.simpleName.asString()
@@ -708,7 +706,7 @@ class Generator(private val resolver: Resolver) {
             builder.addFunction(
                 FunSpec.builder("build")
                     .returns(model.nodeClass.toClassName())
-                    .addStatement("return ${model.baseName}Impl(this)")
+                    .addStatement("return %N(this)", model.getImplClassName())
                     .build(),
             )
 

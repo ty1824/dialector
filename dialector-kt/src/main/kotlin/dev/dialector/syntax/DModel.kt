@@ -28,7 +28,7 @@ public interface Node {
     public val properties: Map<String, Any?>
 
     /**
-     * Children are other [Node]s that are "owned" by this [Node]. The relat
+     * Children are other [Node]s that are "owned" by this [Node].
      */
     public val children: Map<String, List<Node>>
 
@@ -36,6 +36,13 @@ public interface Node {
      * References point to other [Node]s in the program graph.
      */
     public val references: Map<String, NodeReference<*>?>
+
+    /**
+     * A debug-friendly string representation for this node.
+     *
+     * This is provided as interfaces (used to define `Node` subtypes) cannot override `toString themselves.
+     */
+    public fun toDebugString(): String = "${this::class.simpleName}@${System.identityHashCode(this)}"
 }
 
 public fun interface ReferenceResolver {
