@@ -83,11 +83,27 @@ public interface NodeReference<T : Node> {
     public val targetIdentifier: String
 }
 
-public data class NodeReferenceImpl<T : Node>(
+public class NodeReferenceImpl<T : Node>(
     override val sourceNode: Node,
     override val relation: KProperty<NodeReference<T>?>,
     override val targetIdentifier: String,
-) : NodeReference<T>
+) : NodeReference<T> {
+    override fun toString(): String = "nodeRef($sourceNode::${relation.name} -> $targetIdentifier)"
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is NodeReference<*>) return false
+
+        return sourceNode == other.sourceNode && relation == other.relation && targetIdentifier == other.targetIdentifier
+    }
+
+    override fun hashCode(): Int {
+        var result = sourceNode.hashCode()
+        result = 31 * result + relation.hashCode()
+        result = 31 * result + targetIdentifier.hashCode()
+        return result
+    }
+}
 
 /**
  * Retrieves the root of the tree containing this node.
