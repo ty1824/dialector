@@ -157,11 +157,6 @@ class DialectorSymbolProcessor(
     }
 }
 
-/*
- *TODO:
- *  Handle inheritance
- */
-
 class Generator(private val resolver: Resolver) {
     private fun KClass<out Any>.getClassDeclaration(): KSClassDeclaration? =
         resolver.getClassDeclarationByName(resolver.getKSNameFromString(this.qualifiedName!!))
@@ -404,7 +399,7 @@ class Generator(private val resolver: Resolver) {
                                         if (ref.type.resolve().isMarkedNullable) {
                                             it.copy(nullable = true)
                                         } else {
-                                          it
+                                            it
                                         }
                                     },
                                 ).build()
@@ -459,8 +454,19 @@ class Generator(private val resolver: Resolver) {
                 .addProperties(model.children.map { generateChild(it) })
                 // Add references
                 .addProperties(model.references.map { generateReference(it) })
+                .addFunction(generateToString(model))
                 // Implement Node
                 .apply { this.generateNodeImplementation(model) }
+                .build()
+
+        /**
+         * Generates a `toString` implementation that delegates to `toDebugString`
+         */
+        fun generateToString(model: NodeModel) =
+            FunSpec.builder("toString")
+                .addModifiers(KModifier.OVERRIDE)
+                .returns(String::class.asTypeName())
+                .addCode("return super<%T>.%N()", model.nodeClass.toClassName(), Node::toDebugString.name)
                 .build()
 
         fun TypeSpec.Builder.generateNodeImplementation(model: NodeModel) {
