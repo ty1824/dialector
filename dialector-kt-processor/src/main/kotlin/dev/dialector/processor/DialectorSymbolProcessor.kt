@@ -28,6 +28,7 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -312,7 +313,24 @@ class Generator(private val resolver: Resolver) {
             }
             builder.addFunction(generateBuilderDsl(model))
             generateFactory(model)?.let { builder.addFunction(it) }
+            builder.addFunction(generateCopyExtension(model))
         }
+
+        fun generateCopyExtension(model: NodeModel): FunSpec =
+            FunSpec.builder("copy")
+                .receiver(model.nodeClass.toClassName())
+                .addAnnotation(
+                    AnnotationSpec.builder(Suppress::class)
+                        .addMember("%S", "UNCHECKED_CAST")
+                        .build()
+                )
+                .returns(model.nodeClass.toClassName())
+                .addStatement(
+                    "return (this as %T).copyAsNode() as %T",
+                    Node::class.asTypeName(),
+                    model.nodeClass.toClassName()
+                )
+                .build()
 
         fun generateBuilderDsl(model: NodeModel): FunSpec {
             val initializerClassName = ClassName(
@@ -455,6 +473,7 @@ class Generator(private val resolver: Resolver) {
                 // Add references
                 .addProperties(model.references.map { generateReference(it) })
                 .addFunction(generateToString(model))
+                .addFunction(generateCopyMethod(model))
                 // Implement Node
                 .apply { this.generateNodeImplementation(model) }
                 .build()
@@ -468,6 +487,87 @@ class Generator(private val resolver: Resolver) {
                 .returns(String::class.asTypeName())
                 .addCode("return super<%T>.%N()", model.nodeClass.toClassName(), Node::toDebugString.name)
                 .build()
+
+        fun generateCopyMethod(model: NodeModel): FunSpec {
+            val builderClassName = ClassName(options.targetPackage, model.getBuilderClassName())
+
+            return FunSpec.builder("copyAsNode")
+                .addModifiers(KModifier.OVERRIDE)
+                .returns(model.nodeClass.toClassName())
+                .addCode(
+                    CodeBlock.builder()
+                        .apply {
+                            if (model.requiresInit()) {
+                                addStatement("val builder = %T()", builderClassName)
+
+                                model.properties.forEach { prop ->
+                                    val propName = prop.forProperty.simpleName.asString()
+                                    addStatement("builder.%N = this.%N", propName, propName)
+                                }
+
+                                model.children.forEach { child ->
+                                    val childName = child.simpleName.asString()
+                                    val resolvedType = child.type.resolve()
+                                    when {
+                                        resolvedType.isAssignableTo(nullableNodeType) -> {
+                                            if (resolvedType.isMarkedNullable) {
+                                                addStatement(
+                                                    "builder.%N = this.%N?.copyAsNode() as? %T",
+                                                    childName,
+                                                    childName,
+                                                    resolvedType.toTypeName()
+                                                )
+                                            }
+                                            else {
+                                                addStatement(
+                                                    "builder.%N = this.%N.copyAsNode() as %T",
+                                                    childName,
+                                                    childName,
+                                                    resolvedType.toTypeName()
+                                                )
+                                            }
+                                        }
+                                        resolvedType.isAssignableTo(nodeListType) -> {
+                                            val elementType = resolvedType.arguments.first().type!!.resolve()
+                                            addStatement(
+                                                "builder.%N += this.%N.map { it.copyAsNode() as %T }",
+                                                childName,
+                                                childName,
+                                                elementType.toTypeName()
+                                            )
+                                        }
+                                    }
+                                }
+
+                                model.references.forEach { ref ->
+                                    val refName = ref.simpleName.asString()
+                                    val isNullable = ref.type.resolve().isMarkedNullable
+                                    if (isNullable) {
+                                        addStatement("builder.%N = this.%N?.targetIdentifier", refName, refName)
+                                    }
+                                    else {
+                                        addStatement("builder.%N = this.%N.targetIdentifier", refName, refName)
+                                    }
+                                }
+
+                                addStatement("val copied = builder.build()")
+                                addStatement(
+                                    "copied.%M().forEach { it.parent = copied}",
+                                    MemberName("dev.dialector.syntax", "getAllChildren", true)
+                                )
+                                addStatement("return copied")
+                            }
+                            else {
+                                addStatement(
+                                    "return %T()",
+                                    ClassName(options.targetPackage, model.getImplClassName())
+                                )
+                            }
+                        }
+                        .build()
+                )
+                .build()
+        }
 
         fun TypeSpec.Builder.generateNodeImplementation(model: NodeModel) {
             // parent

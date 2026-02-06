@@ -38,6 +38,16 @@ public interface Node {
     public val references: Map<String, NodeReference<*>?>
 
     /**
+     *  Used for internal implementation of deep copy. Generated copy() will handle type casting
+     *  This will create a deep copy of the node and all of its descendants without the parent reference.
+     */
+    public fun copyAsNode(): Node = throw UnsupportedOperationException(
+        "copyAsNode() is not implemented for ${this::class.simpleName}. " +
+                "Use @NodeDefinition to generate an implementation"
+    )
+
+
+    /**
      * A debug-friendly string representation for this node.
      *
      * This is provided as interfaces (used to define `Node` subtypes) cannot override `toString themselves.
