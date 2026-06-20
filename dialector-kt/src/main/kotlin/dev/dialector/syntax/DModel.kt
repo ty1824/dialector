@@ -58,9 +58,9 @@ public inline fun <reified T : Node> ReferenceResolver.resolve(reference: NodeRe
 /**
  * Resolve a reference using this resolver. If the resolved target is not of the correct type, returns null.
  */
-context(ReferenceResolver)
+context(resolver: ReferenceResolver)
 public inline fun <reified T : Node> NodeReference<T>.resolveTarget(): T? =
-    resolveTarget(this) as? T
+    resolver.resolveTarget(this) as? T
 
 /**
  * A reference to another [Node]. References must be resolved by an external resolver.

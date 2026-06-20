@@ -44,7 +44,7 @@ public class QueryDatabaseImpl : QueryDatabase {
     private val storage: MutableMap<QueryDefinition<*, *>, MutableMap<*, out Value<*>>> = mutableMapOf()
     private var currentRevision = 0
 
-    private val lock = Object()
+    private val lock = Any()
 
     public override fun <T> readTransaction(body: QueryContext.() -> T): T {
         synchronized(lock) {
