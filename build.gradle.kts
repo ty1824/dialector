@@ -41,7 +41,6 @@ subprojects {
             freeCompilerArgs.addAll(
                 "-opt-in=kotlin.time.ExperimentalTime",
                 "-opt-in=kotlin.contracts.ExperimentalContracts",
-                "-Xcontext-receivers"
             )
         }
     }
@@ -49,6 +48,7 @@ subprojects {
 
 dependencies {
     kover(project(":dialector-kt"))
+    kover(project(":dialector-kt-processor"))
     kover(project(":inkt"))
 }
 

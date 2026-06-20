@@ -3,8 +3,8 @@ import java.nio.file.Paths
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ksp)
-    // TODO: Re-enable when unit tests are added, tests right now depend on running the processor at test compile time.
-    //alias(libs.plugins.kover)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.kotlinter)
     alias(libs.plugins.gradle.maven.publish)
 }
 
@@ -18,12 +18,12 @@ dependencies {
     implementation(libs.kotlinpoet)
     implementation(libs.kotlinpoet.ksp)
     implementation(libs.ksp.symbol.processing.api)
-    implementation(libs.kotlin.reflect)
-    implementation(libs.ktlint.core)
     implementation(libs.ktlint.rule.engine)
     implementation(libs.ktlint.ruleset.standard)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.compile.testing)
+    testImplementation(libs.kotlin.compile.testing.ksp)
     testImplementation(project(":dialector-kt"))
     kspTest(project(":dialector-kt-processor"))
 }
@@ -44,12 +44,9 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-//tasks.withType<org.jmailen.gradle.kotlinter.tasks.ConfigurableKtLintTask> {
-//    exclude { it.file.toPath().contains(Paths.get("build")) }
-//    // The following does not work on all OS - path separator is OS-dependent
-////    exclude { it.file.path.contains("/build/generated/") }
-////    exclude { it.file.path.contains("\\build\\generated\\") }
-//}
+tasks.withType<org.jmailen.gradle.kotlinter.tasks.ConfigurableKtLintTask> {
+    exclude { it.file.toPath().contains(Paths.get("build")) }
+}
 
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)

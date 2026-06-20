@@ -1,7 +1,9 @@
 package dev.dialector.diagnostic
 
 import dev.dialector.syntax.Node
+import dev.dialector.syntax.NodeClassifierPredicate
 import dev.dialector.syntax.NodePredicate
+import dev.dialector.syntax.given
 
 public interface DiagnosticSeverity {
     public object Error : DiagnosticSeverity
@@ -15,6 +17,11 @@ public interface DiagnosticContext {
      * Registers a diagnostic for the given node.
      */
     public fun diagnostic(message: String, node: Node, severity: DiagnosticSeverity = DiagnosticSeverity.Error)
+}
+
+context(context: DiagnosticContext)
+public fun diagnostic(message: String, node: Node, severity: DiagnosticSeverity = DiagnosticSeverity.Error) {
+    context.diagnostic(message, node, severity)
 }
 
 /**
