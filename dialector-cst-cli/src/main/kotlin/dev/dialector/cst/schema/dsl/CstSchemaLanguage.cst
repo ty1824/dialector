@@ -1,0 +1,156 @@
+// Self-hosting CST Schema specification for the Dialector `.cst` Schema DSL.
+schema CstSchemaDsl
+package dev.dialector.cst.schema.dsl
+
+// --- Trivia Tokens ---
+trivia Whitespace
+trivia LineComment
+trivia BlockComment
+trivia DocComment
+
+// --- Lexical Tokens ---
+token Ident
+token StringLiteral
+token IntLiteral
+
+// --- Keywords ---
+token SchemaKw   = "schema"
+token PackageKw  = "package"
+token TriviaKw   = "trivia"
+token TokenKw    = "token"
+token OpenKw     = "open"
+token CategoryKw = "category"
+token NodeKw     = "node"
+
+// --- Punctuation & Operators ---
+token Colon    = ":"
+token Eq       = "="
+token Pipe     = "|"
+token Question = "?"
+token Star     = "*"
+token Plus     = "+"
+token At       = "@"
+token LParen   = "("
+token RParen   = ")"
+token LBrace   = "{"
+token RBrace   = "}"
+token Comma    = ","
+token Dot      = "."
+
+// --- Token Categories ---
+token category QuantifierOp = '?' | '*' | '+'
+
+// --- Node Categories ---
+open category Declaration
+
+category TypeExpr =
+    NamedTypeExpr
+  | LiteralTokenTypeExpr
+  | InlineUnionTypeExpr
+
+// --- Root & Header Nodes ---
+node SchemaFile {
+    schemaHeader: SchemaHeader?
+    packageHeader: PackageHeader?
+    declarations: Declaration*
+}
+
+node SchemaHeader {
+    schemaKw: 'schema'
+    name: Ident
+}
+
+node PackageHeader {
+    packageKw: 'package'
+    name: QualifiedName
+}
+
+node QualifiedName {
+    parts: Ident*
+    dots: '.'*
+}
+
+// --- Declarations ---
+node TokenDecl : Declaration {
+    triviaKw: 'trivia'?
+    tokenKw: 'token'?
+    name: Ident
+    categories: CategoryClause?
+    eq: '='?
+    fixedText: StringLiteral?
+    annotations: Annotation*
+}
+
+node TokenCategoryDecl : Declaration {
+    openKw: 'open'?
+    tokenKw: 'token'
+    categoryKw: 'category'
+    name: Ident
+    superCategories: CategoryClause?
+    eq: '='?
+    members: TokenMemberRef*
+    pipes: '|'*
+}
+
+node TokenMemberRef {
+    name: Ident?
+    literal: StringLiteral?
+}
+
+node CategoryDecl : Declaration {
+    openKw: 'open'?
+    categoryKw: 'category'
+    name: Ident
+    superCategories: CategoryClause?
+    eq: '='?
+    members: Ident*
+    pipes: '|'*
+}
+
+node NodeDecl : Declaration {
+    nodeKw: 'node'
+    name: Ident
+    categories: CategoryClause?
+    annotations: Annotation*
+    lBrace: '{'?
+    fields: FieldDecl*
+    rBrace: '}'?
+}
+
+node CategoryClause {
+    colon: ':'
+    names: Ident*
+    commas: ','*
+}
+
+node FieldDecl {
+    name: Ident
+    colon: ':'
+    typeExpr: TypeExpr
+    quantifier: QuantifierOp?
+    annotations: Annotation*
+}
+
+// --- Field Type Expressions ---
+node NamedTypeExpr {
+    name: Ident
+}
+
+node LiteralTokenTypeExpr {
+    literal: StringLiteral
+}
+
+node InlineUnionTypeExpr {
+    lParen: '('
+    members: TokenMemberRef*
+    pipes: '|'*
+    rParen: ')'
+}
+
+node Annotation {
+    at: '@'
+    name: Ident
+    lParen: '('?
+    arg: IntLiteral?
+    rParen: ')'?
+}
