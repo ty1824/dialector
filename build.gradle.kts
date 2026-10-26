@@ -50,6 +50,9 @@ dependencies {
     kover(project(":dialector-kt"))
     kover(project(":dialector-kt-processor"))
     kover(project(":inkt"))
+    kover(project(":dialector-cst"))
+    kover(project(":dialector-cst-cli"))
+    kover(project(":dialector-cst-gradle-plugin"))
 }
 
 kover {
