@@ -24,7 +24,7 @@ gradlePlugin {
             id = "dev.dialector.cst"
             implementationClass = "dev.dialector.cst.gradle.DialectorCstPlugin"
             displayName = "Dialector CST Gradle Plugin"
-            description = "Compiles Dialector .cst schema files into high-performance Flat CST Kotlin source files."
+            description = "Compiles Dialector .cst schema files into CST Kotlin source files."
         }
     }
 }
@@ -47,7 +47,7 @@ mavenPublishing {
     }
     pom {
         name.set("dialector-cst-gradle-plugin")
-        description.set("Gradle plugin for compiling Dialector .cst schema files into Flat CST Kotlin code.")
+        description.set("Gradle plugin for compiling Dialector .cst schema files into CST Kotlin code.")
         url.set("http://dialector.dev")
         licenses {
             license {

@@ -46,10 +46,16 @@ class DialectorCstPluginTest {
         assertTrue(
             task.outputDirectory.get().asFile.invariantSeparatorsPath.endsWith("build/generated/source/cst/main/kotlin")
         )
+
+        val testTask = project.tasks.findByName("generateTestCst") as? GenerateCstTask
+        assertNotNull(testTask, "generateTestCst task should be registered")
+        assertTrue(
+            testTask.outputDirectory.get().asFile.invariantSeparatorsPath.endsWith("build/generated/source/cst/test/kotlin")
+        )
     }
 
     @Test
-    fun `plugin wires output directory into kotlin jvm main sourceSet`() {
+    fun `plugin wires output directory into kotlin jvm main and test sourceSets`() {
         val project = ProjectBuilder.builder()
             .withProjectDir(testProjectDir)
             .build()
@@ -59,11 +65,19 @@ class DialectorCstPluginTest {
 
         val kotlinExt = project.extensions.getByType(org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension::class.java)
         val mainSourceSet = kotlinExt.sourceSets.getByName("main")
-        val srcDirs = mainSourceSet.kotlin.srcDirs.map { it.invariantSeparatorsPath }
+        val mainSrcDirs = mainSourceSet.kotlin.srcDirs.map { it.invariantSeparatorsPath }
 
         assertTrue(
-            srcDirs.any { it.endsWith("build/generated/source/cst/main/kotlin") },
-            "Expected generated CST directory in Kotlin main sourceSet, found: $srcDirs",
+            mainSrcDirs.any { it.endsWith("build/generated/source/cst/main/kotlin") },
+            "Expected generated CST directory in Kotlin main sourceSet, found: $mainSrcDirs",
+        )
+
+        val testSourceSet = kotlinExt.sourceSets.getByName("test")
+        val testSrcDirs = testSourceSet.kotlin.srcDirs.map { it.invariantSeparatorsPath }
+
+        assertTrue(
+            testSrcDirs.any { it.endsWith("build/generated/source/cst/test/kotlin") },
+            "Expected generated test CST directory in Kotlin test sourceSet, found: $testSrcDirs",
         )
     }
 
@@ -130,6 +144,49 @@ class DialectorCstPluginTest {
             .build()
 
         assertEquals(TaskOutcome.UP_TO_DATE, secondRun.task(":generateCst")?.outcome)
+    }
+
+    @Test
+    fun `generateTestCst task compiles src test cst schemas into test output directory`() {
+        File(testProjectDir, "settings.gradle.kts").writeText(
+            """
+            rootProject.name = "test-cst-test-sourceset"
+            """.trimIndent()
+        )
+
+        File(testProjectDir, "build.gradle.kts").writeText(
+            """
+            plugins {
+                id("dev.dialector.cst")
+            }
+            """.trimIndent()
+        )
+
+        val testCstDir = File(testProjectDir, "src/test/cst").apply { mkdirs() }
+        File(testCstDir, "TestOnly.cst").writeText(
+            """
+            schema TestOnlyLang
+            package com.example.testonly
+
+            token Ident
+            node TestNode {
+                id: Ident
+            }
+            """.trimIndent()
+        )
+
+        val run = GradleRunner.create()
+            .withProjectDir(testProjectDir)
+            .withPluginClasspath()
+            .withArguments("generateTestCst", "--stacktrace")
+            .build()
+
+        assertEquals(TaskOutcome.SUCCESS, run.task(":generateTestCst")?.outcome)
+
+        val generatedTestDir = File(testProjectDir, "build/generated/source/cst/test/kotlin/com/example/testonly")
+        assertTrue(File(generatedTestDir, "TestOnlyLangKinds.kt").isFile)
+        assertTrue(File(generatedTestDir, "TestOnlyLangHandles.kt").isFile)
+        assertTrue(File(generatedTestDir, "TestOnlyLangExtensions.kt").isFile)
     }
 
     @Test

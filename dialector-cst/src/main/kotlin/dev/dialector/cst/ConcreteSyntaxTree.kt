@@ -162,6 +162,27 @@ value class CstNode(val nodeIndex: Int) {
         get() = tree.getNodeEndOffset(nodeIndex)
 
     /**
+     * Returns the zero-allocation [SourceRange] (`startOffset..endOffset`) of this node, or [SourceRange.NONE] if invalid.
+     */
+    context(tree: ConcreteSyntaxTree)
+    val sourceRange: SourceRange
+        get() = if (isValid) tree.getNodeSourceRange(nodeIndex) else SourceRange.NONE
+
+    /**
+     * Returns the 1-based `(line, column)` [SourcePosition] at the start of this node, or [SourcePosition.NONE] if invalid.
+     */
+    context(tree: ConcreteSyntaxTree)
+    val startPosition: SourcePosition
+        get() = if (isValid) tree.getPosition(startOffset) else SourcePosition.NONE
+
+    /**
+     * Returns the 1-based `(line, column)` [SourcePosition] at the end of this node, or [SourcePosition.NONE] if invalid.
+     */
+    context(tree: ConcreteSyntaxTree)
+    val endPosition: SourcePosition
+        get() = if (isValid) tree.getPosition(endOffset) else SourcePosition.NONE
+
+    /**
      * Returns the schema slot index this node occupies in its parent, or [NO_SLOT] (-1).
      */
     context(tree: ConcreteSyntaxTree)
@@ -295,6 +316,15 @@ value class CstToken(val tokenIndex: Int) {
     val endOffset: Int get() = asNode.endOffset
 
     context(tree: ConcreteSyntaxTree)
+    val sourceRange: SourceRange get() = asNode.sourceRange
+
+    context(tree: ConcreteSyntaxTree)
+    val startPosition: SourcePosition get() = asNode.startPosition
+
+    context(tree: ConcreteSyntaxTree)
+    val endPosition: SourcePosition get() = asNode.endPosition
+
+    context(tree: ConcreteSyntaxTree)
     val slotInParent: Int get() = asNode.slotInParent
 
     context(tree: ConcreteSyntaxTree)
@@ -390,6 +420,160 @@ value class CstNodeList(val packedRange: Long) {
 }
 
 /**
+ * Zero-allocation character range `[startOffset, endOffset)` in source text.
+ * Packs `(startOffset: Int, endOffset: Int)` into a single 64-bit [packed] `Long`.
+ */
+@JvmInline
+value class SourceRange(val packed: Long) {
+    constructor(startOffset: Int, endOffset: Int) : this(packRaw(startOffset, maxOf(startOffset, endOffset)))
+
+    /**
+     * 0-based inclusive start character offset, or -1 if [NONE].
+     */
+    val startOffset: Int get() = (packed ushr 32).toInt()
+
+    /**
+     * 0-based exclusive end character offset, or -1 if [NONE].
+     */
+    val endOffset: Int get() = packed.toInt()
+
+    /**
+     * True if this range represents a valid non-negative span (`startOffset >= 0 && endOffset >= startOffset`).
+     */
+    val isValid: Boolean get() = startOffset >= 0 && endOffset >= startOffset
+
+    /**
+     * True if this range is the absent sentinel ([NONE]).
+     */
+    val isNone: Boolean get() = !isValid
+
+    /**
+     * Character length of this range (`0` if empty or invalid).
+     */
+    val length: Int get() = if (isValid) maxOf(0, endOffset - startOffset) else 0
+
+    /**
+     * True if [length] == 0.
+     */
+    val isEmpty: Boolean get() = length == 0
+
+    /**
+     * Converts this range to a standard Kotlin [IntRange] (`startOffset..<endOffset`).
+     */
+    val asIntRange: IntRange get() = if (isValid) startOffset..<endOffset else IntRange.EMPTY
+
+    /**
+     * Returns true if [offset] falls within `[startOffset, endOffset)` (or `offset == startOffset` when empty and valid).
+     */
+    operator fun contains(offset: Int): Boolean =
+        isValid && (offset in startOffset..<endOffset || (startOffset == endOffset && offset == startOffset))
+
+    /**
+     * Returns true if [other] is valid and completely enclosed within `[startOffset, endOffset]`.
+     */
+    operator fun contains(other: SourceRange): Boolean =
+        isValid && other.isValid && other.startOffset >= startOffset && other.endOffset <= endOffset
+
+    /**
+     * Returns true if this range and [other] overlap.
+     */
+    fun intersects(other: SourceRange): Boolean {
+        if (!isValid || !other.isValid) return false
+        if (isEmpty) return other.contains(startOffset)
+        if (other.isEmpty) return contains(other.startOffset)
+        return startOffset < other.endOffset && other.startOffset < endOffset
+    }
+
+    override fun toString(): String = if (isValid) "$startOffset..$endOffset" else "SourceRange.NONE"
+
+    companion object {
+        /**
+         * Sentinel representing an absent or invalid source range (`-1..-1`).
+         */
+        val NONE: SourceRange = SourceRange(-1L)
+
+        /**
+         * Empty range at offset `0..0`.
+         */
+        val EMPTY: SourceRange = SourceRange(0L)
+
+        fun pack(startOffset: Int, endOffset: Int): SourceRange =
+            SourceRange(startOffset, endOffset)
+
+        private fun packRaw(startOffset: Int, endOffset: Int): Long =
+            if (startOffset < 0) {
+                -1L
+            } else {
+                val clampedEnd = maxOf(startOffset, endOffset)
+                (startOffset.toLong() shl 32) or (clampedEnd.toLong() and 0xFFFF_FFFFL)
+            }
+    }
+}
+
+/**
+ * Zero-allocation 1-based `(line, column)` source coordinates.
+ * Packs `(line: Int, column: Int)` into a single 64-bit [packed] `Long`.
+ */
+@JvmInline
+value class SourcePosition(val packed: Long) : Comparable<SourcePosition> {
+    constructor(line: Int, column: Int) : this(packRaw(line, column))
+
+    /**
+     * 1-based line number, or -1 if [NONE].
+     */
+    val line: Int get() = (packed ushr 32).toInt()
+
+    /**
+     * 1-based column number (UTF-16 code unit offset from the start of the line + 1), or -1 if [NONE].
+     */
+    val column: Int get() = packed.toInt()
+
+    /**
+     * 0-based line index (`line - 1`), or -1 if [NONE].
+     */
+    val lineIndex: Int get() = if (isValid) line - 1 else -1
+
+    /**
+     * 0-based column index (`column - 1`), or -1 if [NONE].
+     */
+    val columnIndex: Int get() = if (isValid) column - 1 else -1
+
+    /**
+     * True if both [line] >= 1 and [column] >= 1.
+     */
+    val isValid: Boolean get() = line >= 1 && column >= 1
+
+    /**
+     * True if this position is the absent sentinel ([NONE]).
+     */
+    val isNone: Boolean get() = !isValid
+
+    override fun compareTo(other: SourcePosition): Int {
+        val lineCmp = line.compareTo(other.line)
+        return if (lineCmp != 0) lineCmp else column.compareTo(other.column)
+    }
+
+    override fun toString(): String = if (isValid) "$line:$column" else "SourcePosition.NONE"
+
+    companion object {
+        /**
+         * Sentinel representing an absent or invalid source position (`-1:-1`).
+         */
+        val NONE: SourcePosition = SourcePosition(-1L)
+
+        fun pack(line: Int, column: Int): SourcePosition =
+            SourcePosition(line, column)
+
+        private fun packRaw(line: Int, column: Int): Long =
+            if (line < 1 || column < 1) {
+                -1L
+            } else {
+                (line.toLong() shl 32) or (column.toLong() and 0xFFFF_FFFFL)
+            }
+    }
+}
+
+/**
  * Severity levels for syntax diagnostics recorded in a [ConcreteSyntaxTree].
  */
 enum class DiagnosticSeverity {
@@ -408,10 +592,16 @@ data class CstDiagnostic(
     val code: String,
     val message: String,
     val severity: DiagnosticSeverity = DiagnosticSeverity.ERROR,
-)
+) {
+    /**
+     * Zero-allocation [SourceRange] (`startOffset..endOffset`) of this diagnostic.
+     */
+    val sourceRange: SourceRange
+        get() = SourceRange.pack(startOffset, endOffset)
+}
 
 /**
- * A flat Concrete Syntax Tree (CST) represented entirely with contiguous primitive arrays.
+ * A Concrete Syntax Tree (CST) represented with contiguous primitive arrays.
  * - Backing arrays are `internal` to preserve immutability invariants.
  * - `nodeLengths[i] == -1` encodes a synthesized/missing node or token at `nodeStartOffsets[i]`.
  * - `childSlots` runs parallel to `childNodeIndices` (`size == childNodeIndices.size`), storing
@@ -519,6 +709,15 @@ class ConcreteSyntaxTree internal constructor(
     }
 
     /**
+     * Returns the [SourceRange] (`startOffset..endOffset`) of the node at [nodeIndex].
+     */
+    fun getNodeSourceRange(nodeIndex: Int): SourceRange {
+        checkNodeBounds(nodeIndex)
+        val start = nodeStartOffsets[nodeIndex]
+        return SourceRange(start, start + getNodeLength(nodeIndex))
+    }
+
+    /**
      * Returns the source text slice corresponding to the node at [nodeIndex].
      */
     fun getText(nodeIndex: Int): String {
@@ -529,6 +728,94 @@ class ConcreteSyntaxTree internal constructor(
         val end = start + length
         if (start < 0 || end > sourceText.length) return ""
         return sourceText.substring(start, end)
+    }
+
+    /**
+     * Returns the source text slice corresponding to [range].
+     */
+    fun getText(range: SourceRange): String {
+        if (!range.isValid || range.isEmpty) return ""
+        val start = range.startOffset
+        val end = range.endOffset
+        if (start < 0 || end > sourceText.length) return ""
+        return sourceText.substring(start, end)
+    }
+
+    private val lineStartOffsets: IntArray by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        computeLineStartOffsets(sourceText)
+    }
+
+    /**
+     * Total number of lines in [sourceText] (always >= 1).
+     */
+    val lineCount: Int
+        get() = lineStartOffsets.size
+
+    /**
+     * Converts a 0-based character [offset] into a 1-based `(line, column)` [SourcePosition] in $O(\log L)$ time,
+     * or returns [SourcePosition.NONE] if [offset] is outside `0..sourceText.length`.
+     */
+    fun getPosition(offset: Int): SourcePosition {
+        if (offset < 0 || offset > sourceText.length) return SourcePosition.NONE
+        val starts = lineStartOffsets
+        val idx = starts.binarySearch(offset)
+        val lineIdx = if (idx >= 0) idx else (-idx - 2)
+        val lineStart = starts[lineIdx]
+        return SourcePosition(line = lineIdx + 1, column = offset - lineStart + 1)
+    }
+
+    /**
+     * Alias for [getPosition] returning the 1-based `(line, column)` [SourcePosition] for [offset].
+     */
+    fun getLineAndColumn(offset: Int): SourcePosition = getPosition(offset)
+
+    /**
+     * Converts a 1-based [line] and [column] back into a 0-based character offset in $O(1)$ time,
+     * or returns `-1` if [line] or [column] is out of bounds for that line.
+     */
+    fun getOffset(line: Int, column: Int): Int {
+        if (line !in 1..lineCount || column < 1) return -1
+        val lineRange = getLineRange(line, includeLineBreak = true)
+        val offset = lineRange.startOffset + (column - 1)
+        val maxValidOffset = if (line < lineCount) lineRange.endOffset - 1 else lineRange.endOffset
+        return if (offset <= maxValidOffset) offset else -1
+    }
+
+    /**
+     * Converts a 1-based [position] back into a 0-based character offset in $O(1)$ time,
+     * or returns `-1` if [position] is invalid or out of bounds.
+     */
+    fun getOffset(position: SourcePosition): Int =
+        if (position.isValid) getOffset(position.line, position.column) else -1
+
+    /**
+     * Returns the character [SourceRange] of the 1-based [line], or [SourceRange.NONE] if out of bounds.
+     * By default, trailing line break characters (`\n`, `\r\n`, `\r`) are excluded unless [includeLineBreak] is true.
+     */
+    fun getLineRange(line: Int, includeLineBreak: Boolean = false): SourceRange {
+        val starts = lineStartOffsets
+        if (line !in 1..starts.size) return SourceRange.NONE
+        val lineIdx = line - 1
+        val start = starts[lineIdx]
+        val nextStart = if (lineIdx + 1 < starts.size) starts[lineIdx + 1] else sourceText.length
+        if (includeLineBreak) return SourceRange(start, nextStart)
+
+        var end = nextStart
+        if (end > start && sourceText[end - 1] == '\n') {
+            end--
+            if (end > start && sourceText[end - 1] == '\r') end--
+        } else if (end > start && sourceText[end - 1] == '\r') {
+            end--
+        }
+        return SourceRange(start, end)
+    }
+
+    /**
+     * Returns the text of the 1-based [line], or `""` if out of bounds.
+     */
+    fun getLineText(line: Int, includeLineBreak: Boolean = false): String {
+        val range = getLineRange(line, includeLineBreak)
+        return if (range.isValid) getText(range) else ""
     }
 
     /**
@@ -604,6 +891,44 @@ class ConcreteSyntaxTree internal constructor(
         for (edgeIdx in startEdge..<endEdge) {
             if (childSlots[edgeIdx] == targetSlot) {
                 return childNodeIndices[edgeIdx]
+            }
+        }
+        return NULL_NODE_INDEX
+    }
+
+    /**
+     * Returns the number of direct children of [nodeIndex] assigned to [slot].
+     */
+    fun getChildCountInSlot(nodeIndex: Int, slot: Int): Int {
+        checkNodeBounds(nodeIndex)
+        if (slot < 0) return 0
+        val targetSlot = slot.toShort()
+        val startEdge = nodeChildOffsets[nodeIndex]
+        val endEdge = nodeChildOffsets[nodeIndex + 1]
+        var count = 0
+        for (edgeIdx in startEdge..<endEdge) {
+            if (childSlots[edgeIdx] == targetSlot) {
+                count++
+            }
+        }
+        return count
+    }
+
+    /**
+     * Returns the [index]-th (0-based) direct child of [nodeIndex] assigned to [slot],
+     * or [NULL_NODE_INDEX] if [index] is out of bounds.
+     */
+    fun getChildInSlotAt(nodeIndex: Int, slot: Int, index: Int): Int {
+        checkNodeBounds(nodeIndex)
+        if (slot < 0 || index < 0) return NULL_NODE_INDEX
+        val targetSlot = slot.toShort()
+        val startEdge = nodeChildOffsets[nodeIndex]
+        val endEdge = nodeChildOffsets[nodeIndex + 1]
+        var current = 0
+        for (edgeIdx in startEdge..<endEdge) {
+            if (childSlots[edgeIdx] == targetSlot) {
+                if (current == index) return childNodeIndices[edgeIdx]
+                current++
             }
         }
         return NULL_NODE_INDEX
@@ -917,5 +1242,36 @@ class ConcreteSyntaxTree internal constructor(
             sourceText = "",
             diagnostics = emptyList(),
         )
+
+        private fun computeLineStartOffsets(text: String): IntArray {
+            var count = 1
+            var i = 0
+            val n = text.length
+            while (i < n) {
+                val c = text[i]
+                if (c == '\r') {
+                    count++
+                    if (i + 1 < n && text[i + 1] == '\n') i++
+                } else if (c == '\n') {
+                    count++
+                }
+                i++
+            }
+            val starts = IntArray(count)
+            starts[0] = 0
+            var lineIdx = 1
+            i = 0
+            while (i < n) {
+                val c = text[i]
+                if (c == '\r') {
+                    if (i + 1 < n && text[i + 1] == '\n') i++
+                    starts[lineIdx++] = i + 1
+                } else if (c == '\n') {
+                    starts[lineIdx++] = i + 1
+                }
+                i++
+            }
+            return starts
+        }
     }
 }

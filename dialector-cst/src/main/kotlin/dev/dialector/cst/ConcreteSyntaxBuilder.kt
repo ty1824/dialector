@@ -41,23 +41,37 @@ class ConcreteSyntaxBuilder {
 
     /**
      * Finishes a composite node. If [endOffset] is -1 (or `startOffset` was -1),
-     * automatically computes the node's span from its first and last child.
+     * automatically computes the node's span from its children (supporting bottom-up
+     * parsing where `parentIdx > childIdx` as well as trailing missing recovery nodes).
      */
     fun finishNode(nodeIndex: Int, endOffset: Int = -1) {
         require(nodeIndex in 0..<nodeKinds.size) { "Node index $nodeIndex out of bounds" }
         if (nodeRawLengths[nodeIndex] == MISSING_RAW_LENGTH) return // Already marked missing
         val children = nodeChildren[nodeIndex]
+
+        for (i in children.indices) {
+            val childIdx = children[i]
+            if (nodeRawLengths[childIdx] == UNFINISHED_RAW_LENGTH || nodeStartOffsets[childIdx] < 0) {
+                finishNode(childIdx)
+            }
+        }
+
         var start = nodeStartOffsets[nodeIndex]
         if (start < 0) {
-            start = if (children.isNotEmpty()) maxOf(0, nodeStartOffsets[children.first()]) else 0
+            val firstAnchor = children.firstOrNull { nodeRawLengths[it] > 0 }
+                ?: children.firstOrNull { nodeRawLengths[it] != MISSING_RAW_LENGTH }
+                ?: children.firstOrNull()
+            start = if (firstAnchor != null) maxOf(0, nodeStartOffsets[firstAnchor]) else 0
             nodeStartOffsets[nodeIndex] = start
         }
         val resolvedEnd = when {
             endOffset >= 0 -> endOffset
             children.isNotEmpty() -> {
-                val lastChild = children.last()
-                val lastLen = maxOf(0, nodeRawLengths[lastChild])
-                maxOf(0, nodeStartOffsets[lastChild]) + lastLen
+                val lastAnchor = children.lastOrNull { nodeRawLengths[it] > 0 }
+                    ?: children.lastOrNull { nodeRawLengths[it] != MISSING_RAW_LENGTH }
+                    ?: children.last()
+                val targetLen = maxOf(0, nodeRawLengths[lastAnchor])
+                maxOf(start, maxOf(0, nodeStartOffsets[lastAnchor]) + targetLen)
             }
             else -> start
         }

@@ -21,6 +21,28 @@ data class CstSchema(
     val categories: List<CategorySchema> = emptyList(),
     val nodes: List<NodeSchema> = emptyList(),
 ) {
+    private fun directSuperCategoriesOf(catName: String, categoryMap: Map<String, CategorySchema>): Set<String> {
+        val result = linkedSetOf<String>()
+        categoryMap[catName]?.superCategories?.let { result.addAll(it) }
+        for (cat in categories) {
+            if (catName in cat.members) {
+                result.add(cat.name)
+            }
+        }
+        return result
+    }
+
+    private fun directSuperTokenCategoriesOf(catName: String, categoryMap: Map<String, TokenCategorySchema>): Set<String> {
+        val result = linkedSetOf<String>()
+        categoryMap[catName]?.superCategories?.let { result.addAll(it) }
+        for (cat in tokenCategories) {
+            if (catName in cat.members) {
+                result.add(cat.name)
+            }
+        }
+        return result
+    }
+
     /**
      * Returns all node categories that [nodeName] belongs to (directly or transitively via super-categories).
      */
@@ -31,12 +53,17 @@ data class CstSchema(
 
         fun collectSuperCategories(catName: String) {
             if (result.add(catName)) {
-                categoryMap[catName]?.superCategories?.forEach { collectSuperCategories(it) }
+                directSuperCategoriesOf(catName, categoryMap).forEach { collectSuperCategories(it) }
             }
         }
 
         for (cat in node.categories) {
             collectSuperCategories(cat)
+        }
+        for (cat in categories) {
+            if (nodeName in cat.members) {
+                collectSuperCategories(cat.name)
+            }
         }
         return result
     }
@@ -49,7 +76,7 @@ data class CstSchema(
         val categoryMap = categories.associateBy { it.name }
 
         fun collect(catName: String) {
-            categoryMap[catName]?.superCategories?.forEach { superCat ->
+            directSuperCategoriesOf(catName, categoryMap).forEach { superCat ->
                 if (result.add(superCat)) {
                     collect(superCat)
                 }
@@ -83,12 +110,17 @@ data class CstSchema(
 
         fun collectSuperCategories(catName: String) {
             if (result.add(catName)) {
-                categoryMap[catName]?.superCategories?.forEach { collectSuperCategories(it) }
+                directSuperTokenCategoriesOf(catName, categoryMap).forEach { collectSuperCategories(it) }
             }
         }
 
         for (cat in token.categories) {
             collectSuperCategories(cat)
+        }
+        for (cat in tokenCategories) {
+            if (tokenName in cat.members) {
+                collectSuperCategories(cat.name)
+            }
         }
         return result
     }
@@ -101,7 +133,7 @@ data class CstSchema(
         val categoryMap = tokenCategories.associateBy { it.name }
 
         fun collect(catName: String) {
-            categoryMap[catName]?.superCategories?.forEach { superCat ->
+            directSuperTokenCategoriesOf(catName, categoryMap).forEach { superCat ->
                 if (result.add(superCat)) {
                     collect(superCat)
                 }
@@ -140,9 +172,17 @@ data class CstSchema(
             if (!tokenCategoryNames.add(tokenCat.name)) {
                 errors.add("Duplicate token category name '${tokenCat.name}'")
             }
+            if (tokenCat.isOpen && tokenCat.members.isNotEmpty()) {
+                errors.add("Open token category '${tokenCat.name}' cannot define a '= ...' member union")
+            } else if (!tokenCat.isOpen && tokenCat.members.isEmpty()) {
+                errors.add("Closed token category '${tokenCat.name}' must define members with '= ...' or be declared 'open'")
+            }
             for (superCat in tokenCat.superCategories) {
-                if (!tokenCategoryMap.containsKey(superCat)) {
+                val targetCat = tokenCategoryMap[superCat]
+                if (targetCat == null) {
                     errors.add("Token category '${tokenCat.name}' references unknown super-token-category '$superCat'")
+                } else if (!targetCat.isOpen) {
+                    errors.add("Token category '${tokenCat.name}' cannot extend closed token category '$superCat' via ': $superCat'; mark '$superCat' as 'open' or include '${tokenCat.name}' in its '= ...' union")
                 }
             }
         }
@@ -153,9 +193,12 @@ data class CstSchema(
         fun checkTokenCategoryCycle(catName: String): Boolean {
             visitedTokenCategories.add(catName)
             tokenRecursionStack.add(catName)
-            val cat = tokenCategoryMap[catName] ?: return false
+            if (!tokenCategoryMap.containsKey(catName)) {
+                tokenRecursionStack.remove(catName)
+                return false
+            }
             var hasCycle = false
-            for (superCat in cat.superCategories) {
+            for (superCat in directSuperTokenCategoriesOf(catName, tokenCategoryMap)) {
                 if (tokenRecursionStack.contains(superCat)) {
                     errors.add("Cyclic inheritance detected in token categories: '$catName' -> '$superCat'")
                     hasCycle = true
@@ -186,8 +229,19 @@ data class CstSchema(
             }
             if (!tokenIds.add(token.id)) errors.add("Duplicate token id '${token.id}' on token '${token.name}'")
             for (cat in token.categories) {
-                if (!tokenCategoryMap.containsKey(cat)) {
+                val targetCat = tokenCategoryMap[cat]
+                if (targetCat == null) {
                     errors.add("Token '${token.name}' references unknown token category '$cat'")
+                } else if (!targetCat.isOpen) {
+                    errors.add("Token '${token.name}' cannot extend closed token category '$cat' via ': $cat'; mark '$cat' as 'open' or include '${token.name}' in its '= ...' union")
+                }
+            }
+        }
+
+        for (tokenCat in tokenCategories) {
+            for (member in tokenCat.members) {
+                if (!tokenNames.contains(member) && !tokenCategoryMap.containsKey(member)) {
+                    errors.add("Token category '${tokenCat.name}' references unknown token or token category '$member'")
                 }
             }
         }
@@ -203,9 +257,17 @@ data class CstSchema(
             if (tokenCategoryNames.contains(category.name)) {
                 errors.add("Name '${category.name}' is used by both a TokenCategorySchema and a CategorySchema")
             }
+            if (category.isOpen && category.members.isNotEmpty()) {
+                errors.add("Open category '${category.name}' cannot define a '= ...' member union")
+            } else if (!category.isOpen && category.members.isEmpty()) {
+                errors.add("Closed category '${category.name}' must define members with '= ...' or be declared 'open'")
+            }
             for (superCat in category.superCategories) {
-                if (!categoryMap.containsKey(superCat)) {
+                val targetCat = categoryMap[superCat]
+                if (targetCat == null) {
                     errors.add("Category '${category.name}' references unknown super-category '$superCat'")
+                } else if (!targetCat.isOpen) {
+                    errors.add("Category '${category.name}' cannot extend closed category '$superCat' via ': $superCat'; mark '$superCat' as 'open' or include '${category.name}' in its '= ...' union")
                 }
             }
         }
@@ -216,9 +278,12 @@ data class CstSchema(
         fun checkCategoryCycle(catName: String): Boolean {
             visitedCategories.add(catName)
             recursionStack.add(catName)
-            val cat = categoryMap[catName] ?: return false
+            if (!categoryMap.containsKey(catName)) {
+                recursionStack.remove(catName)
+                return false
+            }
             var hasCycle = false
-            for (superCat in cat.superCategories) {
+            for (superCat in directSuperCategoriesOf(catName, categoryMap)) {
                 if (recursionStack.contains(superCat)) {
                     errors.add("Cyclic inheritance detected in categories: '$catName' -> '$superCat'")
                     hasCycle = true
@@ -254,8 +319,11 @@ data class CstSchema(
                 errors.add("Name '${node.name}' is used by both a CategorySchema and a NodeSchema")
             }
             for (cat in node.categories) {
-                if (!categoryMap.containsKey(cat)) {
+                val targetCat = categoryMap[cat]
+                if (targetCat == null) {
                     errors.add("Node '${node.name}' references unknown category '$cat'")
+                } else if (!targetCat.isOpen) {
+                    errors.add("Node '${node.name}' cannot extend closed category '$cat' via ': $cat'; mark '$cat' as 'open' or include '${node.name}' in its '= ...' union")
                 }
             }
 
@@ -302,6 +370,14 @@ data class CstSchema(
             }
         }
 
+        for (category in categories) {
+            for (member in category.members) {
+                if (!nodeMap.containsKey(member) && !categoryMap.containsKey(member)) {
+                    errors.add("Category '${category.name}' references unknown node or category '$member'")
+                }
+            }
+        }
+
         if (errors.isNotEmpty()) {
             throw CstSchemaException(errors)
         }
@@ -316,6 +392,7 @@ data class CstSchema(
 data class CategorySchema(
     val name: String,
     val superCategories: List<String> = emptyList(),
+    val members: List<String> = emptyList(),
     val isOpen: Boolean = false,
     val doc: String? = null,
 )
@@ -327,6 +404,7 @@ data class CategorySchema(
 data class TokenCategorySchema(
     val name: String,
     val superCategories: List<String> = emptyList(),
+    val members: List<String> = emptyList(),
     val isOpen: Boolean = false,
     val doc: String? = null,
 )
@@ -347,7 +425,7 @@ data class TokenSchema(
     val doc: String? = null,
 ) {
     /**
-     * Negative runtime kind integer stored in `FlatCst.nodeKinds`.
+     * Negative runtime kind integer stored in `ConcreteSyntaxTree.nodeKinds`.
      */
     val runtimeKind: Int
         get() = encodeTokenKind(id, isTrivia)
@@ -367,7 +445,7 @@ data class NodeSchema(
 
 /**
  * Definition of a field on a node. Every field (including list fields) has a non-negative [slot]
- * stored in `FlatCst.childSlots`.
+ * stored in `ConcreteSyntaxTree.childSlots`.
  */
 data class FieldSchema(
     val name: String,
@@ -387,6 +465,7 @@ sealed interface FieldType {
 
     data class ChildNodeList(
         val nodeTypeName: String,
+        val isNonEmpty: Boolean = false,
     ) : FieldType
 
     /**
@@ -402,5 +481,6 @@ sealed interface FieldType {
      */
     data class ChildTokenList(
         val tokenTypeName: String? = null,
+        val isNonEmpty: Boolean = false,
     ) : FieldType
 }

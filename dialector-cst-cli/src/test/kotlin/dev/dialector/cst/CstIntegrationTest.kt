@@ -30,7 +30,7 @@ class CstIntegrationTest {
                 TokenSchema("Identifier", id = 3),
             ),
             categories = listOf(
-                CategorySchema("Expression"),
+                CategorySchema("Expression", isOpen = true),
             ),
             nodes = listOf(
                 NodeSchema(
@@ -133,8 +133,8 @@ class CstIntegrationTest {
                 TokenSchema("Semicolon", id = 4),
             ),
             categories = listOf(
-                CategorySchema("Statement"),
-                CategorySchema("Expression"),
+                CategorySchema("Statement", isOpen = true),
+                CategorySchema("Expression", isOpen = true),
             ),
             nodes = listOf(
                 NodeSchema(
@@ -222,7 +222,13 @@ class CstIntegrationTest {
 
                     val blockHandle = BlockStatementHandle(0)
                     with(tree) {
-                        return blockHandle.statements.size
+                        val first = blockHandle.statements[0]
+                        val outOfBounds = blockHandle.statements[10]
+                        return if (!blockHandle.statements.isEmpty && first.isValid && outOfBounds.isNone) {
+                            blockHandle.statements.size
+                        } else {
+                            -1
+                        }
                     }
                 }
 
@@ -372,7 +378,7 @@ class CstIntegrationTest {
                     val schemaName = rootFile.schemaHeader.name.asNode.text
                     var nodeDeclCount = 0
                     var tokenDeclCount = 0
-                    rootFile.forEachDeclarations { decl ->
+                    rootFile.declarations.forEach { decl ->
                         if (decl.isNodeDecl) nodeDeclCount++
                         if (decl.isTokenDecl) tokenDeclCount++
                     }
@@ -395,13 +401,13 @@ class CstIntegrationTest {
             "Freshly generated CstSchemaDsl* failed to compile:\n${compilationResult.messages}",
         )
 
-        val flatCst = dev.dialector.cst.schema.dsl.CstSchemaParser.parseToFlatCst(dslSource)
+        val cst = dev.dialector.cst.schema.dsl.CstSchemaParser.parseToCst(dslSource)
         val verifierClass = compilationResult.classLoader.loadClass(
             "dev.dialector.cst.schema.dsl.verified.SelfHostedVerifier"
         )
         val verifierInstance = verifierClass.getField("INSTANCE").get(null)
         val verifyMethod = verifierClass.getMethod("verifyTree", ConcreteSyntaxTree::class.java)
-        val summary = verifyMethod.invoke(verifierInstance, flatCst) as String
+        val summary = verifyMethod.invoke(verifierInstance, cst) as String
 
         assertEquals("CstSchemaDsl:15:27", summary)
     }

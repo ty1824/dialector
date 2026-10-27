@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.LambdaTypeName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterSpec
@@ -310,6 +311,21 @@ public class CstKotlinPoetGenerator(
             }
         }
 
+        // 5. Slot List Value Classes for list fields
+        val listTargetHandles = linkedSetOf<ClassName>()
+        for (node in schema.nodes) {
+            for (field in node.fields) {
+                when (val type = field.type) {
+                    is FieldType.ChildNodeList -> listTargetHandles.add(resolveNodeHandleType(schema, type.nodeTypeName))
+                    is FieldType.ChildTokenList -> listTargetHandles.add(resolveTokenHandleType(schema, type.tokenTypeName))
+                    else -> {}
+                }
+            }
+        }
+        for (targetHandle in listTargetHandles) {
+            addListHandle(fileBuilder, schema, targetHandle)
+        }
+
         return fileBuilder.build()
     }
 
@@ -501,11 +517,8 @@ public class CstKotlinPoetGenerator(
 
         addCommonNodeDelegatedMembers(typeBuilder)
 
-        for (cat in schema.getNodeCategories(node.name)) {
-            typeBuilder.addProperty(
-                contextGetterProperty("is$cat", BOOLEAN, "true")
-            )
-            if (config.generateCategoryHandles) {
+        if (config.generateCategoryHandles) {
+            for (cat in schema.getNodeCategories(node.name)) {
                 val catHandle = ClassName(schema.packageName, categoryHandleName(cat))
                 typeBuilder.addProperty(
                     simpleGetterProperty("as$cat", catHandle, "%T(nodeIndex)", catHandle)
@@ -603,11 +616,8 @@ public class CstKotlinPoetGenerator(
 
         addCommonTokenDelegatedMembers(typeBuilder)
 
-        for (tCat in schema.getTokenCategories(token.name)) {
-            typeBuilder.addProperty(
-                contextGetterProperty("is$tCat", BOOLEAN, "true")
-            )
-            if (config.generateCategoryHandles) {
+        if (config.generateCategoryHandles) {
+            for (tCat in schema.getTokenCategories(token.name)) {
                 val tCatHandle = ClassName(schema.packageName, tokenCategoryHandleName(tCat))
                 typeBuilder.addProperty(
                     simpleGetterProperty("as$tCat", tCatHandle, "%T(tokenIndex)", tCatHandle)
@@ -721,35 +731,46 @@ public class CstKotlinPoetGenerator(
         )
     }
 
-    private fun addFieldMembersToNodeHandle(
-        typeBuilder: TypeSpec.Builder,
-        schema: CstSchema,
-        field: FieldSchema,
-    ) {
+    private fun resolveNodeHandleType(schema: CstSchema, nodeTypeName: String): ClassName {
         val categoryNames = schema.categories.map { it.name }.toSet()
-        val tokenCategoryNames = schema.tokenCategories.map { it.name }.toSet()
-        val slotConst = "SLOT_${toUpperSnake(field.name)}"
-
-        fun resolveNodeHandleType(nodeTypeName: String): ClassName = when {
+        return when {
             nodeTypeName == "CstNode" -> CN_CST_NODE
             categoryNames.contains(nodeTypeName) ->
                 if (config.generateCategoryHandles) ClassName(schema.packageName, categoryHandleName(nodeTypeName)) else CN_CST_NODE
             else -> ClassName(schema.packageName, nodeHandleName(nodeTypeName))
         }
+    }
 
-        fun resolveTokenHandleType(tokenTypeName: String?): ClassName {
-            if (tokenTypeName == null || tokenTypeName == "CstToken" || !config.generateTokenHandles) {
-                return CN_CST_TOKEN
-            }
-            if (tokenCategoryNames.contains(tokenTypeName)) {
-                return if (config.generateCategoryHandles) ClassName(schema.packageName, tokenCategoryHandleName(tokenTypeName)) else CN_CST_TOKEN
-            }
-            return ClassName(schema.packageName, tokenHandleName(tokenTypeName))
+    private fun resolveTokenHandleType(schema: CstSchema, tokenTypeName: String?): ClassName {
+        if (tokenTypeName == null || tokenTypeName == "CstToken" || !config.generateTokenHandles) {
+            return CN_CST_TOKEN
         }
+        val tokenCategoryNames = schema.tokenCategories.map { it.name }.toSet()
+        if (tokenCategoryNames.contains(tokenTypeName)) {
+            return if (config.generateCategoryHandles) ClassName(schema.packageName, tokenCategoryHandleName(tokenTypeName)) else CN_CST_TOKEN
+        }
+        return ClassName(schema.packageName, tokenHandleName(tokenTypeName))
+    }
+
+    private fun listHandleClassName(packageName: String, targetHandle: ClassName): ClassName {
+        val simple = when (targetHandle) {
+            CN_CST_NODE -> "CstNodeSlotList"
+            CN_CST_TOKEN -> "CstTokenList"
+            else -> "${targetHandle.simpleName.removeSuffix("Handle")}List"
+        }
+        return ClassName(packageName, simple)
+    }
+
+    private fun addFieldMembersToNodeHandle(
+        typeBuilder: TypeSpec.Builder,
+        schema: CstSchema,
+        field: FieldSchema,
+    ) {
+        val slotConst = "SLOT_${toUpperSnake(field.name)}"
 
         when (val type = field.type) {
             is FieldType.ChildNode -> {
-                val targetHandle = resolveNodeHandleType(type.nodeTypeName)
+                val targetHandle = resolveNodeHandleType(schema, type.nodeTypeName)
                 val optionalityNote = if (type.isOptional) "Optional child" else "Mandatory child (may be [NONE] or `isMissing` on syntax error)"
                 val doc = buildString {
                     if (field.doc != null) appendLine(field.doc)
@@ -767,12 +788,12 @@ public class CstKotlinPoetGenerator(
             }
 
             is FieldType.ChildNodeList -> {
-                val targetHandle = resolveNodeHandleType(type.nodeTypeName)
-                addListFieldMembers(typeBuilder, field, targetHandle, slotConst)
+                val targetHandle = resolveNodeHandleType(schema, type.nodeTypeName)
+                addListFieldMembers(typeBuilder, schema, field, targetHandle, slotConst, type.isNonEmpty)
             }
 
             is FieldType.ChildToken -> {
-                val targetHandle = resolveTokenHandleType(type.tokenTypeName)
+                val targetHandle = resolveTokenHandleType(schema, type.tokenTypeName)
                 val optionalityNote = if (type.isOptional) "Optional token" else "Mandatory token (may be [NONE] or `isMissing` on syntax error)"
                 val doc = buildString {
                     if (field.doc != null) appendLine(field.doc)
@@ -790,44 +811,132 @@ public class CstKotlinPoetGenerator(
             }
 
             is FieldType.ChildTokenList -> {
-                val targetHandle = resolveTokenHandleType(type.tokenTypeName)
-                addListFieldMembers(typeBuilder, field, targetHandle, slotConst)
+                val targetHandle = resolveTokenHandleType(schema, type.tokenTypeName)
+                addListFieldMembers(typeBuilder, schema, field, targetHandle, slotConst, type.isNonEmpty)
             }
         }
     }
 
     private fun addListFieldMembers(
         typeBuilder: TypeSpec.Builder,
+        schema: CstSchema,
         field: FieldSchema,
         targetHandle: ClassName,
         slotConst: String,
+        isNonEmpty: Boolean,
     ) {
-        val listType = ClassName("kotlin.collections", "List").parameterizedBy(targetHandle)
-        val capitalized = field.name.replaceFirstChar { it.uppercaseChar() }
-
-        val propBuilder = contextProperty(field.name, listType)
-        if (field.doc != null) propBuilder.addKdoc("%L", field.doc)
-        propBuilder.getter(
-            FunSpec.getterBuilder()
-                .addStatement("val list = mutableListOf<%T>()", targetHandle)
-                .beginControlFlow("tree.forEachChildInSlot(nodeIndex, %L) { childIdx ->", slotConst)
-                .addStatement("list.add(%T(childIdx))", targetHandle)
-                .endControlFlow()
-                .addStatement("return list")
-                .build()
+        val listType = listHandleClassName(schema.packageName, targetHandle)
+        val listNote = if (isNonEmpty) "Non-empty child list" else "Child list"
+        val doc = buildString {
+            if (field.doc != null) appendLine(field.doc)
+            append("($listNote at slot [$slotConst] = ${field.slot})")
+        }
+        typeBuilder.addProperty(
+            simpleGetterProperty(
+                name = field.name,
+                type = listType,
+                kdoc = doc,
+                format = "%T.pack(nodeIndex, %L)",
+                args = arrayOf(listType, slotConst),
+            )
         )
-        typeBuilder.addProperty(propBuilder.build())
+    }
 
+    private fun addListHandle(
+        fileBuilder: FileSpec.Builder,
+        schema: CstSchema,
+        targetHandle: ClassName,
+    ) {
+        val listClassName = listHandleClassName(schema.packageName, targetHandle)
         val actionLambdaType = LambdaTypeName.get(parameters = arrayOf(targetHandle), returnType = UNIT)
-        typeBuilder.addFunction(
-            contextFun("forEach$capitalized")
-                .addModifiers(KModifier.INLINE)
-                .addParameter("action", actionLambdaType)
-                .beginControlFlow("tree.forEachChildInSlot(nodeIndex, %L) { childIdx ->", slotConst)
-                .addStatement("action(%T(childIdx))", targetHandle)
-                .endControlFlow()
-                .build()
-        )
+
+        val typeBuilder = TypeSpec.classBuilder(listClassName)
+            .addModifiers(KModifier.PUBLIC, KModifier.VALUE)
+            .addAnnotation(JvmInline::class)
+            .addKdoc("Zero-allocation list view over [%T] children in a specific schema slot.", targetHandle)
+            .primaryConstructor(
+                FunSpec.constructorBuilder()
+                    .addParameter("packed", LONG)
+                    .build()
+            )
+            .addProperty(
+                PropertySpec.builder("packed", LONG, KModifier.PUBLIC)
+                    .initializer("packed")
+                    .build()
+            )
+            .addProperty(
+                simpleGetterProperty(
+                    name = "parentNodeIndex",
+                    type = INT,
+                    format = "(packed ushr 32).toInt()",
+                )
+            )
+            .addProperty(
+                simpleGetterProperty(
+                    name = "slot",
+                    type = INT,
+                    format = "packed.toInt()",
+                )
+            )
+            .addProperty(
+                contextGetterProperty(
+                    name = "size",
+                    type = INT,
+                    format = "if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0",
+                )
+            )
+            .addProperty(
+                contextGetterProperty(
+                    name = "isEmpty",
+                    type = BOOLEAN,
+                    format = "parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == %M",
+                    M_NULL_NODE_INDEX,
+                )
+            )
+            .addFunction(
+                contextFun("get")
+                    .addModifiers(KModifier.OPERATOR)
+                    .addParameter("index", INT)
+                    .returns(targetHandle)
+                    .addStatement(
+                        "return if (parentNodeIndex >= 0) %T(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else %T.NONE",
+                        targetHandle,
+                        targetHandle,
+                    )
+                    .build()
+            )
+            .addFunction(
+                contextFun("forEach")
+                    .addModifiers(KModifier.INLINE)
+                    .addParameter("action", actionLambdaType)
+                    .addStatement("if (parentNodeIndex < 0) return")
+                    .beginControlFlow("tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->")
+                    .addStatement("action(%T(childIdx))", targetHandle)
+                    .endControlFlow()
+                    .build()
+            )
+            .addType(
+                TypeSpec.companionObjectBuilder()
+                    .addProperty(
+                        PropertySpec.builder("EMPTY", listClassName)
+                            .initializer("pack(%M, %M.toInt())", M_NULL_NODE_INDEX, M_NO_SLOT)
+                            .build()
+                    )
+                    .addFunction(
+                        FunSpec.builder("pack")
+                            .addParameter("parentNodeIndex", INT)
+                            .addParameter("slot", INT)
+                            .returns(listClassName)
+                            .addStatement(
+                                "return %T((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))",
+                                listClassName,
+                            )
+                            .build()
+                    )
+                    .build()
+            )
+
+        fileBuilder.addType(typeBuilder.build())
     }
 
     // =========================================================================
