@@ -23,6 +23,10 @@ public class DialectorCstPlugin : Plugin<Project> {
         extension.outputDirectory.convention(
             project.layout.buildDirectory.dir("generated/source/cst/main/kotlin")
         )
+        extension.testSourceDirectories.from(project.layout.projectDirectory.dir("src/test/cst"))
+        extension.testOutputDirectory.convention(
+            project.layout.buildDirectory.dir("generated/source/cst/test/kotlin")
+        )
 
         val generateCstTask = project.tasks.register(TASK_NAME, GenerateCstTask::class.java) { task ->
             task.sourceDirectories.from(extension.sourceDirectories)
@@ -36,29 +40,49 @@ public class DialectorCstPlugin : Plugin<Project> {
             task.generateNavigators.set(extension.generateNavigators)
         }
 
+        val generateTestCstTask = project.tasks.register(TEST_TASK_NAME, GenerateCstTask::class.java) { task ->
+            task.description = "Generates test CST Kotlin source files from Dialector .cst schema files."
+            task.sourceDirectories.from(extension.testSourceDirectories)
+            task.outputDirectory.set(extension.testOutputDirectory)
+            task.packageName.set(extension.packageName)
+            task.schemaName.set(extension.schemaName)
+            task.generateTokenHandles.set(extension.generateTokenHandles)
+            task.generateCategoryHandles.set(extension.generateCategoryHandles)
+            task.generateDebugHelpers.set(extension.generateDebugHelpers)
+            task.generateBuilderExtensions.set(extension.generateBuilderExtensions)
+            task.generateNavigators.set(extension.generateNavigators)
+        }
+
         // Wire into Kotlin JVM if present
         project.pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
             val kotlinExt = project.extensions.findByType(KotlinProjectExtension::class.java)
             kotlinExt?.sourceSets?.findByName("main")?.kotlin?.srcDir(generateCstTask.flatMap { it.outputDirectory })
+            kotlinExt?.sourceSets?.findByName("test")?.kotlin?.srcDir(generateTestCstTask.flatMap { it.outputDirectory })
         }
 
         // Wire into Kotlin Multiplatform if present
         project.pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
             val kmpExt = project.extensions.findByType(KotlinMultiplatformExtension::class.java)
-            val targetSourceSet = kmpExt?.sourceSets?.findByName("commonMain")
+            val mainSourceSet = kmpExt?.sourceSets?.findByName("commonMain")
                 ?: kmpExt?.sourceSets?.findByName("main")
-            targetSourceSet?.kotlin?.srcDir(generateCstTask.flatMap { it.outputDirectory })
+            mainSourceSet?.kotlin?.srcDir(generateCstTask.flatMap { it.outputDirectory })
+
+            val testSourceSet = kmpExt?.sourceSets?.findByName("commonTest")
+                ?: kmpExt?.sourceSets?.findByName("test")
+            testSourceSet?.kotlin?.srcDir(generateTestCstTask.flatMap { it.outputDirectory })
         }
 
         // Fallback: also wire into standard Java SourceSetContainer if neither Kotlin plugin is applied yet
         project.pluginManager.withPlugin("java") {
             val sourceSets = project.extensions.findByType(SourceSetContainer::class.java)
             sourceSets?.findByName("main")?.java?.srcDir(generateCstTask.flatMap { it.outputDirectory })
+            sourceSets?.findByName("test")?.java?.srcDir(generateTestCstTask.flatMap { it.outputDirectory })
         }
     }
 
     public companion object {
         public const val EXTENSION_NAME: String = "dialectorCst"
         public const val TASK_NAME: String = "generateCst"
+        public const val TEST_TASK_NAME: String = "generateTestCst"
     }
 }

@@ -32,7 +32,7 @@ public class DialectorCstCli : CliktCommand(name = "dialector-cst") {
     }
 
     override fun help(context: Context): String =
-        "Command-line interface for the Dialector Flat CST schema validator and code generator."
+        "Command-line interface for the Dialector CST schema validator and code generator."
 
     override fun run(): Unit = Unit
 }
@@ -42,7 +42,7 @@ public class DialectorCstCli : CliktCommand(name = "dialector-cst") {
  */
 public class GenerateCommand : CliktCommand(name = "generate") {
     override fun help(context: Context): String =
-        "Generate Flat CST Kotlin source files from .cst schema files or directories."
+        "Generate CST Kotlin source files from .cst schema files or directories."
 
     private val inputs: List<File> by argument(
         name = "inputs",
@@ -84,7 +84,7 @@ public class GenerateCommand : CliktCommand(name = "generate") {
 
     private val generateBuilderExtensions: Boolean by option(
         "--builder-extensions",
-        help = "Generate type-safe FlatCstBuilder extension functions.",
+        help = "Generate type-safe ConcreteSyntaxBuilder extension functions.",
     ).boolean().default(true)
 
     private val generateNavigators: Boolean by option(

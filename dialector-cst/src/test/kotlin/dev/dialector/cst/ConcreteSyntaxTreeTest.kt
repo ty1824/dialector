@@ -320,4 +320,131 @@ class ConcreteSyntaxTreeTest {
         assertTrue(debugStr.contains("Diagnostics (1):"))
         assertTrue(debugStr.contains("Missing right operand"))
     }
+
+    @Test
+    fun `bottom-up span calculation supports parentIdx greater than childIdx and trailing missing tokens`() {
+        val source = "   10 + 20"
+        val tree = buildCst(source) {
+            // Left operand allocated first (index 0) before parent BinaryExpr (index 2)
+            val leftLit = startNode(kind = 10)
+            addToken(schemaTokenId = 1, startOffset = 3, endOffset = 5, parentNode = leftLit, slot = 0)
+
+            // Parent BinaryExpr allocated after leftLit (parentIdx > childIdx), left unfinished until build()
+            val binaryExpr = startNode(kind = 20)
+            addChild(parentNodeIndex = binaryExpr, childNodeIndex = leftLit, slot = 0)
+            addToken(schemaTokenId = 2, startOffset = 6, endOffset = 7, parentNode = binaryExpr, slot = 1)
+
+            val rightLit = startNode(kind = 10)
+            addToken(schemaTokenId = 1, startOffset = 8, endOffset = 10, parentNode = rightLit, slot = 0)
+            addChild(parentNodeIndex = binaryExpr, childNodeIndex = rightLit, slot = 2)
+
+            // Trailing missing token with offset 0 should not truncate binaryExpr's resolvedEnd
+            addMissingToken(schemaTokenId = 3, offset = 0, parentNode = binaryExpr, slot = 3)
+
+            // Trailing empty composite child (resolved to 0..0) should also not truncate binaryExpr's resolvedEnd
+            val emptyTrailingChild = startNode(kind = 30)
+            addChild(parentNodeIndex = binaryExpr, childNodeIndex = emptyTrailingChild, slot = 4)
+        }
+
+        // binaryExpr is at index 2; its span should be 3..10 ("10 + 20", length 7)
+        assertEquals(3, tree.getNodeStartOffset(0))
+        assertEquals(2, tree.getNodeLength(0))
+        assertEquals(3, tree.getNodeStartOffset(2))
+        assertEquals(7, tree.getNodeLength(2))
+        assertEquals(10, tree.getNodeEndOffset(2))
+        assertEquals("10 + 20", tree.getText(2))
+    }
+
+    @Test
+    fun `SourceRange and SourcePosition provide zero-allocation range and line-column lookups`() {
+        val source = "val x = 10\nval y = 20\r\nval z = 30"
+        val tree = buildCst(source) {
+            val root = startNode(kind = 1)
+            // line 1: "val" at 0..3, "10" at 8..10
+            addToken(schemaTokenId = 10, startOffset = 0, endOffset = 3, parentNode = root, slot = 0)
+            addToken(schemaTokenId = 11, startOffset = 8, endOffset = 10, parentNode = root, slot = 1)
+            // line 2: "val" at 11..14, "20" at 19..21
+            addToken(schemaTokenId = 10, startOffset = 11, endOffset = 14, parentNode = root, slot = 2)
+            addToken(schemaTokenId = 11, startOffset = 19, endOffset = 21, parentNode = root, slot = 3)
+            // line 3 (after \r\n at 21..23): "val" at 23..26, "30" at 31..33
+            addToken(schemaTokenId = 10, startOffset = 23, endOffset = 26, parentNode = root, slot = 4)
+            addToken(schemaTokenId = 11, startOffset = 31, endOffset = 33, parentNode = root, slot = 5)
+            reportDiagnostic(nodeIndex = 6, startOffset = 31, endOffset = 33, code = "TEST", message = "Test diag")
+            finishNode(root)
+        }
+
+        // Line table checks
+        assertEquals(3, tree.lineCount)
+        assertEquals("val x = 10", tree.getLineText(1))
+        assertEquals("val y = 20", tree.getLineText(2))
+        assertEquals("val z = 30", tree.getLineText(3))
+        assertEquals(SourceRange(0, 10), tree.getLineRange(1))
+        assertEquals(SourceRange(11, 21), tree.getLineRange(2))
+        assertEquals(SourceRange(11, 23), tree.getLineRange(2, includeLineBreak = true))
+        assertEquals(SourceRange(23, 33), tree.getLineRange(3))
+        assertEquals(SourceRange.NONE, tree.getLineRange(0))
+        assertEquals(SourceRange.NONE, tree.getLineRange(4))
+
+        // Bidirectional offset <-> SourcePosition
+        assertEquals(SourcePosition(1, 1), tree.getPosition(0))
+        assertEquals(SourcePosition(1, 9), tree.getPosition(8))
+        assertEquals(SourcePosition(2, 1), tree.getPosition(11))
+        assertEquals(SourcePosition(2, 9), tree.getPosition(19))
+        assertEquals(SourcePosition(3, 1), tree.getPosition(23))
+        assertEquals(SourcePosition(3, 9), tree.getPosition(31))
+        assertEquals(SourcePosition(3, 11), tree.getPosition(33))
+        assertEquals(SourcePosition.NONE, tree.getPosition(-1))
+        assertEquals(SourcePosition.NONE, tree.getPosition(100))
+
+        assertEquals(0, tree.getOffset(1, 1))
+        assertEquals(8, tree.getOffset(SourcePosition(1, 9)))
+        assertEquals(10, tree.getOffset(1, 11)) // '\n' on line 1
+        assertEquals(-1, tree.getOffset(1, 12)) // past line 1's '\n' (start of line 2)
+        assertEquals(11, tree.getOffset(2, 1))
+        assertEquals(19, tree.getOffset(2, 9))
+        assertEquals(23, tree.getOffset(3, 1))
+        assertEquals(31, tree.getOffset(3, 9))
+        assertEquals(33, tree.getOffset(3, 11)) // EOF on final line
+        assertEquals(-1, tree.getOffset(3, 12))
+        assertEquals(-1, tree.getOffset(0, 1))
+        assertEquals(-1, tree.getOffset(1, 50))
+
+        // Canonical NONE normalization
+        assertEquals(SourceRange.NONE, SourceRange(-5, 10))
+        assertEquals(SourcePosition.NONE, SourcePosition(0, 1))
+        assertEquals(SourcePosition.NONE, SourcePosition(1, 0))
+
+        // SourceRange operations
+        val r1 = SourceRange(11, 21)
+        assertTrue(r1.isValid)
+        assertFalse(r1.isNone)
+        assertEquals(10, r1.length)
+        assertFalse(r1.isEmpty)
+        assertEquals(11..<21, r1.asIntRange)
+        assertTrue(11 in r1)
+        assertTrue(20 in r1)
+        assertFalse(21 in r1)
+        assertTrue(SourceRange(12, 18) in r1)
+        assertTrue(r1.intersects(SourceRange(15, 25)))
+        assertFalse(r1.intersects(SourceRange(21, 25)))
+        assertEquals("11..21", r1.toString())
+        assertEquals("SourceRange.NONE", SourceRange.NONE.toString())
+
+        // Node, Token, and Diagnostic accessors
+        with(tree) {
+            val tokline2Num = tree.root.tokenBySlot(3)
+            assertEquals(SourceRange(19, 21), tokline2Num.sourceRange)
+            assertEquals("20", tree.getText(tokline2Num.sourceRange))
+            assertEquals(SourcePosition(2, 9), tokline2Num.startPosition)
+            assertEquals(SourcePosition(2, 11), tokline2Num.endPosition)
+            assertEquals(1, tokline2Num.startPosition.lineIndex)
+            assertEquals(8, tokline2Num.startPosition.columnIndex)
+            assertTrue(tokline2Num.startPosition < tokline2Num.endPosition)
+            assertEquals("2:9", tokline2Num.startPosition.toString())
+
+            assertEquals(SourceRange.NONE, CstNode.NONE.sourceRange)
+            assertEquals(SourcePosition.NONE, CstNode.NONE.startPosition)
+            assertEquals(SourceRange(31, 33), tree.diagnostics.first().sourceRange)
+        }
+    }
 }

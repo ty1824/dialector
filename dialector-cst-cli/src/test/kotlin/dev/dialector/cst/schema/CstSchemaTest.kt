@@ -18,7 +18,7 @@ class CstSchemaTest {
                 TokenSchema("Identifier", id = 3),
             ),
             categories = listOf(
-                CategorySchema("Expression"),
+                CategorySchema("Expression", isOpen = true),
             ),
             nodes = listOf(
                 NodeSchema(
@@ -103,8 +103,8 @@ class CstSchemaTest {
                 name = "Test",
                 packageName = "test",
                 categories = listOf(
-                    CategorySchema("A", superCategories = listOf("B")),
-                    CategorySchema("B", superCategories = listOf("A")),
+                    CategorySchema("A", superCategories = listOf("B"), isOpen = true),
+                    CategorySchema("B", superCategories = listOf("A"), isOpen = true),
                 ),
             ).validate()
         }
@@ -146,7 +146,7 @@ class CstSchemaTest {
                 TokenSchema("Identifier", id = 3),
             ),
             categories = listOf(
-                CategorySchema("BaseCategory"),
+                CategorySchema("BaseCategory", isOpen = true),
             ),
             nodes = listOf(
                 NodeSchema(
@@ -265,5 +265,184 @@ class CstSchemaTest {
             )
         }
         assertTrue(exClosedWithoutUnion.errors.any { it.contains("Closed category 'EmptyClosed' must define members with '= ...' or be declared 'open'") })
+    }
+
+    @Test
+    fun `programmatic CstSchema validate enforces open and closed category rules`() {
+        // 1. Extending a closed category via NodeSchema.categories should fail
+        val exNodeExtendsClosed = assertFailsWith<CstSchemaException> {
+            CstSchema(
+                name = "ProgBad1",
+                packageName = "test.prog",
+                categories = listOf(
+                    CategorySchema("Expr", isOpen = false, members = listOf("VarExpr")),
+                ),
+                nodes = listOf(
+                    NodeSchema("VarExpr", id = 1),
+                    NodeSchema("OtherExpr", id = 2, categories = listOf("Expr")),
+                ),
+            ).validate()
+        }
+        assertTrue(exNodeExtendsClosed.errors.any { it.contains("Node 'OtherExpr' cannot extend closed category 'Expr'") })
+
+        // 2. Extending a closed category via CategorySchema.superCategories should fail
+        val exCatExtendsClosed = assertFailsWith<CstSchemaException> {
+            CstSchema(
+                name = "ProgBad2",
+                packageName = "test.prog",
+                categories = listOf(
+                    CategorySchema("Base", isOpen = false, members = listOf("NodeA")),
+                    CategorySchema("Sub", isOpen = true, superCategories = listOf("Base")),
+                ),
+                nodes = listOf(
+                    NodeSchema("NodeA", id = 1),
+                ),
+            ).validate()
+        }
+        assertTrue(exCatExtendsClosed.errors.any { it.contains("Category 'Sub' cannot extend closed category 'Base'") })
+
+        // 3. Open category defining members should fail
+        val exOpenWithMembers = assertFailsWith<CstSchemaException> {
+            CstSchema(
+                name = "ProgBad3",
+                packageName = "test.prog",
+                categories = listOf(
+                    CategorySchema("Expr", isOpen = true, members = listOf("NodeA")),
+                ),
+                nodes = listOf(
+                    NodeSchema("NodeA", id = 1),
+                ),
+            ).validate()
+        }
+        assertTrue(exOpenWithMembers.errors.any { it.contains("Open category 'Expr' cannot define a '= ...' member union") })
+
+        // 4. Closed category with empty members should fail
+        val exClosedEmpty = assertFailsWith<CstSchemaException> {
+            CstSchema(
+                name = "ProgBad4",
+                packageName = "test.prog",
+                categories = listOf(
+                    CategorySchema("EmptyClosed", isOpen = false, members = emptyList()),
+                ),
+            ).validate()
+        }
+        assertTrue(exClosedEmpty.errors.any { it.contains("Closed category 'EmptyClosed' must define members with '= ...' or be declared 'open'") })
+
+        // 5. Extending a closed token category should fail
+        val exTokenExtendsClosed = assertFailsWith<CstSchemaException> {
+            CstSchema(
+                name = "ProgBad5",
+                packageName = "test.prog",
+                tokens = listOf(
+                    TokenSchema("Plus", id = 1, fixedText = "+"),
+                    TokenSchema("Minus", id = 2, fixedText = "-", categories = listOf("BinOp")),
+                ),
+                tokenCategories = listOf(
+                    TokenCategorySchema("BinOp", isOpen = false, members = listOf("Plus")),
+                ),
+            ).validate()
+        }
+        assertTrue(exTokenExtendsClosed.errors.any { it.contains("Token 'Minus' cannot extend closed token category 'BinOp'") })
+    }
+
+    @Test
+    fun `dsl parser preserves star vs plus list quantifier in isNonEmpty`() {
+        val schema = dev.dialector.cst.schema.dsl.CstSchemaParser.parse(
+            """
+            schema QuantLang
+            package test.quant
+
+            token Ident
+            node Item {
+                name: Ident
+            }
+            node Container {
+                zeroOrMoreNodes: Item*
+                oneOrMoreNodes: Item+
+                zeroOrMoreTokens: Ident*
+                oneOrMoreTokens: Ident+
+            }
+            """.trimIndent()
+        )
+
+        val container = schema.nodes.first { it.name == "Container" }
+        val fieldsByName = container.fields.associateBy { it.name }
+
+        assertEquals(FieldType.ChildNodeList("Item", isNonEmpty = false), fieldsByName.getValue("zeroOrMoreNodes").type)
+        assertEquals(FieldType.ChildNodeList("Item", isNonEmpty = true), fieldsByName.getValue("oneOrMoreNodes").type)
+        assertEquals(FieldType.ChildTokenList("Ident", isNonEmpty = false), fieldsByName.getValue("zeroOrMoreTokens").type)
+        assertEquals(FieldType.ChildTokenList("Ident", isNonEmpty = true), fieldsByName.getValue("oneOrMoreTokens").type)
+    }
+
+    @Test
+    fun `dsl parser collects multi-line triple-slash doc comments and stops at blank lines`() {
+        val schema = dev.dialector.cst.schema.dsl.CstSchemaParser.parse(
+            """
+            schema DocLang
+            package test.doc
+
+            /// Detached comment separated by a blank line
+
+            /// First line of token doc.
+            /// Second line of token doc.
+            token Ident
+
+            /// First line of node doc.
+            /// Second line of node doc.
+            /// Third line of node doc.
+            node Greeting {
+                /// Field line 1.
+                /// Field line 2.
+                name: Ident
+            }
+            """.trimIndent()
+        )
+
+        val identToken = schema.tokens.first { it.name == "Ident" }
+        assertEquals("First line of token doc.\nSecond line of token doc.", identToken.doc)
+
+        val greetingNode = schema.nodes.first { it.name == "Greeting" }
+        assertEquals("First line of node doc.\nSecond line of node doc.\nThird line of node doc.", greetingNode.doc)
+        assertEquals("Field line 1.\nField line 2.", greetingNode.fields.first().doc)
+    }
+
+    @Test
+    fun `dsl parser reports diagnostics for unrecognized characters, unterminated strings, and unterminated block comments`() {
+        // 1. Unrecognized character (`~` or `;`)
+        val exBadChar = assertFailsWith<CstSchemaException> {
+            dev.dialector.cst.schema.dsl.CstSchemaParser.parse(
+                """
+                schema BadChar
+                package test.bad
+                token ~Ident
+                """.trimIndent()
+            )
+        }
+        assertTrue(exBadChar.errors.any { it.contains("UNEXPECTED_CHARACTER") && it.contains("~") })
+
+        // 2. Unterminated string literal
+        val exUnterminatedStr = assertFailsWith<CstSchemaException> {
+            dev.dialector.cst.schema.dsl.CstSchemaParser.parse(
+                """
+                schema BadStr
+                package test.bad
+                token Plus = "+
+                """.trimIndent()
+            )
+        }
+        assertTrue(exUnterminatedStr.errors.any { it.contains("UNTERMINATED_STRING_LITERAL") })
+
+        // 3. Unterminated block comment
+        val exUnterminatedComment = assertFailsWith<CstSchemaException> {
+            dev.dialector.cst.schema.dsl.CstSchemaParser.parse(
+                """
+                schema BadComment
+                package test.bad
+                /* unterminated comment
+                token Ident
+                """.trimIndent()
+            )
+        }
+        assertTrue(exUnterminatedComment.errors.any { it.contains("UNTERMINATED_BLOCK_COMMENT") })
     }
 }

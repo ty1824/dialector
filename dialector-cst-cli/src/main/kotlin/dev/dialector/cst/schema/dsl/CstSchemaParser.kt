@@ -15,7 +15,7 @@ import dev.dialector.cst.schema.TokenSchema
 /**
  * Self-hosted parser and extractor for the Dialector `.cst` Schema DSL (`CstSchemaDsl`).
  *
- * - [parseToFlatCst] lexes and parses any `.cst` source text directly into a lossless [ConcreteSyntaxTree]
+ * - [parseToCst] lexes and parses any `.cst` source text directly into a lossless [ConcreteSyntaxTree]
  *   conforming to the `CstSchemaDsl` schema (including doc comments, trivia, error nodes, and recovery).
  * - [extractSchema] walks a [ConcreteSyntaxTree] using the generated `CstSchemaDsl` value-class handles
  *   ([SchemaFileHandle], [NodeDeclHandle], [FieldDeclHandle], etc.) to build a validated [CstSchema].
@@ -194,7 +194,7 @@ node Annotation {
         defaultSchemaName: String = "DialectorCst",
         defaultPackageName: String = "dev.dialector.cst.generated",
     ): CstSchema {
-        val cst = parseToFlatCst(source)
+        val cst = parseToCst(source)
         if (cst.hasErrors) {
             val messages = cst.diagnostics.map {
                 "Syntax error at ${it.startOffset}..${it.endOffset} [${it.code}]: ${it.message}"
@@ -216,16 +216,16 @@ node Annotation {
     /**
      * Lexes and parses `.cst` source text into a lossless [ConcreteSyntaxTree] using `CstSchemaDsl` node & token kinds.
      */
-    public fun parseToFlatCst(source: String): ConcreteSyntaxTree {
+    public fun parseToCst(source: String): ConcreteSyntaxTree {
         val rawTokens = tokenize(source)
         val builder = ConcreteSyntaxBuilder()
-        val parser = DslFlatParser(source, rawTokens, builder)
+        val parser = DslParser(source, rawTokens, builder)
         parser.parseSchemaFile()
         return builder.build(source)
     }
 
     /**
-     * Extracts a semantic [CstSchema] from a [ConcreteSyntaxTree] produced by [parseToFlatCst],
+     * Extracts a semantic [CstSchema] from a [ConcreteSyntaxTree] produced by [parseToCst],
      * using the generated `CstSchemaDsl` value-class handles and context parameters.
      */
     public fun extractSchema(
@@ -245,7 +245,7 @@ node Annotation {
         val packageName = rootFile.packageHeader.let { hdr ->
             if (hdr.isValid && hdr.name.isValid) {
                 val sb = StringBuilder()
-                hdr.name.forEachParts { part ->
+                hdr.name.parts.forEach { part ->
                     if (part.isValid && !part.asNode.isMissing) {
                         if (sb.isNotEmpty()) sb.append('.')
                         sb.append(part.asNode.text)
@@ -270,14 +270,17 @@ node Annotation {
         data class MutableTokenCatDef(
             val name: String,
             var isOpen: Boolean = false,
+            var hasEq: Boolean = false,
             val superCategories: MutableSet<String> = linkedSetOf(),
             val memberRefs: MutableList<Pair<String?, String?>> = mutableListOf(), // (identName, literalText)
+            val resolvedMembers: MutableSet<String> = linkedSetOf(),
             var doc: String? = null,
         )
 
         data class MutableNodeCatDef(
             val name: String,
             var isOpen: Boolean = false,
+            var hasEq: Boolean = false,
             val superCategories: MutableSet<String> = linkedSetOf(),
             val memberNames: MutableSet<String> = linkedSetOf(),
             var doc: String? = null,
@@ -291,7 +294,7 @@ node Annotation {
         val nodeDecls = mutableListOf<NodeDeclHandle>()
 
         // Pass 1: Collect all declarations
-        rootFile.forEachDeclarations { decl ->
+        rootFile.declarations.forEach { decl ->
             val doc = extractLeadingDocComment(decl.asNode)
             when {
                 decl.isTokenDecl -> {
@@ -312,7 +315,7 @@ node Annotation {
                         if (isTrivia) entry.isTrivia = true
                         if (doc != null) entry.doc = doc
                         if (td.categories.isValid) {
-                            td.categories.forEachNames { catIdent ->
+                            td.categories.names.forEach { catIdent ->
                                 if (catIdent.isValid && !catIdent.asNode.isMissing) {
                                     entry.categories.add(catIdent.asNode.text)
                                 }
@@ -329,21 +332,20 @@ node Annotation {
                         val isOpen = tcd.openKw.isValid && !tcd.openKw.asNode.isMissing
                         val hasEq = tcd.eq.isValid && !tcd.eq.asNode.isMissing
                         if (isOpen) entry.isOpen = true
+                        if (hasEq) entry.hasEq = true
                         if (doc != null) entry.doc = doc
                         if (tcd.superCategories.isValid) {
-                            tcd.superCategories.forEachNames { sup ->
+                            tcd.superCategories.names.forEach { sup ->
                                 if (sup.isValid && !sup.asNode.isMissing) entry.superCategories.add(sup.asNode.text)
                             }
                         }
-                        tcd.forEachMembers { mem ->
+                        tcd.members.forEach { mem ->
                             val mName = if (mem.name.isValid && !mem.name.asNode.isMissing) mem.name.asNode.text else null
                             val mLit = if (mem.literal.isValid && !mem.literal.asNode.isMissing) unquoteStringLiteral(mem.literal.asNode.text) else null
                             entry.memberRefs.add(mName to mLit)
                         }
-                        if (isOpen && (hasEq || entry.memberRefs.isNotEmpty())) {
+                        if (isOpen && hasEq && entry.memberRefs.isEmpty()) {
                             semanticErrors.add("Open token category '$tcName' cannot define a '= ...' member union")
-                        } else if (!isOpen && (!hasEq || entry.memberRefs.isEmpty())) {
-                            semanticErrors.add("Closed token category '$tcName' must define members with '= ...' or be declared 'open'")
                         }
                     }
                 }
@@ -356,65 +358,24 @@ node Annotation {
                         val isOpen = cd.openKw.isValid && !cd.openKw.asNode.isMissing
                         val hasEq = cd.eq.isValid && !cd.eq.asNode.isMissing
                         if (isOpen) entry.isOpen = true
+                        if (hasEq) entry.hasEq = true
                         if (doc != null) entry.doc = doc
                         if (cd.superCategories.isValid) {
-                            cd.superCategories.forEachNames { sup ->
+                            cd.superCategories.names.forEach { sup ->
                                 if (sup.isValid && !sup.asNode.isMissing) entry.superCategories.add(sup.asNode.text)
                             }
                         }
-                        cd.forEachMembers { mem ->
+                        cd.members.forEach { mem ->
                             if (mem.isValid && !mem.asNode.isMissing) entry.memberNames.add(mem.asNode.text)
                         }
-                        if (isOpen && (hasEq || entry.memberNames.isNotEmpty())) {
+                        if (isOpen && hasEq && entry.memberNames.isEmpty()) {
                             semanticErrors.add("Open category '$cName' cannot define a '= ...' member union")
-                        } else if (!isOpen && (!hasEq || entry.memberNames.isEmpty())) {
-                            semanticErrors.add("Closed category '$cName' must define members with '= ...' or be declared 'open'")
                         }
                     }
                 }
 
                 decl.isNodeDecl -> {
                     nodeDecls.add(decl.asNodeDecl)
-                }
-            }
-        }
-
-        // Validate that any category extended via `: CategoryClause` is declared `open`
-        for (td in tokenDefs.values) {
-            for (catName in td.categories) {
-                val targetCat = tokenCatDefs[catName]
-                if (targetCat != null && !targetCat.isOpen) {
-                    semanticErrors.add("Token '${td.name}' cannot extend closed token category '$catName' via ': $catName'; mark '$catName' as 'open' or include '${td.name}' in its '= ...' union")
-                }
-            }
-        }
-        for (tcd in tokenCatDefs.values) {
-            for (supName in tcd.superCategories) {
-                val targetCat = tokenCatDefs[supName]
-                if (targetCat != null && !targetCat.isOpen) {
-                    semanticErrors.add("Token category '${tcd.name}' cannot extend closed token category '$supName' via ': $supName'; mark '$supName' as 'open' or include '${tcd.name}' in its '= ...' union")
-                }
-            }
-        }
-        for (cd in nodeCatDefs.values) {
-            for (supName in cd.superCategories) {
-                val targetCat = nodeCatDefs[supName]
-                if (targetCat != null && !targetCat.isOpen) {
-                    semanticErrors.add("Category '${cd.name}' cannot extend closed category '$supName' via ': $supName'; mark '$supName' as 'open' or include '${cd.name}' in its '= ...' union")
-                }
-            }
-        }
-        for (nd in nodeDecls) {
-            val nName = nd.name.asNode.text
-            if (nName.isNotBlank() && nd.categories.isValid) {
-                nd.categories.forEachNames { catIdent ->
-                    if (catIdent.isValid && !catIdent.asNode.isMissing) {
-                        val catName = catIdent.asNode.text
-                        val targetCat = nodeCatDefs[catName]
-                        if (targetCat != null && !targetCat.isOpen) {
-                            semanticErrors.add("Node '$nName' cannot extend closed category '$catName' via ': $catName'; mark '$catName' as 'open' or include '$nName' in its '= ...' union")
-                        }
-                    }
                 }
             }
         }
@@ -433,55 +394,23 @@ node Annotation {
             return synthesizedName
         }
 
-        // Pass 2: Link top-down token category members (`token category Op = '+' | '-' | OtherTokenCat`)
-        for ((tcName, tcDef) in tokenCatDefs) {
+        // Pass 2: Resolve top-down token category members (`token category Op = '+' | '-' | OtherTokenCat`)
+        for ((_, tcDef) in tokenCatDefs) {
             for ((memberIdent, memberLiteral) in tcDef.memberRefs) {
                 if (memberLiteral != null) {
                     val tokName = resolveOrSynthesizeLiteralToken(memberLiteral)
-                    tokenDefs.getValue(tokName).categories.add(tcName)
+                    tcDef.resolvedMembers.add(tokName)
                 } else if (memberIdent != null) {
-                    when {
-                        tokenDefs.containsKey(memberIdent) -> {
-                            tokenDefs.getValue(memberIdent).categories.add(tcName)
-                        }
-                        tokenCatDefs.containsKey(memberIdent) -> {
-                            tokenCatDefs.getValue(memberIdent).superCategories.add(tcName)
-                        }
-                        else -> {
-                            // Auto-register variable token if referenced in token category union
-                            val newTok = MutableTokenDef(name = memberIdent)
-                            newTok.categories.add(tcName)
-                            tokenDefs[memberIdent] = newTok
-                        }
+                    if (!tokenDefs.containsKey(memberIdent) && !tokenCatDefs.containsKey(memberIdent)) {
+                        // Auto-register variable token if referenced in token category union
+                        tokenDefs[memberIdent] = MutableTokenDef(name = memberIdent)
                     }
+                    tcDef.resolvedMembers.add(memberIdent)
                 }
             }
         }
 
-        // Pass 3: Link top-down node category members (`category Expr = BinaryExpr | SubCategory`)
-        val knownNodeNames = nodeDecls.mapNotNull {
-            val n = it.name.asNode.text
-            if (n.isNotBlank()) n else null
-        }.toSet()
-
-        val nodeExtraCategories = mutableMapOf<String, MutableSet<String>>()
-        for ((catName, catDef) in nodeCatDefs) {
-            for (memberName in catDef.memberNames) {
-                when {
-                    nodeCatDefs.containsKey(memberName) -> {
-                        nodeCatDefs.getValue(memberName).superCategories.add(catName)
-                    }
-                    knownNodeNames.contains(memberName) -> {
-                        nodeExtraCategories.getOrPut(memberName) { linkedSetOf() }.add(catName)
-                    }
-                    else -> {
-                        semanticErrors.add("Category '$catName' references unknown node or category '$memberName'")
-                    }
-                }
-            }
-        }
-
-        // Pass 4: Extract nodes and fields (including inline token unions `op: ('+' | '-')`)
+        // Pass 3: Extract nodes and fields (including inline token unions `op: ('+' | '-')`)
         val usedNodeIds = mutableSetOf<Int>()
         for (nd in nodeDecls) {
             val expId = extractAnnotationInt(nd.annotations, "id")
@@ -506,21 +435,21 @@ node Annotation {
 
             val categories = linkedSetOf<String>()
             if (nd.categories.isValid) {
-                nd.categories.forEachNames { catIdent ->
+                nd.categories.names.forEach { catIdent ->
                     if (catIdent.isValid && !catIdent.asNode.isMissing) categories.add(catIdent.asNode.text)
                 }
             }
-            nodeExtraCategories[nName]?.let { categories.addAll(it) }
 
             // Extract fields and resolve slots
             val rawFields = mutableListOf<FieldSchema>()
-            nd.forEachFields { fd ->
+            nd.fields.forEach { fd ->
                 val fName = fd.name.asNode.text
                 if (fName.isNotBlank() && fd.typeExpr.isValid) {
                     val fDoc = extractLeadingDocComment(fd.asNode)
                     val explicitSlot = extractAnnotationInt(fd.annotations, "slot") ?: -1
                     val quantText = if (fd.quantifier.isValid && !fd.quantifier.asNode.isMissing) fd.quantifier.asNode.text else ""
                     val isList = quantText == "*" || quantText == "+"
+                    val isNonEmpty = quantText == "+"
                     val isOptional = quantText == "?"
 
                     val typeExpr = fd.typeExpr
@@ -529,7 +458,7 @@ node Annotation {
                             val lit = unquoteStringLiteral(typeExpr.asLiteralTokenTypeExpr.literal.asNode.text)
                             val tokName = resolveOrSynthesizeLiteralToken(lit)
                             if (isList) {
-                                FieldType.ChildTokenList(tokenTypeName = tokName)
+                                FieldType.ChildTokenList(tokenTypeName = tokName, isNonEmpty = isNonEmpty)
                             } else {
                                 FieldType.ChildToken(tokenTypeName = tokName, isOptional = isOptional)
                             }
@@ -545,26 +474,21 @@ node Annotation {
                                     doc = "Synthesized inline token union for [$nName.$fName].",
                                 )
                             }
-                            unionExpr.forEachMembers { mem ->
+                            unionExpr.members.forEach { mem ->
                                 val mName = if (mem.name.isValid && !mem.name.asNode.isMissing) mem.name.asNode.text else null
                                 val mLit = if (mem.literal.isValid && !mem.literal.asNode.isMissing) unquoteStringLiteral(mem.literal.asNode.text) else null
                                 if (mLit != null) {
                                     val tokName = resolveOrSynthesizeLiteralToken(mLit)
-                                    tokenDefs.getValue(tokName).categories.add(synthCatName)
+                                    catEntry.resolvedMembers.add(tokName)
                                 } else if (mName != null) {
-                                    when {
-                                        tokenDefs.containsKey(mName) -> tokenDefs.getValue(mName).categories.add(synthCatName)
-                                        tokenCatDefs.containsKey(mName) -> tokenCatDefs.getValue(mName).superCategories.add(synthCatName)
-                                        else -> {
-                                            val newTok = MutableTokenDef(name = mName)
-                                            newTok.categories.add(synthCatName)
-                                            tokenDefs[mName] = newTok
-                                        }
+                                    if (!tokenDefs.containsKey(mName) && !tokenCatDefs.containsKey(mName)) {
+                                        tokenDefs[mName] = MutableTokenDef(name = mName)
                                     }
+                                    catEntry.resolvedMembers.add(mName)
                                 }
                             }
                             if (isList) {
-                                FieldType.ChildTokenList(tokenTypeName = synthCatName)
+                                FieldType.ChildTokenList(tokenTypeName = synthCatName, isNonEmpty = isNonEmpty)
                             } else {
                                 FieldType.ChildToken(tokenTypeName = synthCatName, isOptional = isOptional)
                             }
@@ -581,13 +505,13 @@ node Annotation {
 
                             if (isTokenTarget) {
                                 if (isList) {
-                                    FieldType.ChildTokenList(tokenTypeName = normalizedTokenTarget)
+                                    FieldType.ChildTokenList(tokenTypeName = normalizedTokenTarget, isNonEmpty = isNonEmpty)
                                 } else {
                                     FieldType.ChildToken(tokenTypeName = normalizedTokenTarget, isOptional = isOptional)
                                 }
                             } else {
                                 if (isList) {
-                                    FieldType.ChildNodeList(nodeTypeName = normalizedNodeTarget)
+                                    FieldType.ChildNodeList(nodeTypeName = normalizedNodeTarget, isNonEmpty = isNonEmpty)
                                 } else {
                                     FieldType.ChildNode(nodeTypeName = normalizedNodeTarget, isOptional = isOptional)
                                 }
@@ -663,6 +587,7 @@ node Annotation {
             TokenCategorySchema(
                 name = tcd.name,
                 superCategories = tcd.superCategories.toList(),
+                members = tcd.resolvedMembers.toList(),
                 isOpen = tcd.isOpen,
                 doc = tcd.doc,
             )
@@ -672,6 +597,7 @@ node Annotation {
             CategorySchema(
                 name = ncd.name,
                 superCategories = ncd.superCategories.toList(),
+                members = ncd.memberNames.toList(),
                 isOpen = ncd.isOpen,
                 doc = ncd.doc,
             )
@@ -700,8 +626,8 @@ node Annotation {
     }
 
     context(tree: ConcreteSyntaxTree)
-    private fun extractAnnotationInt(annotations: List<AnnotationHandle>, targetName: String): Int? {
-        for (ann in annotations) {
+    private fun extractAnnotationInt(annotations: AnnotationList, targetName: String): Int? {
+        annotations.forEach { ann ->
             if (ann.name.asNode.text == targetName && ann.arg.isValid && !ann.arg.asNode.isMissing) {
                 return ann.arg.asNode.text.toIntOrNull()
             }
@@ -711,21 +637,76 @@ node Annotation {
 
     context(tree: ConcreteSyntaxTree)
     private fun extractLeadingDocComment(node: CstNode): String? {
-        // Check either leading trivia children inside the node or preceding trivia siblings
-        var docText: String? = null
-        val firstChild = node.childAt(0)
-        if (firstChild.isValid && firstChild.isTrivia && firstChild.asToken.schemaId == CstSchemaDslTokenKinds.DOC_COMMENT) {
-            docText = cleanDocComment(firstChild.text)
-        }
+        // Collect contiguous preceding DOC_COMMENT trivia siblings (separated only by whitespace without blank lines)
+        val docParts = mutableListOf<String>()
         var prev = node.prevSibling
         while (prev.isValid && prev.isTrivia) {
-            if (prev.asToken.schemaId == CstSchemaDslTokenKinds.DOC_COMMENT) {
-                docText = cleanDocComment(prev.text)
-                break
+            when (prev.asToken.schemaId) {
+                CstSchemaDslTokenKinds.DOC_COMMENT -> {
+                    val cleaned = cleanDocComment(prev.text)
+                    if (cleaned.isNotEmpty()) {
+                        docParts.add(cleaned)
+                    }
+                }
+                CstSchemaDslTokenKinds.WHITESPACE -> {
+                    if (hasBlankLine(prev.text)) {
+                        break
+                    }
+                }
+                else -> break
             }
             prev = prev.prevSibling
         }
-        return docText
+        if (docParts.isNotEmpty()) {
+            return docParts.asReversed().joinToString("\n")
+        }
+
+        // Fallback: check leading trivia children inside the node
+        val childParts = mutableListOf<String>()
+        var i = 0
+        val count = node.childCount
+        while (i < count) {
+            val child = node.childAt(i)
+            if (!child.isValid || !child.isTrivia) break
+            when (child.asToken.schemaId) {
+                CstSchemaDslTokenKinds.DOC_COMMENT -> {
+                    val cleaned = cleanDocComment(child.text)
+                    if (cleaned.isNotEmpty()) {
+                        childParts.add(cleaned)
+                    }
+                }
+                CstSchemaDslTokenKinds.WHITESPACE -> {
+                    if (hasBlankLine(child.text)) {
+                        childParts.clear()
+                    }
+                }
+                else -> childParts.clear()
+            }
+            i++
+        }
+        if (childParts.isNotEmpty()) {
+            return childParts.joinToString("\n")
+        }
+        return null
+    }
+
+    private fun hasBlankLine(whitespace: String): Boolean {
+        var newlines = 0
+        var i = 0
+        while (i < whitespace.length) {
+            val c = whitespace[i]
+            if (c == '\r') {
+                newlines++
+                if (i + 1 < whitespace.length && whitespace[i + 1] == '\n') {
+                    i++
+                }
+            } else if (c == '\n') {
+                newlines++
+            }
+            if (newlines >= 2) return true
+            i++
+        }
+        return false
     }
 
     private fun cleanDocComment(raw: String): String {
@@ -840,7 +821,7 @@ node Annotation {
     }
 
     // =========================================================================
-    // Lexer & Recursive-Descent FlatCst Parser for `.cst` files
+    // Lexer & Recursive-Descent Cst Parser for `.cst` files
     // =========================================================================
 
     private data class RawLexToken(
@@ -848,6 +829,8 @@ node Annotation {
         val startOffset: Int,
         val endOffset: Int,
         val isTrivia: Boolean,
+        val errorCode: String? = null,
+        val errorMessage: String? = null,
     )
 
     private fun tokenize(source: String): List<RawLexToken> {
@@ -881,9 +864,19 @@ node Annotation {
                     while (i + 1 < n && !(source[i] == '*' && source[i + 1] == '/')) {
                         i++
                     }
-                    if (i + 1 < n) i += 2 else i = n
+                    val terminated = i + 1 < n && source[i] == '*' && source[i + 1] == '/'
+                    if (terminated) i += 2 else i = n
                     val kind = if (isDoc) CstSchemaDslTokenKinds.DOC_COMMENT else CstSchemaDslTokenKinds.BLOCK_COMMENT
-                    tokens.add(RawLexToken(kind, start, i, isTrivia = true))
+                    tokens.add(
+                        RawLexToken(
+                            schemaId = kind,
+                            startOffset = start,
+                            endOffset = i,
+                            isTrivia = true,
+                            errorCode = if (!terminated) "UNTERMINATED_BLOCK_COMMENT" else null,
+                            errorMessage = if (!terminated) "Unterminated block comment" else null,
+                        )
+                    )
                     continue
                 }
             }
@@ -895,8 +888,18 @@ node Annotation {
                 while (i < n && source[i] != quote && source[i] != '\n' && source[i] != '\r') {
                     if (source[i] == '\\' && i + 1 < n) i += 2 else i++
                 }
-                if (i < n && source[i] == quote) i++
-                tokens.add(RawLexToken(CstSchemaDslTokenKinds.STRING_LITERAL, start, i, isTrivia = false))
+                val terminated = i < n && source[i] == quote
+                if (terminated) i++
+                tokens.add(
+                    RawLexToken(
+                        schemaId = CstSchemaDslTokenKinds.STRING_LITERAL,
+                        startOffset = start,
+                        endOffset = i,
+                        isTrivia = false,
+                        errorCode = if (!terminated) "UNTERMINATED_STRING_LITERAL" else null,
+                        errorMessage = if (!terminated) "Unterminated string literal" else null,
+                    )
+                )
                 continue
             }
 
@@ -926,7 +929,7 @@ node Annotation {
                 continue
             }
 
-            // 6. Punctuation
+            // 6. Punctuation or unrecognized character
             i++
             val punctId = when (c) {
                 ':' -> CstSchemaDslTokenKinds.COLON
@@ -942,15 +945,24 @@ node Annotation {
                 '}' -> CstSchemaDslTokenKinds.R_BRACE
                 ',' -> CstSchemaDslTokenKinds.COMMA
                 '.' -> CstSchemaDslTokenKinds.DOT
-                else -> CstSchemaDslTokenKinds.IDENT
+                else -> CstSchemaDslTokenKinds.UNKNOWN
             }
-            tokens.add(RawLexToken(punctId, start, i, isTrivia = false))
+            tokens.add(
+                RawLexToken(
+                    schemaId = punctId,
+                    startOffset = start,
+                    endOffset = i,
+                    isTrivia = false,
+                    errorCode = if (punctId == CstSchemaDslTokenKinds.UNKNOWN) "UNEXPECTED_CHARACTER" else null,
+                    errorMessage = if (punctId == CstSchemaDslTokenKinds.UNKNOWN) "Unexpected character '$c'" else null,
+                )
+            )
         }
 
         return tokens
     }
 
-    private class DslFlatParser(
+    private class DslParser(
         private val source: String,
         private val tokens: List<RawLexToken>,
         private val builder: ConcreteSyntaxBuilder,
@@ -979,25 +991,84 @@ node Annotation {
             return source.length
         }
 
-        private fun isAtEnd(): Boolean = peekId(0) == CstSchemaDslTokenKinds.UNKNOWN
+        private fun isAtEnd(): Boolean {
+            var idx = cursor
+            while (idx < tokens.size) {
+                if (!tokens[idx].isTrivia) return false
+                idx++
+            }
+            return true
+        }
+
+        private fun isIdentOrKeyword(id: Int): Boolean =
+            id == CstSchemaDslTokenKinds.IDENT ||
+                id == CstSchemaDslTokenKinds.SCHEMA_KW ||
+                id == CstSchemaDslTokenKinds.PACKAGE_KW ||
+                id == CstSchemaDslTokenKinds.TRIVIA_KW ||
+                id == CstSchemaDslTokenKinds.TOKEN_KW ||
+                id == CstSchemaDslTokenKinds.OPEN_KW ||
+                id == CstSchemaDslTokenKinds.CATEGORY_KW ||
+                id == CstSchemaDslTokenKinds.NODE_KW
 
         private fun flushTrivia(parentNode: Int) {
             while (cursor < tokens.size && tokens[cursor].isTrivia) {
                 val t = tokens[cursor++]
-                builder.addTrivia(t.schemaId, t.startOffset, t.endOffset, parentNode)
+                val tokIdx = builder.addTrivia(t.schemaId, t.startOffset, t.endOffset, parentNode)
+                if (t.errorCode != null && t.errorMessage != null) {
+                    builder.reportDiagnostic(
+                        nodeIndex = tokIdx,
+                        startOffset = t.startOffset,
+                        endOffset = t.endOffset,
+                        code = t.errorCode,
+                        message = t.errorMessage,
+                    )
+                }
             }
         }
 
         private fun consumeToken(parentNode: Int, slot: Int): Int {
             flushTrivia(parentNode)
             val t = tokens[cursor++]
-            return builder.addToken(
+            val tokIdx = builder.addToken(
                 schemaTokenId = t.schemaId,
                 startOffset = t.startOffset,
                 endOffset = t.endOffset,
                 parentNode = parentNode,
                 slot = slot,
                 isTrivia = false,
+            )
+            if (t.errorCode != null && t.errorMessage != null) {
+                builder.reportDiagnostic(
+                    nodeIndex = tokIdx,
+                    startOffset = t.startOffset,
+                    endOffset = t.endOffset,
+                    code = t.errorCode,
+                    message = t.errorMessage,
+                )
+            }
+            return tokIdx
+        }
+
+        private fun consumeUnexpectedToken(
+            parentNode: Int,
+            defaultCode: String,
+            defaultMessage: (String) -> String,
+        ) {
+            flushTrivia(parentNode)
+            val badTok = tokens[cursor++]
+            val errNode = builder.startErrorNode(badTok.startOffset)
+            builder.addChild(parentNode, errNode)
+            if (badTok.schemaId != CstSchemaDslTokenKinds.UNKNOWN) {
+                builder.addToken(badTok.schemaId, badTok.startOffset, badTok.endOffset, errNode)
+            }
+            builder.finishNode(errNode, badTok.endOffset)
+            val text = source.substring(badTok.startOffset, badTok.endOffset)
+            builder.reportDiagnostic(
+                nodeIndex = errNode,
+                startOffset = badTok.startOffset,
+                endOffset = badTok.endOffset,
+                code = badTok.errorCode ?: defaultCode,
+                message = badTok.errorMessage ?: defaultMessage(text),
             )
         }
 
@@ -1025,19 +1096,10 @@ node Annotation {
         }
 
         private fun consumeIdentOrKeywordAsIdent(parentNode: Int, slot: Int, description: String): Int {
-            val la = peekId(0)
-            if (la == CstSchemaDslTokenKinds.IDENT ||
-                la == CstSchemaDslTokenKinds.SCHEMA_KW ||
-                la == CstSchemaDslTokenKinds.PACKAGE_KW ||
-                la == CstSchemaDslTokenKinds.TRIVIA_KW ||
-                la == CstSchemaDslTokenKinds.TOKEN_KW ||
-                la == CstSchemaDslTokenKinds.OPEN_KW ||
-                la == CstSchemaDslTokenKinds.CATEGORY_KW ||
-                la == CstSchemaDslTokenKinds.NODE_KW
-            ) {
+            if (isIdentOrKeyword(peekId(0))) {
                 flushTrivia(parentNode)
                 val t = tokens[cursor++]
-                return builder.addToken(
+                val tokIdx = builder.addToken(
                     schemaTokenId = CstSchemaDslTokenKinds.IDENT,
                     startOffset = t.startOffset,
                     endOffset = t.endOffset,
@@ -1045,6 +1107,16 @@ node Annotation {
                     slot = slot,
                     isTrivia = false,
                 )
+                if (t.errorCode != null && t.errorMessage != null) {
+                    builder.reportDiagnostic(
+                        nodeIndex = tokIdx,
+                        startOffset = t.startOffset,
+                        endOffset = t.endOffset,
+                        code = t.errorCode,
+                        message = t.errorMessage,
+                    )
+                }
+                return tokIdx
             }
             return expectToken(CstSchemaDslTokenKinds.IDENT, parentNode, slot, description)
         }
@@ -1083,19 +1155,9 @@ node Annotation {
                     CstSchemaDslTokenKinds.CATEGORY_KW -> parseCategoryDecl(fileNode)
                     CstSchemaDslTokenKinds.NODE_KW -> parseNodeDecl(fileNode)
                     else -> {
-                        // Error recovery: wrap unexpected token
-                        val errNode = builder.startErrorNode(currentOffset())
-                        builder.addChild(fileNode, errNode)
-                        val badTok = tokens[cursor++]
-                        builder.addToken(badTok.schemaId, badTok.startOffset, badTok.endOffset, errNode)
-                        builder.finishNode(errNode)
-                        builder.reportDiagnostic(
-                            nodeIndex = errNode,
-                            startOffset = badTok.startOffset,
-                            endOffset = badTok.endOffset,
-                            code = "UNEXPECTED_DECLARATION_TOKEN",
-                            message = "Unexpected token '${source.substring(badTok.startOffset, badTok.endOffset)}' at top level",
-                        )
+                        consumeUnexpectedToken(fileNode, "UNEXPECTED_DECLARATION_TOKEN") {
+                            "Unexpected token '$it' at top level"
+                        }
                     }
                 }
             }
@@ -1217,22 +1279,13 @@ node Annotation {
                     while (!isAtEnd() && peekId(0) != CstSchemaDslTokenKinds.R_BRACE) {
                         flushTrivia(nd)
                         if (peekId(0) == CstSchemaDslTokenKinds.R_BRACE || isAtEnd()) break
-                        if (peekId(1) == CstSchemaDslTokenKinds.COLON) {
+                        if (isIdentOrKeyword(peekId(0)) && peekId(1) == CstSchemaDslTokenKinds.COLON) {
                             parseFieldDecl(nd)
                         } else {
                             // Error recovery inside node body
-                            val errNode = builder.startErrorNode(currentOffset())
-                            builder.addChild(nd, errNode)
-                            val badTok = tokens[cursor++]
-                            builder.addToken(badTok.schemaId, badTok.startOffset, badTok.endOffset, errNode)
-                            builder.finishNode(errNode)
-                            builder.reportDiagnostic(
-                                nodeIndex = errNode,
-                                startOffset = badTok.startOffset,
-                                endOffset = badTok.endOffset,
-                                code = "INVALID_FIELD_DECL",
-                                message = "Expected field declaration 'name: Type'",
-                            )
+                            consumeUnexpectedToken(nd, "INVALID_FIELD_DECL") {
+                                "Expected field declaration 'name: Type'"
+                            }
                         }
                     }
                     expectToken(CstSchemaDslTokenKinds.R_BRACE, nd, NodeDeclHandle.SLOT_R_BRACE, "'}'")

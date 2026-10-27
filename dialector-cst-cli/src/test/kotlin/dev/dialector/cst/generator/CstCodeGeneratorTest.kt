@@ -23,7 +23,7 @@ class CstCodeGeneratorTest {
                 TokenSchema("Minus", id = 3, fixedText = "-"),
             ),
             categories = listOf(
-                CategorySchema("Expression"),
+                CategorySchema("Expression", isOpen = true),
             ),
             nodes = listOf(
                 NodeSchema(
@@ -86,8 +86,8 @@ class CstCodeGeneratorTest {
         assertTrue(handlesCode.contains("public val nodeIndex: Int"))
         assertTrue(handlesCode.contains("public val asNode: CstNode"))
         assertTrue(handlesCode.contains("get() = CstNode(nodeIndex)"))
-        assertTrue(handlesCode.contains("public val isExpression: Boolean"))
-        assertTrue(handlesCode.contains("get() = true"))
+        assertTrue(handlesCode.contains("public val asExpression: ExpressionHandle"))
+        assertTrue(handlesCode.contains("get() = ExpressionHandle(nodeIndex)"))
         assertTrue(handlesCode.contains("public val CstNode.asBinaryExpression: BinaryExpressionHandle"))
         assertTrue(handlesCode.contains("public val CstNode.isExpression: Boolean"))
         assertTrue(handlesCode.contains("public value class NumberTokenHandle("))

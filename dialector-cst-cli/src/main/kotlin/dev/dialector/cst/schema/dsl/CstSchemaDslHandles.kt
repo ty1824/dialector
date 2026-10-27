@@ -3,13 +3,14 @@ package dev.dialector.cst.schema.dsl
 import dev.dialector.cst.ConcreteSyntaxTree
 import dev.dialector.cst.CstNode
 import dev.dialector.cst.CstToken
+import dev.dialector.cst.NO_SLOT
 import dev.dialector.cst.NULL_NODE_INDEX
 import dev.dialector.cst.NULL_TOKEN_INDEX
 import kotlin.Boolean
 import kotlin.Int
+import kotlin.Long
 import kotlin.String
 import kotlin.Unit
-import kotlin.collections.List
 import kotlin.jvm.JvmInline
 
 /**
@@ -332,22 +333,11 @@ public value class SchemaFileHandle(
     public val packageHeader: PackageHeaderHandle
         get() = PackageHeaderHandle(tree.getChildBySlot(nodeIndex, SLOT_PACKAGE_HEADER))
 
-    context(tree: ConcreteSyntaxTree)
-    public val declarations: List<DeclarationHandle>
-        get() {
-            val list = mutableListOf<DeclarationHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_DECLARATIONS) { childIdx ->
-                list.add(DeclarationHandle(childIdx))
-            }
-            return list
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachDeclarations(action: (DeclarationHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_DECLARATIONS) { childIdx ->
-            action(DeclarationHandle(childIdx))
-        }
-    }
+    /**
+     * (Child list at slot [SLOT_DECLARATIONS] = 2)
+     */
+    public val declarations: DeclarationList
+        get() = DeclarationList.pack(nodeIndex, SLOT_DECLARATIONS)
 
     override fun toString(): String = if (isValid) """SchemaFileHandle($nodeIndex)""" else "SchemaFileHandle.NONE"
 
@@ -565,39 +555,17 @@ public value class QualifiedNameHandle(
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val parts: List<IdentTokenHandle>
-        get() {
-            val list = mutableListOf<IdentTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_PARTS) { childIdx ->
-                list.add(IdentTokenHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_PARTS] = 0)
+     */
+    public val parts: IdentTokenList
+        get() = IdentTokenList.pack(nodeIndex, SLOT_PARTS)
 
-    context(tree: ConcreteSyntaxTree)
-    public val dots: List<DotTokenHandle>
-        get() {
-            val list = mutableListOf<DotTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_DOTS) { childIdx ->
-                list.add(DotTokenHandle(childIdx))
-            }
-            return list
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachParts(action: (IdentTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_PARTS) { childIdx ->
-            action(IdentTokenHandle(childIdx))
-        }
-    }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachDots(action: (DotTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_DOTS) { childIdx ->
-            action(DotTokenHandle(childIdx))
-        }
-    }
+    /**
+     * (Child list at slot [SLOT_DOTS] = 1)
+     */
+    public val dots: DotTokenList
+        get() = DotTokenList.pack(nodeIndex, SLOT_DOTS)
 
     override fun toString(): String = if (isValid) """QualifiedNameHandle($nodeIndex)""" else "QualifiedNameHandle.NONE"
 
@@ -661,10 +629,6 @@ public value class TokenDeclHandle(
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isDeclaration: Boolean
-        get() = true
-
     public val asDeclaration: DeclarationHandle
         get() = DeclarationHandle(nodeIndex)
 
@@ -710,22 +674,11 @@ public value class TokenDeclHandle(
     public val fixedText: StringLiteralTokenHandle
         get() = StringLiteralTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_FIXED_TEXT))
 
-    context(tree: ConcreteSyntaxTree)
-    public val annotations: List<AnnotationHandle>
-        get() {
-            val list = mutableListOf<AnnotationHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_ANNOTATIONS) { childIdx ->
-                list.add(AnnotationHandle(childIdx))
-            }
-            return list
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachAnnotations(action: (AnnotationHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_ANNOTATIONS) { childIdx ->
-            action(AnnotationHandle(childIdx))
-        }
-    }
+    /**
+     * (Child list at slot [SLOT_ANNOTATIONS] = 6)
+     */
+    public val annotations: AnnotationList
+        get() = AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS)
 
     override fun toString(): String = if (isValid) """TokenDeclHandle($nodeIndex)""" else "TokenDeclHandle.NONE"
 
@@ -799,10 +752,6 @@ public value class TokenCategoryDeclHandle(
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isDeclaration: Boolean
-        get() = true
-
     public val asDeclaration: DeclarationHandle
         get() = DeclarationHandle(nodeIndex)
 
@@ -848,39 +797,17 @@ public value class TokenCategoryDeclHandle(
     public val eq: EqTokenHandle
         get() = EqTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_EQ))
 
-    context(tree: ConcreteSyntaxTree)
-    public val members: List<TokenMemberRefHandle>
-        get() {
-            val list = mutableListOf<TokenMemberRefHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_MEMBERS) { childIdx ->
-                list.add(TokenMemberRefHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_MEMBERS] = 6)
+     */
+    public val members: TokenMemberRefList
+        get() = TokenMemberRefList.pack(nodeIndex, SLOT_MEMBERS)
 
-    context(tree: ConcreteSyntaxTree)
-    public val pipes: List<PipeTokenHandle>
-        get() {
-            val list = mutableListOf<PipeTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_PIPES) { childIdx ->
-                list.add(PipeTokenHandle(childIdx))
-            }
-            return list
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachMembers(action: (TokenMemberRefHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_MEMBERS) { childIdx ->
-            action(TokenMemberRefHandle(childIdx))
-        }
-    }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachPipes(action: (PipeTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_PIPES) { childIdx ->
-            action(PipeTokenHandle(childIdx))
-        }
-    }
+    /**
+     * (Child list at slot [SLOT_PIPES] = 7)
+     */
+    public val pipes: PipeTokenList
+        get() = PipeTokenList.pack(nodeIndex, SLOT_PIPES)
 
     override fun toString(): String = if (isValid) """TokenCategoryDeclHandle($nodeIndex)""" else "TokenCategoryDeclHandle.NONE"
 
@@ -1032,10 +959,6 @@ public value class CategoryDeclHandle(
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isDeclaration: Boolean
-        get() = true
-
     public val asDeclaration: DeclarationHandle
         get() = DeclarationHandle(nodeIndex)
 
@@ -1074,39 +997,17 @@ public value class CategoryDeclHandle(
     public val eq: EqTokenHandle
         get() = EqTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_EQ))
 
-    context(tree: ConcreteSyntaxTree)
-    public val members: List<IdentTokenHandle>
-        get() {
-            val list = mutableListOf<IdentTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_MEMBERS) { childIdx ->
-                list.add(IdentTokenHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_MEMBERS] = 5)
+     */
+    public val members: IdentTokenList
+        get() = IdentTokenList.pack(nodeIndex, SLOT_MEMBERS)
 
-    context(tree: ConcreteSyntaxTree)
-    public val pipes: List<PipeTokenHandle>
-        get() {
-            val list = mutableListOf<PipeTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_PIPES) { childIdx ->
-                list.add(PipeTokenHandle(childIdx))
-            }
-            return list
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachMembers(action: (IdentTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_MEMBERS) { childIdx ->
-            action(IdentTokenHandle(childIdx))
-        }
-    }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachPipes(action: (PipeTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_PIPES) { childIdx ->
-            action(PipeTokenHandle(childIdx))
-        }
-    }
+    /**
+     * (Child list at slot [SLOT_PIPES] = 6)
+     */
+    public val pipes: PipeTokenList
+        get() = PipeTokenList.pack(nodeIndex, SLOT_PIPES)
 
     override fun toString(): String = if (isValid) """CategoryDeclHandle($nodeIndex)""" else "CategoryDeclHandle.NONE"
 
@@ -1180,10 +1081,6 @@ public value class NodeDeclHandle(
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isDeclaration: Boolean
-        get() = true
-
     public val asDeclaration: DeclarationHandle
         get() = DeclarationHandle(nodeIndex)
 
@@ -1208,15 +1105,11 @@ public value class NodeDeclHandle(
     public val categories: CategoryClauseHandle
         get() = CategoryClauseHandle(tree.getChildBySlot(nodeIndex, SLOT_CATEGORIES))
 
-    context(tree: ConcreteSyntaxTree)
-    public val annotations: List<AnnotationHandle>
-        get() {
-            val list = mutableListOf<AnnotationHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_ANNOTATIONS) { childIdx ->
-                list.add(AnnotationHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_ANNOTATIONS] = 3)
+     */
+    public val annotations: AnnotationList
+        get() = AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS)
 
     /**
      * (Optional token at slot [SLOT_L_BRACE] = 4)
@@ -1225,15 +1118,11 @@ public value class NodeDeclHandle(
     public val lBrace: LBraceTokenHandle
         get() = LBraceTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_L_BRACE))
 
-    context(tree: ConcreteSyntaxTree)
-    public val fields: List<FieldDeclHandle>
-        get() {
-            val list = mutableListOf<FieldDeclHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_FIELDS) { childIdx ->
-                list.add(FieldDeclHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_FIELDS] = 5)
+     */
+    public val fields: FieldDeclList
+        get() = FieldDeclList.pack(nodeIndex, SLOT_FIELDS)
 
     /**
      * (Optional token at slot [SLOT_R_BRACE] = 6)
@@ -1241,20 +1130,6 @@ public value class NodeDeclHandle(
     context(tree: ConcreteSyntaxTree)
     public val rBrace: RBraceTokenHandle
         get() = RBraceTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_R_BRACE))
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachAnnotations(action: (AnnotationHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_ANNOTATIONS) { childIdx ->
-            action(AnnotationHandle(childIdx))
-        }
-    }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachFields(action: (FieldDeclHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_FIELDS) { childIdx ->
-            action(FieldDeclHandle(childIdx))
-        }
-    }
 
     override fun toString(): String = if (isValid) """NodeDeclHandle($nodeIndex)""" else "NodeDeclHandle.NONE"
 
@@ -1335,39 +1210,17 @@ public value class CategoryClauseHandle(
     public val colon: ColonTokenHandle
         get() = ColonTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_COLON))
 
-    context(tree: ConcreteSyntaxTree)
-    public val names: List<IdentTokenHandle>
-        get() {
-            val list = mutableListOf<IdentTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_NAMES) { childIdx ->
-                list.add(IdentTokenHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_NAMES] = 1)
+     */
+    public val names: IdentTokenList
+        get() = IdentTokenList.pack(nodeIndex, SLOT_NAMES)
 
-    context(tree: ConcreteSyntaxTree)
-    public val commas: List<CommaTokenHandle>
-        get() {
-            val list = mutableListOf<CommaTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_COMMAS) { childIdx ->
-                list.add(CommaTokenHandle(childIdx))
-            }
-            return list
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachNames(action: (IdentTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_NAMES) { childIdx ->
-            action(IdentTokenHandle(childIdx))
-        }
-    }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachCommas(action: (CommaTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_COMMAS) { childIdx ->
-            action(CommaTokenHandle(childIdx))
-        }
-    }
+    /**
+     * (Child list at slot [SLOT_COMMAS] = 2)
+     */
+    public val commas: CommaTokenList
+        get() = CommaTokenList.pack(nodeIndex, SLOT_COMMAS)
 
     override fun toString(): String = if (isValid) """CategoryClauseHandle($nodeIndex)""" else "CategoryClauseHandle.NONE"
 
@@ -1461,22 +1314,11 @@ public value class FieldDeclHandle(
     public val quantifier: QuantifierOpTokenHandle
         get() = QuantifierOpTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_QUANTIFIER))
 
-    context(tree: ConcreteSyntaxTree)
-    public val annotations: List<AnnotationHandle>
-        get() {
-            val list = mutableListOf<AnnotationHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_ANNOTATIONS) { childIdx ->
-                list.add(AnnotationHandle(childIdx))
-            }
-            return list
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachAnnotations(action: (AnnotationHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_ANNOTATIONS) { childIdx ->
-            action(AnnotationHandle(childIdx))
-        }
-    }
+    /**
+     * (Child list at slot [SLOT_ANNOTATIONS] = 4)
+     */
+    public val annotations: AnnotationList
+        get() = AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS)
 
     override fun toString(): String = if (isValid) """FieldDeclHandle($nodeIndex)""" else "FieldDeclHandle.NONE"
 
@@ -1545,10 +1387,6 @@ public value class NamedTypeExprHandle(
      */
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
-
-    context(tree: ConcreteSyntaxTree)
-    public val isTypeExpr: Boolean
-        get() = true
 
     public val asTypeExpr: TypeExprHandle
         get() = TypeExprHandle(nodeIndex)
@@ -1620,10 +1458,6 @@ public value class LiteralTokenTypeExprHandle(
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isTypeExpr: Boolean
-        get() = true
-
     public val asTypeExpr: TypeExprHandle
         get() = TypeExprHandle(nodeIndex)
 
@@ -1694,10 +1528,6 @@ public value class InlineUnionTypeExprHandle(
     public val asNode: CstNode
         get() = CstNode(nodeIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isTypeExpr: Boolean
-        get() = true
-
     public val asTypeExpr: TypeExprHandle
         get() = TypeExprHandle(nodeIndex)
 
@@ -1708,25 +1538,17 @@ public value class InlineUnionTypeExprHandle(
     public val lParen: LParenTokenHandle
         get() = LParenTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_L_PAREN))
 
-    context(tree: ConcreteSyntaxTree)
-    public val members: List<TokenMemberRefHandle>
-        get() {
-            val list = mutableListOf<TokenMemberRefHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_MEMBERS) { childIdx ->
-                list.add(TokenMemberRefHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_MEMBERS] = 1)
+     */
+    public val members: TokenMemberRefList
+        get() = TokenMemberRefList.pack(nodeIndex, SLOT_MEMBERS)
 
-    context(tree: ConcreteSyntaxTree)
-    public val pipes: List<PipeTokenHandle>
-        get() {
-            val list = mutableListOf<PipeTokenHandle>()
-            tree.forEachChildInSlot(nodeIndex, SLOT_PIPES) { childIdx ->
-                list.add(PipeTokenHandle(childIdx))
-            }
-            return list
-        }
+    /**
+     * (Child list at slot [SLOT_PIPES] = 2)
+     */
+    public val pipes: PipeTokenList
+        get() = PipeTokenList.pack(nodeIndex, SLOT_PIPES)
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_R_PAREN] = 3)
@@ -1734,20 +1556,6 @@ public value class InlineUnionTypeExprHandle(
     context(tree: ConcreteSyntaxTree)
     public val rParen: RParenTokenHandle
         get() = RParenTokenHandle(tree.getChildBySlot(nodeIndex, SLOT_R_PAREN))
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachMembers(action: (TokenMemberRefHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_MEMBERS) { childIdx ->
-            action(TokenMemberRefHandle(childIdx))
-        }
-    }
-
-    context(tree: ConcreteSyntaxTree)
-    public inline fun forEachPipes(action: (PipeTokenHandle) -> Unit) {
-        tree.forEachChildInSlot(nodeIndex, SLOT_PIPES) { childIdx ->
-            action(PipeTokenHandle(childIdx))
-        }
-    }
 
     override fun toString(): String = if (isValid) """InlineUnionTypeExprHandle($nodeIndex)""" else "InlineUnionTypeExprHandle.NONE"
 
@@ -3250,10 +3058,6 @@ public value class QuestionTokenHandle(
     public val asNode: CstNode
         get() = CstNode(tokenIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isQuantifierOp: Boolean
-        get() = true
-
     public val asQuantifierOp: QuantifierOpTokenHandle
         get() = QuantifierOpTokenHandle(tokenIndex)
 
@@ -3335,10 +3139,6 @@ public value class StarTokenHandle(
     public val asNode: CstNode
         get() = CstNode(tokenIndex)
 
-    context(tree: ConcreteSyntaxTree)
-    public val isQuantifierOp: Boolean
-        get() = true
-
     public val asQuantifierOp: QuantifierOpTokenHandle
         get() = QuantifierOpTokenHandle(tokenIndex)
 
@@ -3419,10 +3219,6 @@ public value class PlusTokenHandle(
      */
     public val asNode: CstNode
         get() = CstNode(tokenIndex)
-
-    context(tree: ConcreteSyntaxTree)
-    public val isQuantifierOp: Boolean
-        get() = true
 
     public val asQuantifierOp: QuantifierOpTokenHandle
         get() = QuantifierOpTokenHandle(tokenIndex)
@@ -4022,3 +3818,315 @@ public val CstNode.asDotToken: DotTokenHandle
  * Converts this generic token handle into a [DotTokenHandle].
  */
 public fun CstToken.toDot(): DotTokenHandle = DotTokenHandle(tokenIndex)
+
+/**
+ * Zero-allocation list view over [DeclarationHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class DeclarationList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): DeclarationHandle = if (parentNodeIndex >= 0) DeclarationHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else DeclarationHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (DeclarationHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(DeclarationHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: DeclarationList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): DeclarationList = DeclarationList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}
+
+/**
+ * Zero-allocation list view over [IdentTokenHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class IdentTokenList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): IdentTokenHandle = if (parentNodeIndex >= 0) IdentTokenHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else IdentTokenHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (IdentTokenHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(IdentTokenHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: IdentTokenList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): IdentTokenList = IdentTokenList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}
+
+/**
+ * Zero-allocation list view over [DotTokenHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class DotTokenList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): DotTokenHandle = if (parentNodeIndex >= 0) DotTokenHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else DotTokenHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (DotTokenHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(DotTokenHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: DotTokenList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): DotTokenList = DotTokenList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}
+
+/**
+ * Zero-allocation list view over [AnnotationHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class AnnotationList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): AnnotationHandle = if (parentNodeIndex >= 0) AnnotationHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else AnnotationHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (AnnotationHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(AnnotationHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: AnnotationList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): AnnotationList = AnnotationList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}
+
+/**
+ * Zero-allocation list view over [TokenMemberRefHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class TokenMemberRefList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): TokenMemberRefHandle = if (parentNodeIndex >= 0) TokenMemberRefHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else TokenMemberRefHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (TokenMemberRefHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(TokenMemberRefHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: TokenMemberRefList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): TokenMemberRefList = TokenMemberRefList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}
+
+/**
+ * Zero-allocation list view over [PipeTokenHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class PipeTokenList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): PipeTokenHandle = if (parentNodeIndex >= 0) PipeTokenHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else PipeTokenHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (PipeTokenHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(PipeTokenHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: PipeTokenList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): PipeTokenList = PipeTokenList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}
+
+/**
+ * Zero-allocation list view over [FieldDeclHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class FieldDeclList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): FieldDeclHandle = if (parentNodeIndex >= 0) FieldDeclHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else FieldDeclHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (FieldDeclHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(FieldDeclHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: FieldDeclList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): FieldDeclList = FieldDeclList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}
+
+/**
+ * Zero-allocation list view over [CommaTokenHandle] children in a specific schema slot.
+ */
+@JvmInline
+public value class CommaTokenList(
+    public val packed: Long,
+) {
+    public val parentNodeIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    public val slot: Int
+        get() = packed.toInt()
+
+    context(tree: ConcreteSyntaxTree)
+    public val size: Int
+        get() = if (parentNodeIndex >= 0) tree.getChildCountInSlot(parentNodeIndex, slot) else 0
+
+    context(tree: ConcreteSyntaxTree)
+    public val isEmpty: Boolean
+        get() = parentNodeIndex < 0 || tree.getChildBySlot(parentNodeIndex, slot) == NULL_NODE_INDEX
+
+    context(tree: ConcreteSyntaxTree)
+    public operator fun get(index: Int): CommaTokenHandle = if (parentNodeIndex >= 0) CommaTokenHandle(tree.getChildInSlotAt(parentNodeIndex, slot, index)) else CommaTokenHandle.NONE
+
+    context(tree: ConcreteSyntaxTree)
+    public inline fun forEach(action: (CommaTokenHandle) -> Unit) {
+        if (parentNodeIndex < 0) return
+        tree.forEachChildInSlot(parentNodeIndex, slot) { childIdx ->
+            action(CommaTokenHandle(childIdx))
+        }
+    }
+
+    public companion object {
+        public val EMPTY: CommaTokenList = pack(NULL_NODE_INDEX, NO_SLOT.toInt())
+
+        public fun pack(parentNodeIndex: Int, slot: Int): CommaTokenList = CommaTokenList((parentNodeIndex.toLong() shl 32) or (slot.toLong() and 0xFFFF_FFFFL))
+    }
+}

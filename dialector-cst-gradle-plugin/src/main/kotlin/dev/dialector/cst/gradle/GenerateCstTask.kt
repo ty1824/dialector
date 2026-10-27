@@ -23,7 +23,7 @@ import org.gradle.api.tasks.SkipWhenEmpty
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Cacheable Gradle task that compiles `.cst` schema files into Flat CST Kotlin source files.
+ * Cacheable Gradle task that compiles `.cst` schema files into CST Kotlin source files.
  */
 @CacheableTask
 public abstract class GenerateCstTask : DefaultTask() {
@@ -85,7 +85,7 @@ public abstract class GenerateCstTask : DefaultTask() {
     public abstract val generateDebugHelpers: Property<Boolean>
 
     /**
-     * Whether to generate type-safe `FlatCstBuilder` extension functions.
+     * Whether to generate type-safe `ConcreteSyntaxBuilder` extension functions.
      */
     @get:Input
     public abstract val generateBuilderExtensions: Property<Boolean>
@@ -98,7 +98,7 @@ public abstract class GenerateCstTask : DefaultTask() {
 
     init {
         group = "dialector"
-        description = "Generates Flat CST Kotlin source files from Dialector .cst schema files."
+        description = "Generates CST Kotlin source files from Dialector .cst schema files."
         generateTokenHandles.convention(true)
         generateCategoryHandles.convention(true)
         generateDebugHelpers.convention(true)

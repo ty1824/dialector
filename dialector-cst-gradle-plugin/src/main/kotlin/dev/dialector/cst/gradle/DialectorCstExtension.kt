@@ -13,16 +13,28 @@ public abstract class DialectorCstExtension @Inject constructor(
     objects: ObjectFactory,
 ) {
     /**
-     * Source directories or individual `.cst` schema files to compile.
+     * Source directories or individual `.cst` schema files to compile for the main source set.
      * Defaults to `src/main/cst`.
      */
     public val sourceDirectories: ConfigurableFileCollection = objects.fileCollection()
 
     /**
-     * Target directory where generated Kotlin files are written.
+     * Target directory where generated main Kotlin files are written.
      * Defaults to `build/generated/source/cst/main/kotlin`.
      */
     public abstract val outputDirectory: DirectoryProperty
+
+    /**
+     * Source directories or individual `.cst` schema files to compile for the test source set.
+     * Defaults to `src/test/cst`.
+     */
+    public val testSourceDirectories: ConfigurableFileCollection = objects.fileCollection()
+
+    /**
+     * Target directory where generated test Kotlin files are written.
+     * Defaults to `build/generated/source/cst/test/kotlin`.
+     */
+    public abstract val testOutputDirectory: DirectoryProperty
 
     /**
      * Optional package name override (or default if a `.cst` file omits the `package` header).
@@ -50,7 +62,7 @@ public abstract class DialectorCstExtension @Inject constructor(
     public abstract val generateDebugHelpers: Property<Boolean>
 
     /**
-     * Whether to generate type-safe `FlatCstBuilder` extension functions. Defaults to `true`.
+     * Whether to generate type-safe `ConcreteSyntaxBuilder` extension functions. Defaults to `true`.
      */
     public abstract val generateBuilderExtensions: Property<Boolean>
 
