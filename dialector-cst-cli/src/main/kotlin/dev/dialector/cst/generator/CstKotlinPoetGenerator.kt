@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.LIST
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.LambdaTypeName
 import com.squareup.kotlinpoet.MemberName
@@ -42,7 +43,7 @@ public class CstKotlinPoetGenerator(
         schema.validate()
         val specs = mutableListOf<FileSpec>()
         specs.add(generateKindsFileSpec(schema))
-        specs.add(generateHandlesFileSpec(schema))
+        specs.add(generateSyntaxFileSpec(schema))
         if (config.generateNavigators || config.generateBuilderExtensions || config.generateDebugHelpers) {
             specs.add(generateExtensionsFileSpec(schema))
         }
@@ -130,6 +131,14 @@ public class CstKotlinPoetGenerator(
             )
             .beginControlFlow("return when (schemaId)")
 
+        val isKnownTokenBody = CodeBlock.builder()
+            .addStatement(
+                "val schemaId = if (%M(idOrRuntimeKind)) %M(idOrRuntimeKind) else idOrRuntimeKind",
+                M_IS_TOKEN_KIND,
+                M_DECODE_TOKEN_SCHEMA_ID,
+            )
+            .beginControlFlow("return when (schemaId)")
+
         for (token in schema.tokens) {
             val upper = toUpperSnake(token.name)
             val idProp = PropertySpec.builder(upper, INT, KModifier.PUBLIC, KModifier.CONST)
@@ -144,6 +153,7 @@ public class CstKotlinPoetGenerator(
             )
 
             getTokenNameBody.addStatement("%L -> %S", upper, token.name)
+            isKnownTokenBody.addStatement("%L -> true", upper)
             if (token.fixedText != null) {
                 getTokenTextBody.addStatement("%L -> %S", upper, token.fixedText)
             }
@@ -154,6 +164,9 @@ public class CstKotlinPoetGenerator(
             .endControlFlow()
         getTokenTextBody
             .addStatement("else -> null")
+            .endControlFlow()
+        isKnownTokenBody
+            .addStatement("else -> false")
             .endControlFlow()
 
         tokenKindsObj.addFunction(
@@ -170,6 +183,14 @@ public class CstKotlinPoetGenerator(
                 .addParameter("kindId", INT)
                 .returns(STRING.copy(nullable = true))
                 .addCode(getTokenTextBody.build())
+                .build()
+        )
+        tokenKindsObj.addFunction(
+            FunSpec.builder("isKnownToken")
+                .addKdoc("Returns true if [idOrRuntimeKind] corresponds to a defined token in [%L].", schema.name)
+                .addParameter("idOrRuntimeKind", INT)
+                .returns(BOOLEAN)
+                .addCode(isKnownTokenBody.build())
                 .build()
         )
         fileBuilder.addType(tokenKindsObj.build())
@@ -239,15 +260,117 @@ public class CstKotlinPoetGenerator(
             fileBuilder.addType(tokenCategoriesObj.build())
         }
 
+        // 5. Schema Descriptor object
+        val schemaDescriptorClassName = ClassName(schema.packageName, "${schema.name}Schema")
+        val schemaObj = TypeSpec.objectBuilder(schemaDescriptorClassName)
+            .superclass(CN_CST_SCHEMA_DESCRIPTOR)
+            .addKdoc("Runtime CST schema descriptor for [%L].", schema.name)
+            .addSuperclassConstructorParameter("%S", schema.name)
+
+        // Nodes
+        val nodesBlock = CodeBlock.builder().add("arrayOf(\n").indent()
+        for (node in schema.nodes) {
+            val handleClassName = ClassName(schema.packageName, nodeHandleName(node.name))
+            nodesBlock.add("%T,\n", handleClassName)
+        }
+        nodesBlock.unindent().add(")")
+        schemaObj.addSuperclassConstructorParameter(nodesBlock.build())
+
+        // Tokens
+        val tokensBlock = CodeBlock.builder().add("arrayOf(\n").indent()
+        for (token in schema.tokens) {
+            if (config.generateTokenHandles) {
+                val handleClassName = ClassName(schema.packageName, tokenHandleName(token.name))
+                tokensBlock.add("%T,\n", handleClassName)
+            } else {
+                val upperToken = toUpperSnake(token.name)
+                tokensBlock.add(
+                    "%T(id = %T.%L, name = %S, runtimeKind = %T.KIND_%L, fixedText = %L, isTrivia = %L),\n",
+                    CN_CST_TOKEN_DESCRIPTOR,
+                    tokenKindsClassName,
+                    upperToken,
+                    token.name,
+                    tokenKindsClassName,
+                    upperToken,
+                    if (token.fixedText != null) "\"${token.fixedText}\"" else "null",
+                    token.isTrivia,
+                )
+            }
+        }
+        tokensBlock.unindent().add(")")
+        schemaObj.addSuperclassConstructorParameter(tokensBlock.build())
+
+        // Categories
+        val hasCategories = schema.categories.isNotEmpty()
+        val hasTokenCategories = schema.tokenCategories.isNotEmpty()
+
+        if (hasCategories || hasTokenCategories) {
+            if (hasCategories) {
+                val categoriesBlock = CodeBlock.builder().add("arrayOf(\n").indent()
+                for (category in schema.categories) {
+                    if (config.generateCategoryHandles) {
+                        val handleClassName = ClassName(schema.packageName, categoryHandleName(category.name))
+                        categoriesBlock.add("%T,\n", handleClassName)
+                    } else {
+                        val catNodes = schema.getCategoryNodes(category.name)
+                        val memberKindsBlock = CodeBlock.builder().add("intArrayOf(")
+                        catNodes.forEachIndexed { idx, n ->
+                            if (idx > 0) memberKindsBlock.add(", ")
+                            memberKindsBlock.add("%T.%L", nodeKindsClassName, toUpperSnake(n.name))
+                        }
+                        memberKindsBlock.add(")")
+                        categoriesBlock.add(
+                            "%T(name = %S, memberKinds = %L),\n",
+                            CN_CST_CATEGORY_DESCRIPTOR,
+                            category.name,
+                            memberKindsBlock.build(),
+                        )
+                    }
+                }
+                categoriesBlock.unindent().add(")")
+                schemaObj.addSuperclassConstructorParameter(categoriesBlock.build())
+            } else {
+                schemaObj.addSuperclassConstructorParameter("emptyArray()")
+            }
+        }
+
+        if (hasTokenCategories) {
+            val tokenCategoriesBlock = CodeBlock.builder().add("arrayOf(\n").indent()
+            for (tokenCat in schema.tokenCategories) {
+                if (config.generateTokenHandles && config.generateCategoryHandles) {
+                    val handleClassName = ClassName(schema.packageName, tokenCategoryHandleName(tokenCat.name))
+                    tokenCategoriesBlock.add("%T,\n", handleClassName)
+                } else {
+                    val catTokens = schema.getTokenCategoryTokens(tokenCat.name)
+                    val memberIdsBlock = CodeBlock.builder().add("intArrayOf(")
+                    catTokens.forEachIndexed { idx, t ->
+                        if (idx > 0) memberIdsBlock.add(", ")
+                        memberIdsBlock.add("%T.%L", tokenKindsClassName, toUpperSnake(t.name))
+                    }
+                    memberIdsBlock.add(")")
+                    tokenCategoriesBlock.add(
+                        "%T(name = %S, memberIds = %L),\n",
+                        CN_CST_TOKEN_CATEGORY_DESCRIPTOR,
+                        tokenCat.name,
+                        memberIdsBlock.build(),
+                    )
+                }
+            }
+            tokenCategoriesBlock.unindent().add(")")
+            schemaObj.addSuperclassConstructorParameter(tokenCategoriesBlock.build())
+        }
+
+        fileBuilder.addType(schemaObj.build())
+
         return fileBuilder.build()
     }
 
     // =========================================================================
-    // 2. `<Schema>Handles.kt`
+    // 2. `<Schema>Syntax.kt`
     // =========================================================================
 
-    public fun generateHandlesFileSpec(schema: CstSchema): FileSpec {
-        val fileBuilder = FileSpec.builder(schema.packageName, "${schema.name}Handles")
+    public fun generateSyntaxFileSpec(schema: CstSchema): FileSpec {
+        val fileBuilder = FileSpec.builder(schema.packageName, "${schema.name}Syntax")
             .indent("    ")
 
         val categoriesObjName = ClassName(schema.packageName, "${schema.name}Categories")
@@ -367,7 +490,18 @@ public class CstKotlinPoetGenerator(
             )
         }
 
+        val memberKindsBlock = CodeBlock.builder().add("intArrayOf(\n").indent()
+        val nodeKindsClassName = ClassName(schema.packageName, "${schema.name}NodeKinds")
+        val catNodes = schema.getCategoryNodes(category.name)
+        for (member in catNodes) {
+            memberKindsBlock.add("%T.%L,\n", nodeKindsClassName, toUpperSnake(member.name))
+        }
+        memberKindsBlock.unindent().add(")")
+
         val companion = TypeSpec.companionObjectBuilder()
+            .superclass(CN_CST_CATEGORY_DESCRIPTOR)
+            .addSuperclassConstructorParameter("%S", category.name)
+            .addSuperclassConstructorParameter(memberKindsBlock.build())
             .addProperty(
                 PropertySpec.builder("NONE", handleClassName)
                     .initializer("%T(%M)", handleClassName, M_NULL_NODE_INDEX)
@@ -447,7 +581,18 @@ public class CstKotlinPoetGenerator(
             )
         }
 
+        val memberIdsBlock = CodeBlock.builder().add("intArrayOf(\n").indent()
+        val tokenKindsClassName = ClassName(schema.packageName, "${schema.name}TokenKinds")
+        val catTokens = schema.getTokenCategoryTokens(tokenCat.name)
+        for (tok in catTokens) {
+            memberIdsBlock.add("%T.%L,\n", tokenKindsClassName, toUpperSnake(tok.name))
+        }
+        memberIdsBlock.unindent().add(")")
+
         val companion = TypeSpec.companionObjectBuilder()
+            .superclass(CN_CST_TOKEN_CATEGORY_DESCRIPTOR)
+            .addSuperclassConstructorParameter("%S", tokenCat.name)
+            .addSuperclassConstructorParameter(memberIdsBlock.build())
             .addProperty(
                 PropertySpec.builder("NONE", tokCatHandle)
                     .initializer("%T(%M)", tokCatHandle, M_NULL_TOKEN_INDEX)
@@ -530,7 +675,87 @@ public class CstKotlinPoetGenerator(
             addFieldMembersToNodeHandle(typeBuilder, schema, field)
         }
 
+        val slotsBlock = if (node.fields.isEmpty()) {
+            CodeBlock.of("emptyArray()")
+        } else {
+            val b = CodeBlock.builder().add("arrayOf(\n").indent()
+            for (field in node.fields) {
+                val cardinality = when (val fType = field.type) {
+                    is FieldType.ChildNode -> if (fType.isOptional) "OPTIONAL" else "REQUIRED"
+                    is FieldType.ChildNodeList -> if (fType.isNonEmpty) "ONE_OR_MORE" else "ZERO_OR_MORE"
+                    is FieldType.ChildToken -> if (fType.isOptional) "OPTIONAL" else "REQUIRED"
+                    is FieldType.ChildTokenList -> if (fType.isNonEmpty) "ONE_OR_MORE" else "ZERO_OR_MORE"
+                }
+                val isTokenSlot = when (field.type) {
+                    is FieldType.ChildToken, is FieldType.ChildTokenList -> true
+                    else -> false
+                }
+                val targetTypeName = when (val fType = field.type) {
+                    is FieldType.ChildNode -> fType.nodeTypeName
+                    is FieldType.ChildNodeList -> fType.nodeTypeName
+                    is FieldType.ChildToken -> fType.tokenTypeName ?: "CstToken"
+                    is FieldType.ChildTokenList -> fType.tokenTypeName ?: "CstToken"
+                }
+
+                val allowedBlock = CodeBlock.builder().add("intArrayOf(")
+                when (val fType = field.type) {
+                    is FieldType.ChildNode, is FieldType.ChildNodeList -> {
+                        val nodeTypeName = if (fType is FieldType.ChildNode) fType.nodeTypeName else (fType as FieldType.ChildNodeList).nodeTypeName
+                        when {
+                            nodeTypeName == "CstNode" -> {}
+                            schema.categories.any { it.name == nodeTypeName } -> {
+                                val catNodes = schema.getCategoryNodes(nodeTypeName)
+                                catNodes.forEachIndexed { idx, n ->
+                                    if (idx > 0) allowedBlock.add(", ")
+                                    allowedBlock.add("%T.%L", nodeKindsClassName, toUpperSnake(n.name))
+                                }
+                            }
+                            else -> {
+                                allowedBlock.add("%T.%L", nodeKindsClassName, toUpperSnake(nodeTypeName))
+                            }
+                        }
+                    }
+                    is FieldType.ChildToken, is FieldType.ChildTokenList -> {
+                        val tokenTypeName = if (fType is FieldType.ChildToken) fType.tokenTypeName else (fType as FieldType.ChildTokenList).tokenTypeName
+                        val tokenKindsClassName = ClassName(schema.packageName, "${schema.name}TokenKinds")
+                        when {
+                            tokenTypeName == null || tokenTypeName == "CstToken" -> {}
+                            schema.tokenCategories.any { it.name == tokenTypeName } -> {
+                                val catTokens = schema.getTokenCategoryTokens(tokenTypeName)
+                                catTokens.forEachIndexed { idx, t ->
+                                    if (idx > 0) allowedBlock.add(", ")
+                                    allowedBlock.add("%T.%L", tokenKindsClassName, toUpperSnake(t.name))
+                                }
+                            }
+                            else -> {
+                                allowedBlock.add("%T.%L", tokenKindsClassName, toUpperSnake(tokenTypeName))
+                            }
+                        }
+                    }
+                }
+                allowedBlock.add(")")
+
+                b.add(
+                    "%T(slot = %L, name = %S, cardinality = %T.%L, isTokenSlot = %L, targetTypeName = %S, allowedIds = %L),\n",
+                    CN_CST_SLOT_DESCRIPTOR,
+                    field.slot,
+                    field.name,
+                    CN_CST_SLOT_CARDINALITY,
+                    cardinality,
+                    isTokenSlot,
+                    targetTypeName,
+                    allowedBlock.build(),
+                )
+            }
+            b.unindent().add(")")
+            b.build()
+        }
+
         val companion = TypeSpec.companionObjectBuilder()
+            .superclass(CN_CST_NODE_DESCRIPTOR)
+            .addSuperclassConstructorParameter("%T.%L", nodeKindsClassName, toUpperSnake(node.name))
+            .addSuperclassConstructorParameter("%S", node.name)
+            .addSuperclassConstructorParameter(slotsBlock)
             .addProperty(
                 PropertySpec.builder("KIND", INT, KModifier.PUBLIC, KModifier.CONST)
                     .initializer("%T.%L", nodeKindsClassName, toUpperSnake(node.name))
@@ -626,6 +851,16 @@ public class CstKotlinPoetGenerator(
         }
 
         val companion = TypeSpec.companionObjectBuilder()
+            .superclass(CN_CST_TOKEN_DESCRIPTOR)
+            .addSuperclassConstructorParameter("%T.%L", tokenKindsClassName, upperToken)
+            .addSuperclassConstructorParameter("%S", token.name)
+            .addSuperclassConstructorParameter("%T.KIND_%L", tokenKindsClassName, upperToken)
+        if (token.fixedText != null) {
+            companion.addSuperclassConstructorParameter("%S", token.fixedText)
+        } else {
+            companion.addSuperclassConstructorParameter("null")
+        }
+        companion.addSuperclassConstructorParameter("%L", token.isTrivia)
             .addProperty(
                 PropertySpec.builder("ID", INT, KModifier.PUBLIC, KModifier.CONST)
                     .initializer("%T.%L", tokenKindsClassName, upperToken)
@@ -756,7 +991,21 @@ public class CstKotlinPoetGenerator(
         val simple = when (targetHandle) {
             CN_CST_NODE -> "CstNodeSlotList"
             CN_CST_TOKEN -> "CstTokenList"
-            else -> "${targetHandle.simpleName.removeSuffix("Handle")}List"
+            else -> {
+                val raw = targetHandle.simpleName
+                val base = when {
+                    config.nodeSuffix.isNotEmpty() &&
+                        config.nodeSuffix != config.tokenSuffix &&
+                        raw.endsWith(config.nodeSuffix) &&
+                        raw.length > config.nodeSuffix.length -> raw.removeSuffix(config.nodeSuffix)
+                    config.categorySuffix.isNotEmpty() &&
+                        config.categorySuffix != config.tokenCategorySuffix &&
+                        raw.endsWith(config.categorySuffix) &&
+                        raw.length > config.categorySuffix.length -> raw.removeSuffix(config.categorySuffix)
+                    else -> raw
+                }
+                "${base}List"
+            }
         }
         return ClassName(packageName, simple)
     }
@@ -1005,6 +1254,32 @@ public class CstKotlinPoetGenerator(
         }
 
         if (config.generateBuilderExtensions) {
+            val schemaDescriptorClassName = ClassName(schema.packageName, "${schema.name}Schema")
+            fileBuilder.addFunction(
+                FunSpec.builder("build${schema.name}Cst")
+                    .addModifiers(KModifier.INLINE)
+                    .addKdoc("Builds a [ConcreteSyntaxTree] configured with [%L] schema metadata.", schemaDescriptorClassName.simpleName)
+                    .addParameter(ParameterSpec.builder("sourceText", STRING).defaultValue("%S", "").build())
+                    .addParameter(ParameterSpec.builder("checkCycles", BOOLEAN).defaultValue("false").build())
+                    .addParameter(
+                        ParameterSpec.builder(
+                            "block",
+                            LambdaTypeName.get(
+                                receiver = CN_CONCRETE_SYNTAX_BUILDER,
+                                parameters = emptyList(),
+                                returnType = UNIT,
+                            ),
+                        ).build()
+                    )
+                    .returns(CN_CONCRETE_SYNTAX_TREE)
+                    .addStatement(
+                        "return %M(sourceText = sourceText, checkCycles = checkCycles, schema = %T, block = block)",
+                        M_BUILD_CST,
+                        schemaDescriptorClassName,
+                    )
+                    .build()
+            )
+
             val blockLambdaType = LambdaTypeName.get(
                 parameters = listOf(ParameterSpec.builder("nodeIndex", INT).build()),
                 returnType = UNIT,
@@ -1068,6 +1343,39 @@ public class CstKotlinPoetGenerator(
                 )
             }
 
+            if (config.generateCategoryHandles) {
+                for (category in schema.categories) {
+                    val catHandle = ClassName(schema.packageName, categoryHandleName(category.name))
+                    fileBuilder.addFunction(
+                        FunSpec.builder("addUnavailable${category.name}")
+                            .receiver(CN_CONCRETE_SYNTAX_BUILDER)
+                            .addKdoc(
+                                "Marks a [%L] slot as unavailable (`isError == true`) when recovery could not establish a usable binding.",
+                                catHandle.simpleName,
+                            )
+                            .addParameter("offset", INT)
+                            .addParameter(ParameterSpec.builder("parentNode", INT).defaultValue("%M", M_NULL_NODE_INDEX).build())
+                            .addParameter(ParameterSpec.builder("slot", INT).defaultValue("%M.toInt()", M_NO_SLOT).build())
+                            .addParameter(ParameterSpec.builder("endOffset", INT).defaultValue("offset").build())
+                            .addParameter(ParameterSpec.builder("diagnosticCode", STRING.copy(nullable = true)).defaultValue("null").build())
+                            .addParameter(ParameterSpec.builder("diagnosticMessage", STRING.copy(nullable = true)).defaultValue("null").build())
+                            .returns(catHandle)
+                            .addStatement(
+                                "val idx = addUnavailableNode(\n" +
+                                    "    offset = offset,\n" +
+                                    "    parentNode = parentNode,\n" +
+                                    "    slot = slot,\n" +
+                                    "    endOffset = endOffset,\n" +
+                                    "    diagnosticCode = diagnosticCode,\n" +
+                                    "    diagnosticMessage = diagnosticMessage,\n" +
+                                    ")"
+                            )
+                            .addStatement("return %T(idx)", catHandle)
+                            .build()
+                    )
+                }
+            }
+
             if (config.generateTokenHandles) {
                 for (token in schema.tokens) {
                     val tokHandle = ClassName(schema.packageName, tokenHandleName(token.name))
@@ -1125,11 +1433,76 @@ public class CstKotlinPoetGenerator(
                             .addStatement("return %T(idx)", tokHandle)
                             .build()
                     )
+
+                    if (!token.isTrivia) {
+                        fileBuilder.addFunction(
+                            FunSpec.builder("addError${baseName}Token")
+                                .receiver(CN_CONCRETE_SYNTAX_BUILDER)
+                                .addKdoc(
+                                    "Adds a [%L] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].",
+                                    tokHandle.simpleName,
+                                )
+                                .addParameter("startOffset", INT)
+                                .addParameter("endOffset", INT)
+                                .addParameter(ParameterSpec.builder("parentNode", INT).defaultValue("%M", M_NULL_NODE_INDEX).build())
+                                .addParameter(ParameterSpec.builder("slot", INT).defaultValue("%M.toInt()", M_NO_SLOT).build())
+                                .addParameter(ParameterSpec.builder("diagnosticCode", STRING.copy(nullable = true)).defaultValue("null").build())
+                                .addParameter(ParameterSpec.builder("diagnosticMessage", STRING.copy(nullable = true)).defaultValue("null").build())
+                                .returns(tokHandle)
+                                .addStatement(
+                                    "val idx = addErrorToken(\n" +
+                                        "    schemaTokenId = %T.%L,\n" +
+                                        "    startOffset = startOffset,\n" +
+                                        "    endOffset = endOffset,\n" +
+                                        "    parentNode = parentNode,\n" +
+                                        "    slot = slot,\n" +
+                                        "    diagnosticCode = diagnosticCode,\n" +
+                                        "    diagnosticMessage = diagnosticMessage,\n" +
+                                        ")",
+                                    tokenKindsClassName,
+                                    upperTok,
+                                )
+                                .addStatement("return %T(idx)", tokHandle)
+                                .build()
+                        )
+                    }
                 }
             }
         }
 
+        if (config.generateValidators) {
+            addTreeValidator(fileBuilder, schema)
+        }
+
         return fileBuilder.build()
+    }
+
+    private fun addTreeValidator(
+        fileBuilder: FileSpec.Builder,
+        schema: CstSchema,
+    ) {
+        val schemaDescriptorClassName = ClassName(schema.packageName, "${schema.name}Schema")
+        fileBuilder.addFunction(
+            FunSpec.builder("validate${schema.name}Tree")
+                .receiver(CN_CONCRETE_SYNTAX_TREE)
+                .addKdoc(
+                    "Validates that this [ConcreteSyntaxTree] conforms to the [%L] schema, checking:\n" +
+                        "- Recognized composite node kinds (`UNKNOWN_NODE_KIND`) and token schema IDs (`UNKNOWN_TOKEN_KIND`).\n" +
+                        "- Required scalar fields (`MISSING_REQUIRED_SLOT`) and required non-empty `+` list fields (`EMPTY_REQUIRED_LIST_SLOT`) when [checkRequiredFields] is `true`.\n" +
+                        "- Single-element enforcement on scalar slots (`DUPLICATE_SCALAR_SLOT`).\n" +
+                        "- Permitted child node and token kinds per slot (`INVALID_CHILD_KIND`), undefined slots (`UNKNOWN_SLOT`), and unslotted non-trivia/non-error children (`UNSLOTTED_CHILD`).\n" +
+                        "- Non-overlapping child spans (`OVERLAPPING_CHILDREN`) and optional contiguous source coverage (`SOURCE_GAP`) when [checkSourceGaps] is `true`.",
+                    schema.name,
+                )
+                .addParameter(ParameterSpec.builder("checkRequiredFields", BOOLEAN).defaultValue("true").build())
+                .addParameter(ParameterSpec.builder("checkSourceGaps", BOOLEAN).defaultValue("false").build())
+                .returns(LIST.parameterizedBy(CN_CST_DIAGNOSTIC))
+                .addStatement(
+                    "return validate(schema = %T, checkRequiredFields = checkRequiredFields, checkSourceGaps = checkSourceGaps)",
+                    schemaDescriptorClassName,
+                )
+                .build()
+        )
     }
 
     // =========================================================================
@@ -1309,18 +1682,27 @@ public class CstKotlinPoetGenerator(
             )
             .build()
 
-    internal fun nodeHandleName(nodeName: String): String = "${nodeName}Handle"
+    private fun appendSuffix(baseName: String, suffix: String): String =
+        if (suffix.isNotEmpty() && baseName.endsWith(suffix) && baseName.length > suffix.length) {
+            baseName
+        } else {
+            "$baseName$suffix"
+        }
 
-    internal fun categoryHandleName(categoryName: String): String = "${categoryName}Handle"
+    internal fun nodeHandleName(nodeName: String): String =
+        appendSuffix(nodeName, config.nodeSuffix)
+
+    internal fun categoryHandleName(categoryName: String): String =
+        appendSuffix(categoryName, config.categorySuffix)
 
     internal fun stripTokenSuffix(tokenName: String): String =
         if (tokenName.endsWith("Token") && tokenName.length > 5) tokenName.removeSuffix("Token") else tokenName
 
     internal fun tokenHandleName(tokenName: String): String =
-        "${stripTokenSuffix(tokenName)}TokenHandle"
+        appendSuffix(stripTokenSuffix(tokenName), config.tokenSuffix)
 
     internal fun tokenCategoryHandleName(tokenCategoryName: String): String =
-        "${stripTokenSuffix(tokenCategoryName)}TokenHandle"
+        appendSuffix(stripTokenSuffix(tokenCategoryName), config.tokenCategorySuffix)
 
     private fun toUpperSnake(name: String): String {
         val result = StringBuilder()
@@ -1340,12 +1722,24 @@ public class CstKotlinPoetGenerator(
         val CN_CONCRETE_SYNTAX_BUILDER = ClassName(CST_PKG, "ConcreteSyntaxBuilder")
         val CN_CST_NODE = ClassName(CST_PKG, "CstNode")
         val CN_CST_TOKEN = ClassName(CST_PKG, "CstToken")
+        val CN_CST_DIAGNOSTIC = ClassName(CST_PKG, "CstDiagnostic")
+        val CN_CST_SCHEMA_DESCRIPTOR = ClassName(CST_PKG, "CstSchemaDescriptor")
+        val CN_CST_NODE_DESCRIPTOR = ClassName(CST_PKG, "CstNodeDescriptor")
+        val CN_CST_TOKEN_DESCRIPTOR = ClassName(CST_PKG, "CstTokenDescriptor")
+        val CN_CST_CATEGORY_DESCRIPTOR = ClassName(CST_PKG, "CstCategoryDescriptor")
+        val CN_CST_TOKEN_CATEGORY_DESCRIPTOR = ClassName(CST_PKG, "CstTokenCategoryDescriptor")
+        val CN_CST_SLOT_DESCRIPTOR = ClassName(CST_PKG, "CstSlotDescriptor")
+        val CN_CST_SLOT_CARDINALITY = ClassName(CST_PKG, "CstSlotCardinality")
+
+        val M_BUILD_CST = MemberName(CST_PKG, "buildCst")
 
         val M_ERROR_NODE_KIND = MemberName(CST_PKG, "ERROR_NODE_KIND")
         val M_NULL_NODE_INDEX = MemberName(CST_PKG, "NULL_NODE_INDEX")
         val M_NULL_TOKEN_INDEX = MemberName(CST_PKG, "NULL_TOKEN_INDEX")
         val M_NO_SLOT = MemberName(CST_PKG, "NO_SLOT")
         val M_IS_TOKEN_KIND = MemberName(CST_PKG, "isTokenKind")
+        val M_IS_TRIVIA_KIND = MemberName(CST_PKG, "isTriviaKind")
+        val M_IS_ERROR_KIND = MemberName(CST_PKG, "isErrorKind")
         val M_DECODE_TOKEN_SCHEMA_ID = MemberName(CST_PKG, "decodeTokenSchemaId")
     }
 }

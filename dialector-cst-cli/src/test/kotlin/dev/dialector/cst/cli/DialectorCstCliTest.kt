@@ -68,12 +68,54 @@ class DialectorCstCliTest {
 
         val pkgDir = File(outDir, "dev/dialector/calc")
         assertTrue(File(pkgDir, "CalculatorKinds.kt").isFile)
-        assertTrue(File(pkgDir, "CalculatorHandles.kt").isFile)
+        assertTrue(File(pkgDir, "CalculatorSyntax.kt").isFile)
         assertTrue(File(pkgDir, "CalculatorExtensions.kt").isFile)
 
-        val handlesContent = File(pkgDir, "CalculatorHandles.kt").readText()
-        assertTrue(handlesContent.contains("value class BinaryExprHandle"))
-        assertTrue(handlesContent.contains("value class BinaryOpTokenHandle"))
+        val syntaxContent = File(pkgDir, "CalculatorSyntax.kt").readText()
+        assertTrue(syntaxContent.contains("value class BinaryExprSyntax("))
+        assertTrue(syntaxContent.contains("value class ExprSyntax("))
+        assertTrue(syntaxContent.contains("value class NumberToken("))
+        assertTrue(syntaxContent.contains("value class BinaryOpToken("))
+    }
+
+    @Test
+    fun `generate command honors custom type suffixes`() {
+        val cstFile = writeCstFile(
+            "Suffix.cst",
+            """
+            schema SuffixLang
+            package dev.dialector.suffix
+
+            token Ident
+            token category Name = Ident
+            category Expr = RefExpr
+
+            node RefExpr {
+                name: Name
+            }
+            """,
+        )
+
+        val outDir = File(tempDir, "out-suffix")
+        val result = DialectorCstCli().test(
+            listOf(
+                "generate",
+                "-o", outDir.absolutePath,
+                "--node-suffix=Node",
+                "--category-suffix=Category",
+                "--token-suffix=Tok",
+                "--token-category-suffix=TokCategory",
+                cstFile.absolutePath,
+            )
+        )
+        assertEquals(0, result.statusCode, "CLI output:\n${result.output}")
+
+        val content = File(outDir, "dev/dialector/suffix/SuffixLangSyntax.kt").readText()
+        assertTrue(content.contains("value class RefExprNode("), content)
+        assertTrue(content.contains("value class ExprCategory("), content)
+        assertTrue(content.contains("value class IdentTok("), content)
+        assertTrue(content.contains("value class NameTokCategory("), content)
+        assertTrue(content.contains("public val name: NameTokCategory"), content)
     }
 
     @Test
@@ -117,13 +159,13 @@ class DialectorCstCliTest {
 
         val pkgDir = File(outDir, "com/example/custom")
         assertTrue(File(pkgDir, "CustomLangKinds.kt").isFile)
-        assertTrue(File(pkgDir, "CustomLangHandles.kt").isFile)
+        assertTrue(File(pkgDir, "CustomLangSyntax.kt").isFile)
         // With navigators, builder-extensions, and debug-helpers all false, Extensions file is omitted
         assertFalse(File(pkgDir, "CustomLangExtensions.kt").exists())
 
-        val handlesContent = File(pkgDir, "CustomLangHandles.kt").readText()
-        assertTrue(handlesContent.contains("value class RootHandle"))
-        assertFalse(handlesContent.contains("IdentTokenHandle"), "Token handles were disabled")
+        val handlesContent = File(pkgDir, "CustomLangSyntax.kt").readText()
+        assertTrue(handlesContent.contains("value class RootSyntax"))
+        assertFalse(handlesContent.contains("IdentToken("), "Token handles were disabled")
     }
 
     @Test

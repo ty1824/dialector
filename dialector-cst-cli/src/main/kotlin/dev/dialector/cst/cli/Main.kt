@@ -92,6 +92,26 @@ public class GenerateCommand : CliktCommand(name = "generate") {
         help = "Generate typed tree navigation and visitor helpers.",
     ).boolean().default(true)
 
+    private val nodeSuffix: String by option(
+        "--node-suffix",
+        help = "Suffix appended to generated CST node value class names.",
+    ).default("Syntax")
+
+    private val categorySuffix: String by option(
+        "--category-suffix",
+        help = "Suffix appended to generated CST node category value class names.",
+    ).default("Syntax")
+
+    private val tokenSuffix: String by option(
+        "--token-suffix",
+        help = "Suffix appended to generated CST token value class names.",
+    ).default("Token")
+
+    private val tokenCategorySuffix: String by option(
+        "--token-category-suffix",
+        help = "Suffix appended to generated CST token category value class names.",
+    ).default("Token")
+
     private val cleanOutput: Boolean by option(
         "--clean",
         help = "Delete existing contents of the output directory before generating.",
@@ -115,6 +135,10 @@ public class GenerateCommand : CliktCommand(name = "generate") {
             generateDebugHelpers = generateDebugHelpers,
             generateBuilderExtensions = generateBuilderExtensions,
             generateNavigators = generateNavigators,
+            nodeSuffix = nodeSuffix,
+            categorySuffix = categorySuffix,
+            tokenSuffix = tokenSuffix,
+            tokenCategorySuffix = tokenCategorySuffix,
         )
         val generator = CstCodeGenerator(config)
 

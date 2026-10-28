@@ -279,6 +279,14 @@ class ConcreteSyntaxTreeTest {
             val nonTriviaVisited = mutableListOf<Int>()
             tree.walkDepthFirst(includeTrivia = false) { nonTriviaVisited.add(it.nodeIndex) }
             assertEquals(listOf(0, 1, 3, 5), nonTriviaVisited)
+
+            val descendantsExclusive = mutableListOf<Int>()
+            tree.forEachDescendant(0, inclusive = false, includeTrivia = false) { descendantsExclusive.add(it.nodeIndex) }
+            assertEquals(listOf(1, 3, 5), descendantsExclusive)
+
+            val ancestorsInclusive = mutableListOf<Int>()
+            tree.forEachAncestor(5, inclusive = true) { ancestorsInclusive.add(it.nodeIndex) }
+            assertEquals(listOf(5, 0), ancestorsInclusive)
         }
     }
 
@@ -445,6 +453,177 @@ class ConcreteSyntaxTreeTest {
             assertEquals(SourceRange.NONE, CstNode.NONE.sourceRange)
             assertEquals(SourcePosition.NONE, CstNode.NONE.startPosition)
             assertEquals(SourceRange(31, 33), tree.diagnostics.first().sourceRange)
+        }
+    }
+
+    @Test
+    fun `builder auto-sorts out-of-order children so nodeAtOffset and tokenAtOffset succeed`() {
+        val source = "val x = 42"
+        val tree = buildCst(source) {
+            val root = startNode(kind = 1)
+            // Attach children out of source order (right-to-left)
+            val numTok = addToken(schemaTokenId = 4, startOffset = 8, endOffset = 10, parentNode = root, slot = 3)
+            val eqTok = addToken(schemaTokenId = 3, startOffset = 6, endOffset = 7, parentNode = root, slot = 2)
+            val idTok = addToken(schemaTokenId = 2, startOffset = 4, endOffset = 5, parentNode = root, slot = 1)
+            val valTok = addToken(schemaTokenId = 1, startOffset = 0, endOffset = 3, parentNode = root, slot = 0)
+            finishNode(root)
+
+            // Verify node indices before build
+            assertEquals(1, numTok)
+            assertEquals(4, valTok)
+        }
+
+        // Root span should cover 0..10 ("val x = 42")
+        assertEquals(0, tree.getNodeStartOffset(0))
+        assertEquals(10, tree.getNodeLength(0))
+        assertEquals("val x = 42", tree.getText(0))
+
+        // Offset lookups should find each leaf token rather than falling back to root
+        assertEquals(4, tree.tokenAtOffset(0).tokenIndex) // "val"
+        assertEquals(3, tree.tokenAtOffset(4).tokenIndex) // "x"
+        assertEquals(2, tree.tokenAtOffset(6).tokenIndex) // "="
+        assertEquals(1, tree.tokenAtOffset(8).tokenIndex) // "42"
+
+        // Slot bindings must remain intact after auto-sorting
+        assertEquals(4, tree.getChildBySlot(0, 0))
+        assertEquals(3, tree.getChildBySlot(0, 1))
+        assertEquals(2, tree.getChildBySlot(0, 2))
+        assertEquals(1, tree.getChildBySlot(0, 3))
+    }
+
+    @Test
+    fun `builder enforces unmodifiable diagnostics and optional cycle detection`() {
+        val tree = buildCst("err", checkCycles = true) {
+            val root = startNode(kind = 1)
+            addToken(schemaTokenId = 1, startOffset = 0, endOffset = 3, parentNode = root, slot = 0)
+            reportDiagnostic(nodeIndex = root, startOffset = 0, endOffset = 3, code = "ERR", message = "Error")
+            finishNode(root)
+        }
+
+        // Diagnostics list must reject mutation via cast
+        @Suppress("UNCHECKED_CAST")
+        val mutableCast = tree.diagnostics as MutableList<CstDiagnostic>
+        kotlin.test.assertFailsWith<UnsupportedOperationException> {
+            mutableCast.clear()
+        }
+
+        // Cycle detection in addChild when checkCycles = true
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            buildCst("cycle", checkCycles = true) {
+                val n1 = startNode(kind = 1)
+                val n2 = startNode(kind = 2)
+                addChild(n1, n2, slot = 0)
+                addChild(n2, n1, slot = 0)
+            }
+        }
+
+        // Cycle detection in build() when checkCycles = true is passed to build()
+        kotlin.test.assertFailsWith<IllegalStateException> {
+            val builder = ConcreteSyntaxBuilder(initialCapacity = 8, checkCycles = false)
+            val n1 = builder.startNode(kind = 1, startOffset = 0)
+            val n2 = builder.startNode(kind = 2, startOffset = 0)
+            builder.finishNode(n1, 1)
+            builder.finishNode(n2, 1)
+            builder.addChild(n1, n2, slot = 0)
+            builder.addChild(n2, n1, slot = 0)
+            builder.build("x", checkCycles = true)
+        }
+    }
+
+    @Test
+    fun `error tokens and four slot binding states work without wrapper overhead`() {
+        // Source: "val x ; = " (where ';' is a skipped recovery token, optional slot 0 is absent,
+        // slot 1 is present 'x', slot 2 is present '=', slot 3 is unavailable expr, slot 4 is missing ';')
+        val source = "val x ; = "
+        val tree = buildCst(source) {
+            val root = startNode(kind = 1)
+            // slot 0: optional 'mut' keyword -> left absent (NONE)
+            addToken(schemaTokenId = 10, startOffset = 0, endOffset = 3, parentNode = root, slot = 1) // "val" (Present)
+            addToken(schemaTokenId = 11, startOffset = 4, endOffset = 5, parentNode = root, slot = 2) // "x" (Present)
+            // Stray ';' marked directly as a recovery/error token without an ErrorNode wrapper
+            addErrorToken(
+                schemaTokenId = 99,
+                startOffset = 6,
+                endOffset = 7,
+                parentNode = root,
+                diagnosticCode = "UNEXPECTED_SEMI",
+                diagnosticMessage = "Unexpected ';'",
+            )
+            addToken(schemaTokenId = 12, startOffset = 8, endOffset = 9, parentNode = root, slot = 3) // "=" (Present)
+            // Slot 4: mandatory expression could not be established -> Unavailable
+            addUnavailableNode(
+                offset = 10,
+                parentNode = root,
+                slot = 4,
+                diagnosticCode = "EXPECTED_EXPR",
+                diagnosticMessage = "Expected expression after '='",
+            )
+            // Slot 5: mandatory trailing semicolon -> Missing
+            addMissingToken(
+                schemaTokenId = 99,
+                offset = 10,
+                parentNode = root,
+                slot = 5,
+                diagnosticCode = "MISSING_SEMI",
+                diagnosticMessage = "Expected ';'",
+            )
+            finishNode(root)
+        }
+
+        assertTrue(tree.hasErrors)
+        assertEquals(3, tree.diagnostics.size)
+
+        with(tree) {
+            val root = tree.root
+
+            // 1. Absent (optional slot 0 not populated)
+            val slot0 = root.childBySlot(0)
+            assertTrue(slot0.isNone)
+            assertFalse(slot0.isValid)
+            assertFalse(slot0.isPresent)
+            assertFalse(slot0.isMissing)
+            assertFalse(slot0.isError)
+
+            // 2. Present (slot 1: "val")
+            val slot1 = root.tokenBySlot(1)
+            assertTrue(slot1.isValid)
+            assertTrue(slot1.isPresent)
+            assertFalse(slot1.isNone)
+            assertFalse(slot1.isMissing)
+            assertFalse(slot1.isError)
+            assertEquals("val", slot1.text)
+
+            // 3. Unavailable (slot 4: expression recovery failed)
+            val slot4 = root.childBySlot(4)
+            assertTrue(slot4.isValid)
+            assertTrue(slot4.isError)
+            assertFalse(slot4.isPresent)
+            assertFalse(slot4.isNone)
+            assertFalse(slot4.isMissing)
+            assertEquals(0, slot4.length)
+
+            // 4. Missing (slot 5: synthesized ';')
+            val slot5 = root.tokenBySlot(5)
+            assertTrue(slot5.isValid)
+            assertTrue(slot5.isMissing)
+            assertFalse(slot5.isPresent)
+            assertFalse(slot5.isNone)
+            assertFalse(slot5.isError)
+            assertEquals(99, slot5.schemaId)
+
+            // 5. Recovery/Error Token (stray ';' at offset 6..7)
+            val errTok = tree.tokenAtOffset(6)
+            assertTrue(errTok.isValid)
+            assertTrue(errTok.isError)
+            assertTrue(errTok.asNode.isError)
+            assertFalse(errTok.isPresent)
+            assertFalse(errTok.isMissing)
+            assertFalse(errTok.isTrivia)
+            assertEquals(99, errTok.schemaId)
+            assertEquals(";", errTok.text)
+
+            val debugStr = tree.toDebugTreeString()
+            assertTrue(debugStr.contains("';' (Token#99[3]) <ERROR> (6..7)"))
         }
     }
 }

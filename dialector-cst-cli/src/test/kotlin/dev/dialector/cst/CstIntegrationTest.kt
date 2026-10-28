@@ -10,10 +10,16 @@ import dev.dialector.cst.schema.FieldSchema
 import dev.dialector.cst.schema.FieldType
 import dev.dialector.cst.schema.NodeSchema
 import dev.dialector.cst.schema.TokenSchema
+import dev.dialector.cst.schema.dsl.addEqToken
+import dev.dialector.cst.schema.dsl.addPackageHeader
+import dev.dialector.cst.schema.dsl.addSchemaFile
+import dev.dialector.cst.schema.dsl.validateCstSchemaDslTree
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCompilerApi::class)
@@ -90,7 +96,7 @@ class CstIntegrationTest {
                         val rightTok = addNumberToken(5, 7, parentNode = rightNum.nodeIndex, slot = 0)
                     }
 
-                    val binaryHandle = BinaryExpressionHandle(0)
+                    val binaryHandle = BinaryExpressionSyntax(0)
                     with(tree) {
                         val left = binaryHandle.left.asNumberLiteral
                         val right = binaryHandle.right.asNumberLiteral
@@ -197,7 +203,7 @@ class CstIntegrationTest {
                         val elseNode = addBlockStatement(14, 17, parentNode = ifNode.nodeIndex, slot = 3)
                     }
 
-                    val ifHandle = IfStatementHandle(0)
+                    val ifHandle = IfStatementSyntax(0)
                     val hasElse = with(tree) { ifHandle.elseBranch.isValid }
 
                     val treeWithoutElse = buildCst("if x foo") {
@@ -206,7 +212,7 @@ class CstIntegrationTest {
                         val cond = addVarRef(3, 4, parentNode = ifNode.nodeIndex, slot = 1)
                         val thenNode = addBlockStatement(5, 8, parentNode = ifNode.nodeIndex, slot = 2)
                     }
-                    val ifHandle2 = IfStatementHandle(0)
+                    val ifHandle2 = IfStatementSyntax(0)
                     val hasElse2 = with(treeWithoutElse) { ifHandle2.elseBranch.isValid }
 
                     return Pair(hasElse, hasElse2)
@@ -220,7 +226,7 @@ class CstIntegrationTest {
                         val s3 = addVarDecl(8, 10, parentNode = block.nodeIndex, slot = 0)
                     }
 
-                    val blockHandle = BlockStatementHandle(0)
+                    val blockHandle = BlockStatementSyntax(0)
                     with(tree) {
                         val first = blockHandle.statements[0]
                         val outOfBounds = blockHandle.statements[10]
@@ -238,7 +244,7 @@ class CstIntegrationTest {
                         addIfKeywordToken(0, 2, parentNode = ifNode.nodeIndex, slot = 0)
                         addMissingVarRef(offset = 2, parentNode = ifNode.nodeIndex, slot = 1, diagnosticMessage = "Missing condition")
                     }
-                    val ifHandle = IfStatementHandle(0)
+                    val ifHandle = IfStatementSyntax(0)
                     with(tree) {
                         val cond = ifHandle.condition
                         return tree.hasErrors && cond.isValid && cond.asNode.isMissing && cond.asNode.length == 0
@@ -335,13 +341,13 @@ class CstIntegrationTest {
         assertEquals(3, result.files.size)
 
         val kindsFile = result.files.first { it.fileName == "CstSchemaDslKinds.kt" }
-        val handlesFile = result.files.first { it.fileName == "CstSchemaDslHandles.kt" }
+        val handlesFile = result.files.first { it.fileName == "CstSchemaDslSyntax.kt" }
         val extensionsFile = result.files.first { it.fileName == "CstSchemaDslExtensions.kt" }
 
         // Verify the checked-in CstSchemaDsl* files match the generator output byte-for-byte
         val dslDir = java.io.File("src/main/kotlin/dev/dialector/cst/schema/dsl")
         assertEquals(java.io.File(dslDir, "CstSchemaDslKinds.kt").readText(), kindsFile.content)
-        assertEquals(java.io.File(dslDir, "CstSchemaDslHandles.kt").readText(), handlesFile.content)
+        assertEquals(java.io.File(dslDir, "CstSchemaDslSyntax.kt").readText(), handlesFile.content)
         assertEquals(java.io.File(dslDir, "CstSchemaDslExtensions.kt").readText(), extensionsFile.content)
 
         for (node in parsedSchema.nodes) {
@@ -350,8 +356,8 @@ class CstIntegrationTest {
                 "Missing node kind for ${node.name}",
             )
             assertTrue(
-                handlesFile.content.contains("value class ${node.name}Handle("),
-                "Missing node handle for ${node.name}",
+                handlesFile.content.contains("value class ${node.name}Syntax("),
+                "Missing node syntax class for ${node.name}",
             )
             assertTrue(
                 extensionsFile.content.contains("fun ConcreteSyntaxBuilder.add${node.name}("),
@@ -410,5 +416,84 @@ class CstIntegrationTest {
         val summary = verifyMethod.invoke(verifierInstance, cst) as String
 
         assertEquals("CstSchemaDsl:15:27", summary)
+    }
+
+    @Test
+    fun `generated validateTree catches schema and structural violations`() {
+        val validCst = dev.dialector.cst.schema.dsl.CstSchemaParser.parseToCst(
+            """
+            schema Demo
+            token Ident
+            node Root {
+                name: token Ident
+            }
+            """.trimIndent()
+        )
+        assertTrue(
+            validCst.validateCstSchemaDslTree().isEmpty(),
+            "Valid parsed CST should have no validation diagnostics",
+        )
+
+        // Build a tree with intentional schema and structural violations
+        val invalidTree = buildCst("schema  Demo") {
+            val file = addSchemaFile(startOffset = 0, endOffset = 12)
+            // 1. Missing required schemaHeader (slot 0 on SchemaFile), plus duplicate scalar packageHeader (slot 1)
+            val pkg1 = addPackageHeader(startOffset = 0, endOffset = 6, parentNode = file.nodeIndex, slot = 1)
+            val pkg2 = addPackageHeader(startOffset = 4, endOffset = 12, parentNode = file.nodeIndex, slot = 1)
+            // 2. Wrong token kind in PackageHeader.packageKeyword (slot 0 expects KeywordPackage, give it Eq)
+            addEqToken(0, 6, parentNode = pkg1.nodeIndex, slot = 0)
+            // 3. Unknown slot (slot 99) and unslotted non-trivia child on pkg2
+            addEqToken(4, 8, parentNode = pkg2.nodeIndex, slot = 99)
+            addEqToken(9, 12, parentNode = pkg2.nodeIndex)
+        }
+
+        val issues = invalidTree.validateCstSchemaDslTree(checkRequiredFields = true, checkSourceGaps = true)
+        val codes = issues.map { it.code }.toSet()
+        assertTrue("MISSING_REQUIRED_SLOT" in codes, "Expected MISSING_REQUIRED_SLOT in $codes")
+        assertTrue("DUPLICATE_SCALAR_SLOT" in codes, "Expected DUPLICATE_SCALAR_SLOT in $codes")
+        assertTrue("INVALID_CHILD_KIND" in codes, "Expected INVALID_CHILD_KIND in $codes")
+        assertTrue("UNKNOWN_SLOT" in codes, "Expected UNKNOWN_SLOT in $codes")
+        assertTrue("UNSLOTTED_CHILD" in codes, "Expected UNSLOTTED_CHILD in $codes")
+        assertTrue("OVERLAPPING_CHILDREN" in codes, "Expected OVERLAPPING_CHILDREN in $codes")
+        assertTrue("SOURCE_GAP" in codes, "Expected SOURCE_GAP in $codes")
+    }
+
+    @Test
+    fun `schema descriptors and companion objects expose typed metadata`() {
+        // 1. Companion objects as descriptors
+        val nodeDesc: dev.dialector.cst.CstNodeDescriptor = dev.dialector.cst.schema.dsl.SchemaFileSyntax
+        assertEquals("SchemaFile", nodeDesc.name)
+        assertEquals(3, nodeDesc.slots.size)
+        assertEquals("schemaHeader", nodeDesc.slots[0].name)
+        assertEquals(dev.dialector.cst.CstSlotCardinality.OPTIONAL, nodeDesc.slots[0].cardinality)
+        assertFalse(nodeDesc.slots[0].isTokenSlot)
+        assertEquals("declarations", nodeDesc.slots[2].name)
+        assertEquals(dev.dialector.cst.CstSlotCardinality.ZERO_OR_MORE, nodeDesc.slots[2].cardinality)
+
+        val tokDesc: dev.dialector.cst.CstTokenDescriptor = dev.dialector.cst.schema.dsl.IdentToken
+        assertEquals("Ident", tokDesc.name)
+        assertEquals(dev.dialector.cst.schema.dsl.CstSchemaDslTokenKinds.IDENT, tokDesc.id)
+
+        val catDesc: dev.dialector.cst.CstCategoryDescriptor = dev.dialector.cst.schema.dsl.DeclarationSyntax
+        assertEquals("Declaration", catDesc.name)
+        assertTrue(catDesc.containsKind(dev.dialector.cst.schema.dsl.NodeDeclSyntax.KIND))
+        assertTrue(catDesc.containsKind(dev.dialector.cst.schema.dsl.TokenDeclSyntax.KIND))
+
+        // 2. Schema descriptor collects all components
+        val schema: dev.dialector.cst.CstSchemaDescriptor = dev.dialector.cst.schema.dsl.CstSchemaDslSchema
+        assertEquals("CstSchemaDsl", schema.name)
+        assertEquals(15, schema.nodes.size)
+        assertEquals(27, schema.tokens.size)
+        assertEquals(2, schema.categories.size)
+        assertEquals(1, schema.tokenCategories.size)
+        assertSame(nodeDesc, schema.getNodeDescriptor(dev.dialector.cst.schema.dsl.SchemaFileSyntax.KIND))
+        assertSame(tokDesc, schema.getTokenDescriptor(dev.dialector.cst.schema.dsl.IdentToken.ID))
+
+        // 3. Tree built via parseToCst attaches schema and formats slot names in toDebugTreeString
+        val cst = dev.dialector.cst.schema.dsl.CstSchemaParser.parseToCst("schema Demo\ntoken Ident\n")
+        assertSame(schema, cst.schema)
+        val debugString = cst.toDebugTreeString()
+        assertTrue(debugString.contains("schemaHeader (#0):"), "Expected slot name in debug tree string:\n$debugString")
+        assertTrue(debugString.contains("declarations (#2):"), "Expected declarations slot name in debug tree string:\n$debugString")
     }
 }
