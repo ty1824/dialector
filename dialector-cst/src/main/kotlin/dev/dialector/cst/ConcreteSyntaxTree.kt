@@ -22,13 +22,19 @@ const val ERROR_NODE_KIND: Int = 0
 
 /**
  * Bitmask applied to negative token kinds to denote trivia (whitespace, comments).
- * Regular tokens: -1 downTo -0x3FFFFFFF (bits 31 and 30 are 11).
- * Trivia tokens:  -0x40000001 and below (bit 31 is 1, bit 30 is 0).
+ * When cleared (0), the token is trivia.
  */
 const val TRIVIA_KIND_MASK: Int = 0x4000_0000
 
 /**
- * Returns true if [kind] represents a leaf token (regular or trivia).
+ * Bitmask applied to negative token kinds to denote a recovery/error token
+ * (a valid lexical token encountered in an invalid syntactic location).
+ * When cleared (0), the token is flagged as an error/recovery token.
+ */
+const val ERROR_TOKEN_KIND_MASK: Int = 0x2000_0000
+
+/**
+ * Returns true if [kind] represents a leaf token (regular, trivia, or error token).
  */
 @Suppress("NOTHING_TO_INLINE")
 inline fun isTokenKind(kind: Int): Boolean = kind < 0
@@ -40,6 +46,18 @@ inline fun isTokenKind(kind: Int): Boolean = kind < 0
 inline fun isTriviaKind(kind: Int): Boolean = kind < 0 && (kind and TRIVIA_KIND_MASK) == 0
 
 /**
+ * Returns true if [kind] represents a leaf token marked as an error/recovery token.
+ */
+@Suppress("NOTHING_TO_INLINE")
+inline fun isErrorTokenKind(kind: Int): Boolean = kind < 0 && (kind and ERROR_TOKEN_KIND_MASK) == 0
+
+/**
+ * Returns true if [kind] represents either an [ERROR_NODE_KIND] composite node or an error/recovery token.
+ */
+@Suppress("NOTHING_TO_INLINE")
+inline fun isErrorKind(kind: Int): Boolean = kind == ERROR_NODE_KIND || isErrorTokenKind(kind)
+
+/**
  * Returns true if [kind] represents a composite (non-token) node, including [ERROR_NODE_KIND].
  */
 @Suppress("NOTHING_TO_INLINE")
@@ -48,15 +66,18 @@ inline fun isCompositeKind(kind: Int): Boolean = kind >= 0
 /**
  * Converts a positive 1-based schema token ID into its negative runtime token kind.
  */
-fun encodeTokenKind(schemaTokenId: Int, isTrivia: Boolean = false): Int {
-    require(schemaTokenId > 0 && schemaTokenId < TRIVIA_KIND_MASK) {
-        "Schema token ID must be in 1..<0x40000000 (got $schemaTokenId)"
+fun encodeTokenKind(
+    schemaTokenId: Int,
+    isTrivia: Boolean = false,
+    isError: Boolean = false,
+): Int {
+    require(schemaTokenId > 0 && schemaTokenId < ERROR_TOKEN_KIND_MASK) {
+        "Schema token ID must be in 1..<0x20000000 (got $schemaTokenId)"
     }
-    return if (isTrivia) {
-        (-schemaTokenId) and TRIVIA_KIND_MASK.inv()
-    } else {
-        -schemaTokenId
-    }
+    var encoded = -schemaTokenId
+    if (isTrivia) encoded = encoded and TRIVIA_KIND_MASK.inv()
+    if (isError) encoded = encoded and ERROR_TOKEN_KIND_MASK.inv()
+    return encoded
 }
 
 /**
@@ -64,8 +85,8 @@ fun encodeTokenKind(schemaTokenId: Int, isTrivia: Boolean = false): Int {
  */
 fun decodeTokenSchemaId(tokenKind: Int): Int {
     require(tokenKind < 0) { "Expected negative token kind, got $tokenKind" }
-    val withBitRestored = tokenKind or TRIVIA_KIND_MASK
-    return -withBitRestored
+    val withBitsRestored = tokenKind or TRIVIA_KIND_MASK or ERROR_TOKEN_KIND_MASK
+    return -withBitsRestored
 }
 
 /**
@@ -119,11 +140,12 @@ value class CstNode(val nodeIndex: Int) {
         get() = isValid && isTriviaKind(tree.getNodeKind(nodeIndex))
 
     /**
-     * True if this node is an [ERROR_NODE_KIND] recovery wrapper.
+     * True if this node is an [ERROR_NODE_KIND] recovery wrapper, an unavailable slot placeholder,
+     * or a leaf token marked as an error/recovery token.
      */
     context(tree: ConcreteSyntaxTree)
     val isError: Boolean
-        get() = isValid && tree.getNodeKind(nodeIndex) == ERROR_NODE_KIND
+        get() = isValid && isErrorKind(tree.getNodeKind(nodeIndex))
 
     /**
      * True if this node or token was synthesized by the parser during error recovery
@@ -132,6 +154,17 @@ value class CstNode(val nodeIndex: Int) {
     context(tree: ConcreteSyntaxTree)
     val isMissing: Boolean
         get() = isValid && tree.isNodeMissing(nodeIndex)
+
+    /**
+     * True if this node or token is present and usable in the syntax tree
+     * (`isValid && !isMissing && !isError`).
+     *
+     * Together with [isNone] (Absent), [isMissing] (Missing), and [isError] (Unavailable / Recovery),
+     * this distinguishes all four states of a CST slot binding.
+     */
+    context(tree: ConcreteSyntaxTree)
+    val isPresent: Boolean
+        get() = isValid && !isMissing && !isError
 
     /**
      * Returns the source text slice of this node.
@@ -249,6 +282,31 @@ value class CstNode(val nodeIndex: Int) {
         }
     }
 
+    /**
+     * Stackless, zero-allocation depth-first pre-order iteration over all descendants of this node.
+     */
+    context(tree: ConcreteSyntaxTree)
+    inline fun forEachDescendant(
+        inclusive: Boolean = false,
+        includeTrivia: Boolean = true,
+        action: (CstNode) -> Unit,
+    ) {
+        if (!isValid) return
+        tree.forEachDescendant(nodeIndex, inclusive = inclusive, includeTrivia = includeTrivia, action = action)
+    }
+
+    /**
+     * Zero-allocation iteration over all ancestors of this node up to the root.
+     */
+    context(tree: ConcreteSyntaxTree)
+    inline fun forEachAncestor(
+        inclusive: Boolean = false,
+        action: (CstNode) -> Unit,
+    ) {
+        if (!isValid) return
+        tree.forEachAncestor(nodeIndex, inclusive = inclusive, action = action)
+    }
+
     override fun toString(): String = if (isValid) "CstNode($nodeIndex)" else "CstNode.NONE"
 
     companion object {
@@ -301,7 +359,13 @@ value class CstToken(val tokenIndex: Int) {
     val isTrivia: Boolean get() = asNode.isTrivia
 
     context(tree: ConcreteSyntaxTree)
+    val isError: Boolean get() = asNode.isError
+
+    context(tree: ConcreteSyntaxTree)
     val isMissing: Boolean get() = asNode.isMissing
+
+    context(tree: ConcreteSyntaxTree)
+    val isPresent: Boolean get() = asNode.isPresent
 
     context(tree: ConcreteSyntaxTree)
     val text: String get() = asNode.text
@@ -620,6 +684,7 @@ class ConcreteSyntaxTree internal constructor(
     internal val nodeOrderInParent: IntArray,
     val sourceText: String = "",
     val diagnostics: List<CstDiagnostic> = emptyList(),
+    val schema: CstSchemaDescriptor? = null,
 ) {
     /**
      * Precomputed flag indicating whether any error diagnostics, [ERROR_NODE_KIND] nodes,
@@ -639,7 +704,7 @@ class ConcreteSyntaxTree internal constructor(
         var foundError = diagnostics.any { it.severity == DiagnosticSeverity.ERROR }
         if (!foundError) {
             for (i in 0..<count) {
-                if (nodeKinds[i] == ERROR_NODE_KIND || nodeLengths[i] < 0) {
+                if (isErrorKind(nodeKinds[i]) || nodeLengths[i] < 0) {
                     foundError = true
                     break
                 }
@@ -1080,8 +1145,7 @@ class ConcreteSyntaxTree internal constructor(
     }
 
     /**
-     * Zero-allocation Depth-First Pre-Order traversal starting at [nodeIndex].
-     * Visits nodes in exact source-text appearance order.
+     * Depth-First Pre-Order traversal starting at [nodeIndex].
      */
     inline fun walkDepthFirst(
         nodeIndex: Int = getRootNodeIndex(),
@@ -1089,29 +1153,94 @@ class ConcreteSyntaxTree internal constructor(
         action: (CstNode) -> Unit,
     ) {
         if (nodeIndex == NULL_NODE_INDEX) return
-        val stack = IntArray(64)
-        var sp = 0
-        stack[sp++] = nodeIndex
-        var activeStack = stack
-        while (sp > 0) {
-            val current = activeStack[--sp]
-            val kind = getNodeKind(current)
-            if (!includeTrivia && isTriviaKind(kind)) continue
+        val startKind = getNodeKind(nodeIndex)
+        if (!includeTrivia && isTriviaKind(startKind)) return
+        var current = nodeIndex
+        while (current != NULL_NODE_INDEX) {
             action(CstNode(current))
-            val children = getChildrenList(current)
-            val needed = sp + children.size
-            if (needed > activeStack.size) {
-                activeStack = activeStack.copyOf(maxOf(activeStack.size * 2, needed))
-            }
-            // Push in reverse so first child is popped first
-            for (edgeIdx in (children.endEdgeOffset - 1) downTo children.startEdgeOffset) {
-                activeStack[sp++] = getRawChildEdgeNode(edgeIdx)
-            }
+            current = nextDepthFirstNode(current, nodeIndex, includeTrivia)
         }
     }
 
     /**
+     * Iteration over all descendants of [nodeIndex] in depth-first pre-order.
+     */
+    inline fun forEachDescendant(
+        nodeIndex: Int,
+        inclusive: Boolean = false,
+        includeTrivia: Boolean = true,
+        action: (CstNode) -> Unit,
+    ) {
+        if (nodeIndex !in 0..<nodeCount) return
+        var current = if (inclusive) {
+            if (!includeTrivia && isTriviaKind(getNodeKind(nodeIndex))) return
+            nodeIndex
+        } else {
+            nextDepthFirstNode(nodeIndex, nodeIndex, includeTrivia)
+        }
+        while (current != NULL_NODE_INDEX) {
+            action(CstNode(current))
+            current = nextDepthFirstNode(current, nodeIndex, includeTrivia)
+        }
+    }
+
+    /**
+     * Zero-allocation inline iteration over all ancestors of [nodeIndex] up to the root.
+     */
+    inline fun forEachAncestor(
+        nodeIndex: Int,
+        inclusive: Boolean = false,
+        action: (CstNode) -> Unit,
+    ) {
+        if (nodeIndex !in 0..<nodeCount) return
+        var current = if (inclusive) nodeIndex else getNodeParent(nodeIndex)
+        while (current != NULL_NODE_INDEX) {
+            action(CstNode(current))
+            current = getNodeParent(current)
+        }
+    }
+
+    /**
+     * Returns the next node index in a depth-first pre-order walk rooted at [rootNodeIndex],
+     * or [NULL_NODE_INDEX] once the subtree rooted at [rootNodeIndex] has been exhausted.
+     */
+    @PublishedApi
+    internal fun nextDepthFirstNode(
+        current: Int,
+        rootNodeIndex: Int,
+        includeTrivia: Boolean,
+    ): Int {
+        // 1. Try descending into the first qualifying child of `current`
+        val childStart = nodeChildOffsets[current]
+        val childEnd = nodeChildOffsets[current + 1]
+        for (edge in childStart..<childEnd) {
+            val childIdx = childNodeIndices[edge]
+            if (includeTrivia || !isTriviaKind(nodeKinds[childIdx])) {
+                return childIdx
+            }
+        }
+
+        // 2. Otherwise climb up via `nodeParents` until we find a qualifying next sibling below `rootNodeIndex`
+        var walk = current
+        while (walk != rootNodeIndex) {
+            val parentIdx = nodeParents[walk]
+            if (parentIdx == NULL_NODE_INDEX) return NULL_NODE_INDEX
+            val nextEdgeStart = nodeOrderInParent[walk] + 1
+            val parentEndEdge = nodeChildOffsets[parentIdx + 1]
+            for (edge in nextEdgeStart..<parentEndEdge) {
+                val siblingIdx = childNodeIndices[edge]
+                if (includeTrivia || !isTriviaKind(nodeKinds[siblingIdx])) {
+                    return siblingIdx
+                }
+            }
+            walk = parentIdx
+        }
+        return NULL_NODE_INDEX
+    }
+
+    /**
      * Returns a sequence of all descendant node indices in depth-first pre-order starting from [nodeIndex].
+     * For hot paths that must avoid `Int` boxing, prefer [walkDepthFirst] or [forEachDescendant].
      */
     fun getAllDescendants(
         nodeIndex: Int,
@@ -1119,30 +1248,20 @@ class ConcreteSyntaxTree internal constructor(
         includeTrivia: Boolean = true,
     ): Sequence<Int> = sequence {
         checkNodeBounds(nodeIndex)
-        val stack = ArrayDeque<Int>()
-        if (inclusive) {
-            stack.addLast(nodeIndex)
+        var current = if (inclusive) {
+            if (!includeTrivia && isTriviaKind(nodeKinds[nodeIndex])) NULL_NODE_INDEX else nodeIndex
         } else {
-            val startEdge = nodeChildOffsets[nodeIndex]
-            val endEdge = nodeChildOffsets[nodeIndex + 1]
-            for (edgeIdx in (endEdge - 1) downTo startEdge) {
-                stack.addLast(childNodeIndices[edgeIdx])
-            }
+            nextDepthFirstNode(nodeIndex, nodeIndex, includeTrivia)
         }
-        while (stack.isNotEmpty()) {
-            val current = stack.removeLast()
-            if (!includeTrivia && isTriviaKind(nodeKinds[current])) continue
+        while (current != NULL_NODE_INDEX) {
             yield(current)
-            val startEdge = nodeChildOffsets[current]
-            val endEdge = nodeChildOffsets[current + 1]
-            for (edgeIdx in (endEdge - 1) downTo startEdge) {
-                stack.addLast(childNodeIndices[edgeIdx])
-            }
+            current = nextDepthFirstNode(current, nodeIndex, includeTrivia)
         }
     }
 
     /**
      * Returns a sequence of all ancestor node indices starting from [nodeIndex] up to the root.
+     * For hot paths that must avoid `Int` boxing, prefer [forEachAncestor].
      */
     fun getAllAncestors(nodeIndex: Int, inclusive: Boolean = false): Sequence<Int> = sequence {
         checkNodeBounds(nodeIndex)
@@ -1166,14 +1285,31 @@ class ConcreteSyntaxTree internal constructor(
         if (rootIdx == NULL_NODE_INDEX) return "<empty CST>"
         val sb = StringBuilder()
 
+        val actualNodeLookup = nodeNameLookup ?: schema?.let { s -> { kind: Int -> s.getKindName(kind) } }
+        val actualTokenLookup = tokenNameLookup ?: schema?.let { s -> { id: Int -> s.getTokenName(id) } }
+
         fun appendNode(nodeIdx: Int, indent: String, isLast: Boolean) {
             val kind = nodeKinds[nodeIdx]
             val isTok = isTokenKind(kind)
             val isTriv = isTriviaKind(kind)
+            val isErrTok = isErrorTokenKind(kind)
             val isMiss = isNodeMissing(nodeIdx)
             val slot = getNodeSlotInParent(nodeIdx)
-            val slotPrefix = if (slot >= 0) "slot#$slot: " else ""
-            val missingTag = if (isMiss) " <MISSING>" else ""
+            val slotName = if (schema != null && slot >= 0) {
+                val parentIdx = nodeParents[nodeIdx]
+                if (parentIdx != NULL_NODE_INDEX) {
+                    schema.getNodeDescriptor(nodeKinds[parentIdx])?.getSlot(slot)?.name
+                } else null
+            } else null
+            val slotPrefix = when {
+                slotName != null -> "$slotName (#$slot): "
+                slot >= 0 -> "slot#$slot: "
+                else -> ""
+            }
+            val statusTag = buildString {
+                if (isMiss) append(" <MISSING>")
+                if (isErrTok) append(" <ERROR>")
+            }
             val textStr = getText(nodeIdx).replace("\n", "\\n").replace("\r", "\\r")
 
             sb.append(indent)
@@ -1181,16 +1317,16 @@ class ConcreteSyntaxTree internal constructor(
 
             if (isTok) {
                 val decodedId = decodeTokenSchemaId(kind)
-                val kindStr = tokenNameLookup?.invoke(decodedId)
+                val kindStr = actualTokenLookup?.invoke(decodedId)
                     ?: if (isTriv) "Trivia#$decodedId" else "Token#$decodedId"
-                sb.append("$slotPrefix'$textStr' ($kindStr[$nodeIdx])$missingTag (${nodeStartOffsets[nodeIdx]}..${getNodeEndOffset(nodeIdx)})\n")
+                sb.append("$slotPrefix'$textStr' ($kindStr[$nodeIdx])$statusTag (${nodeStartOffsets[nodeIdx]}..${getNodeEndOffset(nodeIdx)})\n")
             } else {
                 val kindStr = when {
                     kind == ERROR_NODE_KIND -> "ErrorNode"
-                    else -> nodeNameLookup?.invoke(kind) ?: "Node#$kind"
+                    else -> actualNodeLookup?.invoke(kind) ?: "Node#$kind"
                 }
                 val snippet = if (textStr.isNotBlank()) " \"${textStr.take(30)}\"" else ""
-                sb.append("$slotPrefix$kindStr[$nodeIdx]$snippet$missingTag (${nodeStartOffsets[nodeIdx]}..${getNodeEndOffset(nodeIdx)})\n")
+                sb.append("$slotPrefix$kindStr[$nodeIdx]$snippet$statusTag (${nodeStartOffsets[nodeIdx]}..${getNodeEndOffset(nodeIdx)})\n")
                 val childIndent = indent + if (isLast) "    " else "│   "
                 val startEdge = nodeChildOffsets[nodeIdx]
                 val endEdge = nodeChildOffsets[nodeIdx + 1]
@@ -1216,6 +1352,201 @@ class ConcreteSyntaxTree internal constructor(
         return sb.toString()
     }
 
+    /**
+     * Validates that this [ConcreteSyntaxTree] satisfies structural integrity and optionally
+     * conforms to the specified [schema] (or the tree's attached [schema] if none provided).
+     *
+     * Checks performed:
+     * - Overlapping non-missing sibling spans (`OVERLAPPING_CHILDREN`).
+     * - Contiguous source text coverage within composite nodes (`SOURCE_GAP`) when [checkSourceGaps] is `true`.
+     * - Permitted token IDs (`UNKNOWN_TOKEN_KIND`) and composite node kinds (`UNKNOWN_NODE_KIND`).
+     * - Required scalar fields (`MISSING_REQUIRED_SLOT`) and required non-empty `+` list fields (`EMPTY_REQUIRED_LIST_SLOT`) when [checkRequiredFields] is `true`.
+     * - Single-element cardinality enforcement on scalar slots (`DUPLICATE_SCALAR_SLOT`).
+     * - Child kind compatibility per slot (`INVALID_CHILD_KIND`), unknown slots (`UNKNOWN_SLOT`), and unslotted non-trivia children (`UNSLOTTED_CHILD`).
+     */
+    fun validate(
+        schema: CstSchemaDescriptor? = this.schema,
+        checkRequiredFields: Boolean = true,
+        checkSourceGaps: Boolean = false,
+    ): List<CstDiagnostic> {
+        if (nodeCount == 0) return emptyList()
+        val issues = mutableListOf<CstDiagnostic>()
+        for (nodeIdx in 0..<nodeCount) {
+            val kind = nodeKinds[nodeIdx]
+            val startOffset = nodeStartOffsets[nodeIdx]
+            val endOffset = getNodeEndOffset(nodeIdx)
+            val isMissing = isNodeMissing(nodeIdx)
+
+            if (isTokenKind(kind)) {
+                if (schema != null) {
+                    val schemaId = decodeTokenSchemaId(kind)
+                    if (schema.getTokenDescriptor(schemaId) == null) {
+                        issues.add(
+                            CstDiagnostic(
+                                nodeIndex = nodeIdx,
+                                startOffset = startOffset,
+                                endOffset = endOffset,
+                                code = "UNKNOWN_TOKEN_KIND",
+                                message = "Unrecognized token kind $kind at token $nodeIdx",
+                            )
+                        )
+                    }
+                }
+                continue
+            }
+
+            if (!isMissing) {
+                var prevChildEnd = -1
+                for (relIdx in 0..<getChildNodeCount(nodeIdx)) {
+                    val childIdx = getChildNodeAt(nodeIdx, relIdx)
+                    if (!isNodeMissing(childIdx)) {
+                        val cStart = nodeStartOffsets[childIdx]
+                        val cEnd = getNodeEndOffset(childIdx)
+                        if (prevChildEnd >= 0) {
+                            if (cStart < prevChildEnd) {
+                                issues.add(
+                                    CstDiagnostic(
+                                        nodeIndex = childIdx,
+                                        startOffset = cStart,
+                                        endOffset = cEnd,
+                                        code = "OVERLAPPING_CHILDREN",
+                                        message = "Child $childIdx ($cStart..$cEnd) overlaps previous sibling ending at $prevChildEnd",
+                                    )
+                                )
+                            } else if (checkSourceGaps && cStart > prevChildEnd) {
+                                issues.add(
+                                    CstDiagnostic(
+                                        nodeIndex = nodeIdx,
+                                        startOffset = prevChildEnd,
+                                        endOffset = cStart,
+                                        code = "SOURCE_GAP",
+                                        message = "Source gap in node $nodeIdx between offsets $prevChildEnd and $cStart",
+                                    )
+                                )
+                            }
+                        } else if (checkSourceGaps && cStart > startOffset) {
+                            issues.add(
+                                CstDiagnostic(
+                                    nodeIndex = nodeIdx,
+                                    startOffset = startOffset,
+                                    endOffset = cStart,
+                                    code = "SOURCE_GAP",
+                                    message = "Source gap at start of node $nodeIdx between offsets $startOffset and $cStart",
+                                )
+                            )
+                        }
+                        if (cEnd > prevChildEnd) prevChildEnd = cEnd
+                    }
+                }
+                if (checkSourceGaps && prevChildEnd >= 0 && prevChildEnd < endOffset) {
+                    issues.add(
+                        CstDiagnostic(
+                            nodeIndex = nodeIdx,
+                            startOffset = prevChildEnd,
+                            endOffset = endOffset,
+                            code = "SOURCE_GAP",
+                            message = "Source gap at end of node $nodeIdx between offsets $prevChildEnd and $endOffset",
+                        )
+                    )
+                }
+            }
+
+            if (kind == ERROR_NODE_KIND) continue
+
+            if (schema != null) {
+                val nodeDesc = schema.getNodeDescriptor(kind)
+                if (nodeDesc == null) {
+                    issues.add(
+                        CstDiagnostic(
+                            nodeIndex = nodeIdx,
+                            startOffset = startOffset,
+                            endOffset = endOffset,
+                            code = "UNKNOWN_NODE_KIND",
+                            message = "Unrecognized composite node kind $kind at node $nodeIdx",
+                        )
+                    )
+                    continue
+                }
+
+                if (checkRequiredFields && !isMissing) {
+                    for (slotDesc in nodeDesc.slots) {
+                        val count = getChildCountInSlot(nodeIdx, slotDesc.slot)
+                        if (slotDesc.cardinality.isRequired && count == 0) {
+                            val (code, msg) = if (slotDesc.cardinality == CstSlotCardinality.ONE_OR_MORE) {
+                                "EMPTY_REQUIRED_LIST_SLOT" to "${nodeDesc.name} (node $nodeIdx) has empty required '+' ${if (slotDesc.isTokenSlot) "token " else ""}list field '${slotDesc.name}' (slot ${slotDesc.slot})"
+                            } else {
+                                "MISSING_REQUIRED_SLOT" to "${nodeDesc.name} (node $nodeIdx) is missing required ${if (slotDesc.isTokenSlot) "token" else "field"} '${slotDesc.name}' (slot ${slotDesc.slot})"
+                            }
+                            issues.add(
+                                CstDiagnostic(
+                                    nodeIndex = nodeIdx,
+                                    startOffset = startOffset,
+                                    endOffset = endOffset,
+                                    code = code,
+                                    message = msg,
+                                )
+                            )
+                        }
+                        if (!slotDesc.cardinality.isMultiple && count > 1) {
+                            issues.add(
+                                CstDiagnostic(
+                                    nodeIndex = nodeIdx,
+                                    startOffset = startOffset,
+                                    endOffset = endOffset,
+                                    code = "DUPLICATE_SCALAR_SLOT",
+                                    message = "${nodeDesc.name} (node $nodeIdx) has $count ${if (slotDesc.isTokenSlot) "tokens" else "children"} in scalar field '${slotDesc.name}' (slot ${slotDesc.slot})",
+                                )
+                            )
+                        }
+                    }
+                }
+
+                for (relIdx in 0..<getChildNodeCount(nodeIdx)) {
+                    val childIdx = getChildNodeAt(nodeIdx, relIdx)
+                    val childSlot = getNodeSlotInParent(childIdx)
+                    val childKind = nodeKinds[childIdx]
+                    if (childSlot == NO_SLOT.toInt()) {
+                        if (!isTriviaKind(childKind) && !isErrorKind(childKind)) {
+                            issues.add(
+                                CstDiagnostic(
+                                    nodeIndex = childIdx,
+                                    startOffset = nodeStartOffsets[childIdx],
+                                    endOffset = getNodeEndOffset(childIdx),
+                                    code = "UNSLOTTED_CHILD",
+                                    message = "Non-trivia, non-error child $childIdx in ${nodeDesc.name} (node $nodeIdx) is not assigned to a schema slot",
+                                )
+                            )
+                        }
+                    } else {
+                        val slotDesc = nodeDesc.getSlot(childSlot)
+                        if (slotDesc == null) {
+                            issues.add(
+                                CstDiagnostic(
+                                    nodeIndex = childIdx,
+                                    startOffset = nodeStartOffsets[childIdx],
+                                    endOffset = getNodeEndOffset(childIdx),
+                                    code = "UNKNOWN_SLOT",
+                                    message = "Child $childIdx in ${nodeDesc.name} (node $nodeIdx) occupies undefined slot $childSlot",
+                                )
+                            )
+                        } else if (!slotDesc.acceptsChildKind(childKind)) {
+                            issues.add(
+                                CstDiagnostic(
+                                    nodeIndex = childIdx,
+                                    startOffset = nodeStartOffsets[childIdx],
+                                    endOffset = getNodeEndOffset(childIdx),
+                                    code = "INVALID_CHILD_KIND",
+                                    message = "${nodeDesc.name}.${slotDesc.name} (slot $childSlot) expected ${if (slotDesc.isTokenSlot) "token " else ""}${slotDesc.targetTypeName} but found child $childIdx with kind $childKind",
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        return issues
+    }
+
     private fun checkNodeBounds(nodeIndex: Int) {
         if (nodeIndex !in 0..<nodeCount) {
             throw IndexOutOfBoundsException("Node index $nodeIndex is out of bounds (nodeCount=$nodeCount)")
@@ -1230,7 +1561,7 @@ class ConcreteSyntaxTree internal constructor(
         /**
          * Creates an empty [ConcreteSyntaxTree] satisfying the `nodeChildOffsets.size == nodeCount + 1` invariant.
          */
-        fun empty(): ConcreteSyntaxTree = ConcreteSyntaxTree(
+        fun empty(schema: CstSchemaDescriptor? = null): ConcreteSyntaxTree = ConcreteSyntaxTree(
             nodeKinds = EMPTY_INT_ARRAY,
             nodeParents = EMPTY_INT_ARRAY,
             nodeStartOffsets = EMPTY_INT_ARRAY,
@@ -1241,6 +1572,7 @@ class ConcreteSyntaxTree internal constructor(
             nodeOrderInParent = EMPTY_INT_ARRAY,
             sourceText = "",
             diagnostics = emptyList(),
+            schema = schema,
         )
 
         private fun computeLineStartOffsets(text: String): IntArray {

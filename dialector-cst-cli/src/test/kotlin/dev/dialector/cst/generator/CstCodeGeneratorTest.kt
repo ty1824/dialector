@@ -62,7 +62,7 @@ class CstCodeGeneratorTest {
         assertEquals(3, result.files.size)
         val fileNames = result.files.map { it.fileName }
         assertTrue("CalculatorKinds.kt" in fileNames)
-        assertTrue("CalculatorHandles.kt" in fileNames)
+        assertTrue("CalculatorSyntax.kt" in fileNames)
         assertTrue("CalculatorExtensions.kt" in fileNames)
 
         // Check Kinds
@@ -79,27 +79,27 @@ class CstCodeGeneratorTest {
         assertTrue(kindsCode.contains("public val EXPRESSION_KINDS: Set<Int>"))
         assertTrue(kindsCode.contains("public fun isExpression(kindId: Int): Boolean"))
 
-        // Check Handles
-        val handlesCode = result.files.find { it.fileName == "CalculatorHandles.kt" }!!.content
+        // Check Syntax
+        val handlesCode = result.files.find { it.fileName == "CalculatorSyntax.kt" }!!.content
         assertTrue(handlesCode.contains("@JvmInline"))
-        assertTrue(handlesCode.contains("public value class BinaryExpressionHandle("))
+        assertTrue(handlesCode.contains("public value class BinaryExpressionSyntax("))
         assertTrue(handlesCode.contains("public val nodeIndex: Int"))
         assertTrue(handlesCode.contains("public val asNode: CstNode"))
         assertTrue(handlesCode.contains("get() = CstNode(nodeIndex)"))
-        assertTrue(handlesCode.contains("public val asExpression: ExpressionHandle"))
-        assertTrue(handlesCode.contains("get() = ExpressionHandle(nodeIndex)"))
-        assertTrue(handlesCode.contains("public val CstNode.asBinaryExpression: BinaryExpressionHandle"))
+        assertTrue(handlesCode.contains("public val asExpression: ExpressionSyntax"))
+        assertTrue(handlesCode.contains("get() = ExpressionSyntax(nodeIndex)"))
+        assertTrue(handlesCode.contains("public val CstNode.asBinaryExpression: BinaryExpressionSyntax"))
         assertTrue(handlesCode.contains("public val CstNode.isExpression: Boolean"))
-        assertTrue(handlesCode.contains("public value class NumberTokenHandle("))
-        assertTrue(handlesCode.contains("public value class PlusTokenHandle("))
+        assertTrue(handlesCode.contains("public value class NumberToken("))
+        assertTrue(handlesCode.contains("public value class PlusToken("))
         assertTrue(handlesCode.contains("const val FIXED_TEXT: String = \"+\""))
 
-        // Check Member Accessors inside Handles
+        // Check Member Accessors inside Syntax
         assertTrue(handlesCode.contains("context(tree: ConcreteSyntaxTree)"))
-        assertTrue(handlesCode.contains("public val left: ExpressionHandle"))
-        assertTrue(handlesCode.contains("get() = ExpressionHandle(tree.getChildBySlot(nodeIndex, SLOT_LEFT))"))
-        assertTrue(handlesCode.contains("public val right: ExpressionHandle"))
-        assertTrue(handlesCode.contains("get() = ExpressionHandle(tree.getChildBySlot(nodeIndex, SLOT_RIGHT))"))
+        assertTrue(handlesCode.contains("public val left: ExpressionSyntax"))
+        assertTrue(handlesCode.contains("get() = ExpressionSyntax(tree.getChildBySlot(nodeIndex, SLOT_LEFT))"))
+        assertTrue(handlesCode.contains("public val right: ExpressionSyntax"))
+        assertTrue(handlesCode.contains("get() = ExpressionSyntax(tree.getChildBySlot(nodeIndex, SLOT_RIGHT))"))
 
         // Check Extensions
         val extCode = result.files.find { it.fileName == "CalculatorExtensions.kt" }!!.content

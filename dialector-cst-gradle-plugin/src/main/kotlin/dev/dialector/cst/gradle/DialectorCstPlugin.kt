@@ -38,6 +38,10 @@ public class DialectorCstPlugin : Plugin<Project> {
             task.generateDebugHelpers.set(extension.generateDebugHelpers)
             task.generateBuilderExtensions.set(extension.generateBuilderExtensions)
             task.generateNavigators.set(extension.generateNavigators)
+            task.nodeSuffix.set(extension.nodeSuffix)
+            task.categorySuffix.set(extension.categorySuffix)
+            task.tokenSuffix.set(extension.tokenSuffix)
+            task.tokenCategorySuffix.set(extension.tokenCategorySuffix)
         }
 
         val generateTestCstTask = project.tasks.register(TEST_TASK_NAME, GenerateCstTask::class.java) { task ->
@@ -51,6 +55,10 @@ public class DialectorCstPlugin : Plugin<Project> {
             task.generateDebugHelpers.set(extension.generateDebugHelpers)
             task.generateBuilderExtensions.set(extension.generateBuilderExtensions)
             task.generateNavigators.set(extension.generateNavigators)
+            task.nodeSuffix.set(extension.nodeSuffix)
+            task.categorySuffix.set(extension.categorySuffix)
+            task.tokenSuffix.set(extension.tokenSuffix)
+            task.tokenCategorySuffix.set(extension.tokenCategorySuffix)
         }
 
         // Wire into Kotlin JVM if present

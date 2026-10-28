@@ -14,6 +14,11 @@ public data class CstGeneratorConfig(
     public val generateDebugHelpers: Boolean = true,
     public val generateBuilderExtensions: Boolean = true,
     public val generateNavigators: Boolean = true,
+    public val generateValidators: Boolean = true,
+    public val nodeSuffix: String = "Syntax",
+    public val categorySuffix: String = "Syntax",
+    public val tokenSuffix: String = "Token",
+    public val tokenCategorySuffix: String = "Token",
 )
 
 /**

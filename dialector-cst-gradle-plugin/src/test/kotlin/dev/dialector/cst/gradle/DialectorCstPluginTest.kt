@@ -133,7 +133,7 @@ class DialectorCstPluginTest {
 
         val generatedDir = File(testProjectDir, "build/generated/source/cst/main/kotlin/com/example/expr")
         assertTrue(File(generatedDir, "ExprLangKinds.kt").isFile)
-        assertTrue(File(generatedDir, "ExprLangHandles.kt").isFile)
+        assertTrue(File(generatedDir, "ExprLangSyntax.kt").isFile)
         assertTrue(File(generatedDir, "ExprLangExtensions.kt").isFile)
 
         // Second run with no changes should be UP-TO-DATE
@@ -185,7 +185,7 @@ class DialectorCstPluginTest {
 
         val generatedTestDir = File(testProjectDir, "build/generated/source/cst/test/kotlin/com/example/testonly")
         assertTrue(File(generatedTestDir, "TestOnlyLangKinds.kt").isFile)
-        assertTrue(File(generatedTestDir, "TestOnlyLangHandles.kt").isFile)
+        assertTrue(File(generatedTestDir, "TestOnlyLangSyntax.kt").isFile)
         assertTrue(File(generatedTestDir, "TestOnlyLangExtensions.kt").isFile)
     }
 

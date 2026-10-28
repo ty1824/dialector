@@ -17,8 +17,8 @@ import dev.dialector.cst.schema.TokenSchema
  *
  * - [parseToCst] lexes and parses any `.cst` source text directly into a lossless [ConcreteSyntaxTree]
  *   conforming to the `CstSchemaDsl` schema (including doc comments, trivia, error nodes, and recovery).
- * - [extractSchema] walks a [ConcreteSyntaxTree] using the generated `CstSchemaDsl` value-class handles
- *   ([SchemaFileHandle], [NodeDeclHandle], [FieldDeclHandle], etc.) to build a validated [CstSchema].
+ * - [extractSchema] walks a [ConcreteSyntaxTree] using the generated `CstSchemaDsl` value-class syntax types
+ *   ([SchemaFileSyntax], [NodeDeclSyntax], [FieldDeclSyntax], etc.) to build a validated [CstSchema].
  * - [parse] runs both phases in one step.
  * - [selfHostedSchema] returns the [CstSchema] of `CstSchemaDsl` itself parsed from [CST_SCHEMA_DSL_SOURCE].
  */
@@ -218,10 +218,10 @@ node Annotation {
      */
     public fun parseToCst(source: String): ConcreteSyntaxTree {
         val rawTokens = tokenize(source)
-        val builder = ConcreteSyntaxBuilder()
+        val builder = ConcreteSyntaxBuilder(schema = CstSchemaDslSchema)
         val parser = DslParser(source, rawTokens, builder)
         parser.parseSchemaFile()
-        return builder.build(source)
+        return builder.build(source, schema = CstSchemaDslSchema)
     }
 
     /**
@@ -291,7 +291,7 @@ node Annotation {
         val literalToTokenName = linkedMapOf<String, String>()
         val tokenCatDefs = linkedMapOf<String, MutableTokenCatDef>()
         val nodeCatDefs = linkedMapOf<String, MutableNodeCatDef>()
-        val nodeDecls = mutableListOf<NodeDeclHandle>()
+        val nodeDecls = mutableListOf<NodeDeclSyntax>()
 
         // Pass 1: Collect all declarations
         rootFile.declarations.forEach { decl ->
@@ -1168,65 +1168,65 @@ node Annotation {
         }
 
         private fun parseSchemaHeader(parent: Int) {
-            builder.addSchemaHeader(parentNode = parent, slot = SchemaFileHandle.SLOT_SCHEMA_HEADER) { hdr ->
-                expectToken(CstSchemaDslTokenKinds.SCHEMA_KW, hdr, SchemaHeaderHandle.SLOT_SCHEMA_KW, "'schema'")
-                consumeIdentOrKeywordAsIdent(hdr, SchemaHeaderHandle.SLOT_NAME, "schema name")
+            builder.addSchemaHeader(parentNode = parent, slot = SchemaFileSyntax.SLOT_SCHEMA_HEADER) { hdr ->
+                expectToken(CstSchemaDslTokenKinds.SCHEMA_KW, hdr, SchemaHeaderSyntax.SLOT_SCHEMA_KW, "'schema'")
+                consumeIdentOrKeywordAsIdent(hdr, SchemaHeaderSyntax.SLOT_NAME, "schema name")
             }
         }
 
         private fun parsePackageHeader(parent: Int) {
-            builder.addPackageHeader(parentNode = parent, slot = SchemaFileHandle.SLOT_PACKAGE_HEADER) { hdr ->
-                expectToken(CstSchemaDslTokenKinds.PACKAGE_KW, hdr, PackageHeaderHandle.SLOT_PACKAGE_KW, "'package'")
-                builder.addQualifiedName(parentNode = hdr, slot = PackageHeaderHandle.SLOT_NAME) { qn ->
-                    consumeIdentOrKeywordAsIdent(qn, QualifiedNameHandle.SLOT_PARTS, "package segment")
+            builder.addPackageHeader(parentNode = parent, slot = SchemaFileSyntax.SLOT_PACKAGE_HEADER) { hdr ->
+                expectToken(CstSchemaDslTokenKinds.PACKAGE_KW, hdr, PackageHeaderSyntax.SLOT_PACKAGE_KW, "'package'")
+                builder.addQualifiedName(parentNode = hdr, slot = PackageHeaderSyntax.SLOT_NAME) { qn ->
+                    consumeIdentOrKeywordAsIdent(qn, QualifiedNameSyntax.SLOT_PARTS, "package segment")
                     while (peekId(0) == CstSchemaDslTokenKinds.DOT) {
-                        consumeToken(qn, QualifiedNameHandle.SLOT_DOTS)
-                        consumeIdentOrKeywordAsIdent(qn, QualifiedNameHandle.SLOT_PARTS, "package segment")
+                        consumeToken(qn, QualifiedNameSyntax.SLOT_DOTS)
+                        consumeIdentOrKeywordAsIdent(qn, QualifiedNameSyntax.SLOT_PARTS, "package segment")
                     }
                 }
             }
         }
 
         private fun parseTokenDecl(parent: Int) {
-            builder.addTokenDecl(parentNode = parent, slot = SchemaFileHandle.SLOT_DECLARATIONS) { td ->
+            builder.addTokenDecl(parentNode = parent, slot = SchemaFileSyntax.SLOT_DECLARATIONS) { td ->
                 if (peekId(0) == CstSchemaDslTokenKinds.TRIVIA_KW) {
-                    consumeToken(td, TokenDeclHandle.SLOT_TRIVIA_KW)
+                    consumeToken(td, TokenDeclSyntax.SLOT_TRIVIA_KW)
                 }
                 if (peekId(0) == CstSchemaDslTokenKinds.TOKEN_KW) {
-                    consumeToken(td, TokenDeclHandle.SLOT_TOKEN_KW)
+                    consumeToken(td, TokenDeclSyntax.SLOT_TOKEN_KW)
                 }
-                consumeIdentOrKeywordAsIdent(td, TokenDeclHandle.SLOT_NAME, "token name")
+                consumeIdentOrKeywordAsIdent(td, TokenDeclSyntax.SLOT_NAME, "token name")
                 if (peekId(0) == CstSchemaDslTokenKinds.COLON) {
-                    parseCategoryClause(td, TokenDeclHandle.SLOT_CATEGORIES)
+                    parseCategoryClause(td, TokenDeclSyntax.SLOT_CATEGORIES)
                 }
                 if (peekId(0) == CstSchemaDslTokenKinds.EQ) {
-                    consumeToken(td, TokenDeclHandle.SLOT_EQ)
-                    expectToken(CstSchemaDslTokenKinds.STRING_LITERAL, td, TokenDeclHandle.SLOT_FIXED_TEXT, "token literal string")
+                    consumeToken(td, TokenDeclSyntax.SLOT_EQ)
+                    expectToken(CstSchemaDslTokenKinds.STRING_LITERAL, td, TokenDeclSyntax.SLOT_FIXED_TEXT, "token literal string")
                 }
                 while (peekId(0) == CstSchemaDslTokenKinds.AT) {
-                    parseAnnotation(td, TokenDeclHandle.SLOT_ANNOTATIONS)
+                    parseAnnotation(td, TokenDeclSyntax.SLOT_ANNOTATIONS)
                 }
             }
         }
 
         private fun parseTokenCategoryDecl(parent: Int) {
-            builder.addTokenCategoryDecl(parentNode = parent, slot = SchemaFileHandle.SLOT_DECLARATIONS) { tcd ->
+            builder.addTokenCategoryDecl(parentNode = parent, slot = SchemaFileSyntax.SLOT_DECLARATIONS) { tcd ->
                 if (peekId(0) == CstSchemaDslTokenKinds.OPEN_KW) {
-                    consumeToken(tcd, TokenCategoryDeclHandle.SLOT_OPEN_KW)
+                    consumeToken(tcd, TokenCategoryDeclSyntax.SLOT_OPEN_KW)
                 }
-                expectToken(CstSchemaDslTokenKinds.TOKEN_KW, tcd, TokenCategoryDeclHandle.SLOT_TOKEN_KW, "'token'")
-                expectToken(CstSchemaDslTokenKinds.CATEGORY_KW, tcd, TokenCategoryDeclHandle.SLOT_CATEGORY_KW, "'category'")
-                consumeIdentOrKeywordAsIdent(tcd, TokenCategoryDeclHandle.SLOT_NAME, "token category name")
+                expectToken(CstSchemaDslTokenKinds.TOKEN_KW, tcd, TokenCategoryDeclSyntax.SLOT_TOKEN_KW, "'token'")
+                expectToken(CstSchemaDslTokenKinds.CATEGORY_KW, tcd, TokenCategoryDeclSyntax.SLOT_CATEGORY_KW, "'category'")
+                consumeIdentOrKeywordAsIdent(tcd, TokenCategoryDeclSyntax.SLOT_NAME, "token category name")
                 if (peekId(0) == CstSchemaDslTokenKinds.COLON) {
-                    parseCategoryClause(tcd, TokenCategoryDeclHandle.SLOT_SUPER_CATEGORIES)
+                    parseCategoryClause(tcd, TokenCategoryDeclSyntax.SLOT_SUPER_CATEGORIES)
                 }
                 if (peekId(0) == CstSchemaDslTokenKinds.EQ) {
-                    consumeToken(tcd, TokenCategoryDeclHandle.SLOT_EQ)
-                    consumeIf(CstSchemaDslTokenKinds.PIPE, tcd, TokenCategoryDeclHandle.SLOT_PIPES)
-                    parseTokenMemberRef(tcd, TokenCategoryDeclHandle.SLOT_MEMBERS)
+                    consumeToken(tcd, TokenCategoryDeclSyntax.SLOT_EQ)
+                    consumeIf(CstSchemaDslTokenKinds.PIPE, tcd, TokenCategoryDeclSyntax.SLOT_PIPES)
+                    parseTokenMemberRef(tcd, TokenCategoryDeclSyntax.SLOT_MEMBERS)
                     while (peekId(0) == CstSchemaDslTokenKinds.PIPE) {
-                        consumeToken(tcd, TokenCategoryDeclHandle.SLOT_PIPES)
-                        parseTokenMemberRef(tcd, TokenCategoryDeclHandle.SLOT_MEMBERS)
+                        consumeToken(tcd, TokenCategoryDeclSyntax.SLOT_PIPES)
+                        parseTokenMemberRef(tcd, TokenCategoryDeclSyntax.SLOT_MEMBERS)
                     }
                 }
             }
@@ -1235,47 +1235,47 @@ node Annotation {
         private fun parseTokenMemberRef(parent: Int, slot: Int) {
             builder.addTokenMemberRef(parentNode = parent, slot = slot) { mem ->
                 if (peekId(0) == CstSchemaDslTokenKinds.STRING_LITERAL) {
-                    consumeToken(mem, TokenMemberRefHandle.SLOT_LITERAL)
+                    consumeToken(mem, TokenMemberRefSyntax.SLOT_LITERAL)
                 } else {
-                    consumeIdentOrKeywordAsIdent(mem, TokenMemberRefHandle.SLOT_NAME, "token name or literal")
+                    consumeIdentOrKeywordAsIdent(mem, TokenMemberRefSyntax.SLOT_NAME, "token name or literal")
                 }
             }
         }
 
         private fun parseCategoryDecl(parent: Int) {
-            builder.addCategoryDecl(parentNode = parent, slot = SchemaFileHandle.SLOT_DECLARATIONS) { cd ->
+            builder.addCategoryDecl(parentNode = parent, slot = SchemaFileSyntax.SLOT_DECLARATIONS) { cd ->
                 if (peekId(0) == CstSchemaDslTokenKinds.OPEN_KW) {
-                    consumeToken(cd, CategoryDeclHandle.SLOT_OPEN_KW)
+                    consumeToken(cd, CategoryDeclSyntax.SLOT_OPEN_KW)
                 }
-                expectToken(CstSchemaDslTokenKinds.CATEGORY_KW, cd, CategoryDeclHandle.SLOT_CATEGORY_KW, "'category'")
-                consumeIdentOrKeywordAsIdent(cd, CategoryDeclHandle.SLOT_NAME, "category name")
+                expectToken(CstSchemaDslTokenKinds.CATEGORY_KW, cd, CategoryDeclSyntax.SLOT_CATEGORY_KW, "'category'")
+                consumeIdentOrKeywordAsIdent(cd, CategoryDeclSyntax.SLOT_NAME, "category name")
                 if (peekId(0) == CstSchemaDslTokenKinds.COLON) {
-                    parseCategoryClause(cd, CategoryDeclHandle.SLOT_SUPER_CATEGORIES)
+                    parseCategoryClause(cd, CategoryDeclSyntax.SLOT_SUPER_CATEGORIES)
                 }
                 if (peekId(0) == CstSchemaDslTokenKinds.EQ) {
-                    consumeToken(cd, CategoryDeclHandle.SLOT_EQ)
-                    consumeIf(CstSchemaDslTokenKinds.PIPE, cd, CategoryDeclHandle.SLOT_PIPES)
-                    consumeIdentOrKeywordAsIdent(cd, CategoryDeclHandle.SLOT_MEMBERS, "category member name")
+                    consumeToken(cd, CategoryDeclSyntax.SLOT_EQ)
+                    consumeIf(CstSchemaDslTokenKinds.PIPE, cd, CategoryDeclSyntax.SLOT_PIPES)
+                    consumeIdentOrKeywordAsIdent(cd, CategoryDeclSyntax.SLOT_MEMBERS, "category member name")
                     while (peekId(0) == CstSchemaDslTokenKinds.PIPE) {
-                        consumeToken(cd, CategoryDeclHandle.SLOT_PIPES)
-                        consumeIdentOrKeywordAsIdent(cd, CategoryDeclHandle.SLOT_MEMBERS, "category member name")
+                        consumeToken(cd, CategoryDeclSyntax.SLOT_PIPES)
+                        consumeIdentOrKeywordAsIdent(cd, CategoryDeclSyntax.SLOT_MEMBERS, "category member name")
                     }
                 }
             }
         }
 
         private fun parseNodeDecl(parent: Int) {
-            builder.addNodeDecl(parentNode = parent, slot = SchemaFileHandle.SLOT_DECLARATIONS) { nd ->
-                expectToken(CstSchemaDslTokenKinds.NODE_KW, nd, NodeDeclHandle.SLOT_NODE_KW, "'node'")
-                consumeIdentOrKeywordAsIdent(nd, NodeDeclHandle.SLOT_NAME, "node name")
+            builder.addNodeDecl(parentNode = parent, slot = SchemaFileSyntax.SLOT_DECLARATIONS) { nd ->
+                expectToken(CstSchemaDslTokenKinds.NODE_KW, nd, NodeDeclSyntax.SLOT_NODE_KW, "'node'")
+                consumeIdentOrKeywordAsIdent(nd, NodeDeclSyntax.SLOT_NAME, "node name")
                 if (peekId(0) == CstSchemaDslTokenKinds.COLON) {
-                    parseCategoryClause(nd, NodeDeclHandle.SLOT_CATEGORIES)
+                    parseCategoryClause(nd, NodeDeclSyntax.SLOT_CATEGORIES)
                 }
                 while (peekId(0) == CstSchemaDslTokenKinds.AT) {
-                    parseAnnotation(nd, NodeDeclHandle.SLOT_ANNOTATIONS)
+                    parseAnnotation(nd, NodeDeclSyntax.SLOT_ANNOTATIONS)
                 }
                 if (peekId(0) == CstSchemaDslTokenKinds.L_BRACE) {
-                    consumeToken(nd, NodeDeclHandle.SLOT_L_BRACE)
+                    consumeToken(nd, NodeDeclSyntax.SLOT_L_BRACE)
                     while (!isAtEnd() && peekId(0) != CstSchemaDslTokenKinds.R_BRACE) {
                         flushTrivia(nd)
                         if (peekId(0) == CstSchemaDslTokenKinds.R_BRACE || isAtEnd()) break
@@ -1288,33 +1288,33 @@ node Annotation {
                             }
                         }
                     }
-                    expectToken(CstSchemaDslTokenKinds.R_BRACE, nd, NodeDeclHandle.SLOT_R_BRACE, "'}'")
+                    expectToken(CstSchemaDslTokenKinds.R_BRACE, nd, NodeDeclSyntax.SLOT_R_BRACE, "'}'")
                 }
             }
         }
 
         private fun parseCategoryClause(parent: Int, slot: Int) {
             builder.addCategoryClause(parentNode = parent, slot = slot) { cc ->
-                expectToken(CstSchemaDslTokenKinds.COLON, cc, CategoryClauseHandle.SLOT_COLON, "':'")
-                consumeIdentOrKeywordAsIdent(cc, CategoryClauseHandle.SLOT_NAMES, "category name")
+                expectToken(CstSchemaDslTokenKinds.COLON, cc, CategoryClauseSyntax.SLOT_COLON, "':'")
+                consumeIdentOrKeywordAsIdent(cc, CategoryClauseSyntax.SLOT_NAMES, "category name")
                 while (peekId(0) == CstSchemaDslTokenKinds.COMMA) {
-                    consumeToken(cc, CategoryClauseHandle.SLOT_COMMAS)
-                    consumeIdentOrKeywordAsIdent(cc, CategoryClauseHandle.SLOT_NAMES, "category name")
+                    consumeToken(cc, CategoryClauseSyntax.SLOT_COMMAS)
+                    consumeIdentOrKeywordAsIdent(cc, CategoryClauseSyntax.SLOT_NAMES, "category name")
                 }
             }
         }
 
         private fun parseFieldDecl(parent: Int) {
-            builder.addFieldDecl(parentNode = parent, slot = NodeDeclHandle.SLOT_FIELDS) { fd ->
-                consumeIdentOrKeywordAsIdent(fd, FieldDeclHandle.SLOT_NAME, "field name")
-                expectToken(CstSchemaDslTokenKinds.COLON, fd, FieldDeclHandle.SLOT_COLON, "':'")
-                parseTypeExpr(fd, FieldDeclHandle.SLOT_TYPE_EXPR)
+            builder.addFieldDecl(parentNode = parent, slot = NodeDeclSyntax.SLOT_FIELDS) { fd ->
+                consumeIdentOrKeywordAsIdent(fd, FieldDeclSyntax.SLOT_NAME, "field name")
+                expectToken(CstSchemaDslTokenKinds.COLON, fd, FieldDeclSyntax.SLOT_COLON, "':'")
+                parseTypeExpr(fd, FieldDeclSyntax.SLOT_TYPE_EXPR)
                 val q = peekId(0)
                 if (q == CstSchemaDslTokenKinds.QUESTION || q == CstSchemaDslTokenKinds.STAR || q == CstSchemaDslTokenKinds.PLUS) {
-                    consumeToken(fd, FieldDeclHandle.SLOT_QUANTIFIER)
+                    consumeToken(fd, FieldDeclSyntax.SLOT_QUANTIFIER)
                 }
                 while (peekId(0) == CstSchemaDslTokenKinds.AT) {
-                    parseAnnotation(fd, FieldDeclHandle.SLOT_ANNOTATIONS)
+                    parseAnnotation(fd, FieldDeclSyntax.SLOT_ANNOTATIONS)
                 }
                 // Allow optional trailing comma between fields
                 if (peekId(0) == CstSchemaDslTokenKinds.COMMA) {
@@ -1329,24 +1329,24 @@ node Annotation {
             when (peekId(0)) {
                 CstSchemaDslTokenKinds.STRING_LITERAL -> {
                     builder.addLiteralTokenTypeExpr(parentNode = parent, slot = slot) { lt ->
-                        consumeToken(lt, LiteralTokenTypeExprHandle.SLOT_LITERAL)
+                        consumeToken(lt, LiteralTokenTypeExprSyntax.SLOT_LITERAL)
                     }
                 }
                 CstSchemaDslTokenKinds.L_PAREN -> {
                     builder.addInlineUnionTypeExpr(parentNode = parent, slot = slot) { iu ->
-                        expectToken(CstSchemaDslTokenKinds.L_PAREN, iu, InlineUnionTypeExprHandle.SLOT_L_PAREN, "'('")
-                        consumeIf(CstSchemaDslTokenKinds.PIPE, iu, InlineUnionTypeExprHandle.SLOT_PIPES)
-                        parseTokenMemberRef(iu, InlineUnionTypeExprHandle.SLOT_MEMBERS)
+                        expectToken(CstSchemaDslTokenKinds.L_PAREN, iu, InlineUnionTypeExprSyntax.SLOT_L_PAREN, "'('")
+                        consumeIf(CstSchemaDslTokenKinds.PIPE, iu, InlineUnionTypeExprSyntax.SLOT_PIPES)
+                        parseTokenMemberRef(iu, InlineUnionTypeExprSyntax.SLOT_MEMBERS)
                         while (peekId(0) == CstSchemaDslTokenKinds.PIPE) {
-                            consumeToken(iu, InlineUnionTypeExprHandle.SLOT_PIPES)
-                            parseTokenMemberRef(iu, InlineUnionTypeExprHandle.SLOT_MEMBERS)
+                            consumeToken(iu, InlineUnionTypeExprSyntax.SLOT_PIPES)
+                            parseTokenMemberRef(iu, InlineUnionTypeExprSyntax.SLOT_MEMBERS)
                         }
-                        expectToken(CstSchemaDslTokenKinds.R_PAREN, iu, InlineUnionTypeExprHandle.SLOT_R_PAREN, "')'")
+                        expectToken(CstSchemaDslTokenKinds.R_PAREN, iu, InlineUnionTypeExprSyntax.SLOT_R_PAREN, "')'")
                     }
                 }
                 else -> {
                     builder.addNamedTypeExpr(parentNode = parent, slot = slot) { nt ->
-                        consumeIdentOrKeywordAsIdent(nt, NamedTypeExprHandle.SLOT_NAME, "type name")
+                        consumeIdentOrKeywordAsIdent(nt, NamedTypeExprSyntax.SLOT_NAME, "type name")
                     }
                 }
             }
@@ -1354,12 +1354,12 @@ node Annotation {
 
         private fun parseAnnotation(parent: Int, slot: Int) {
             builder.addAnnotation(parentNode = parent, slot = slot) { ann ->
-                expectToken(CstSchemaDslTokenKinds.AT, ann, AnnotationHandle.SLOT_AT, "'@'")
-                consumeIdentOrKeywordAsIdent(ann, AnnotationHandle.SLOT_NAME, "annotation name")
+                expectToken(CstSchemaDslTokenKinds.AT, ann, AnnotationSyntax.SLOT_AT, "'@'")
+                consumeIdentOrKeywordAsIdent(ann, AnnotationSyntax.SLOT_NAME, "annotation name")
                 if (peekId(0) == CstSchemaDslTokenKinds.L_PAREN) {
-                    consumeToken(ann, AnnotationHandle.SLOT_L_PAREN)
-                    expectToken(CstSchemaDslTokenKinds.INT_LITERAL, ann, AnnotationHandle.SLOT_ARG, "integer argument")
-                    expectToken(CstSchemaDslTokenKinds.R_PAREN, ann, AnnotationHandle.SLOT_R_PAREN, "')'")
+                    consumeToken(ann, AnnotationSyntax.SLOT_L_PAREN)
+                    expectToken(CstSchemaDslTokenKinds.INT_LITERAL, ann, AnnotationSyntax.SLOT_ARG, "integer argument")
+                    expectToken(CstSchemaDslTokenKinds.R_PAREN, ann, AnnotationSyntax.SLOT_R_PAREN, "')'")
                 }
             }
         }

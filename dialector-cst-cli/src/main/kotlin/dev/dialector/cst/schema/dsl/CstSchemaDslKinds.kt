@@ -1,5 +1,6 @@
 package dev.dialector.cst.schema.dsl
 
+import dev.dialector.cst.CstSchemaDescriptor
 import dev.dialector.cst.ERROR_NODE_KIND
 import dev.dialector.cst.decodeTokenSchemaId
 import dev.dialector.cst.isTokenKind
@@ -250,6 +251,43 @@ public object CstSchemaDslTokenKinds {
             else -> null
         }
     }
+
+    /**
+     * Returns true if [idOrRuntimeKind] corresponds to a defined token in [CstSchemaDsl].
+     */
+    public fun isKnownToken(idOrRuntimeKind: Int): Boolean {
+        val schemaId = if (isTokenKind(idOrRuntimeKind)) decodeTokenSchemaId(idOrRuntimeKind) else idOrRuntimeKind
+        return when (schemaId) {
+            WHITESPACE -> true
+            LINE_COMMENT -> true
+            BLOCK_COMMENT -> true
+            DOC_COMMENT -> true
+            IDENT -> true
+            STRING_LITERAL -> true
+            INT_LITERAL -> true
+            SCHEMA_KW -> true
+            PACKAGE_KW -> true
+            TRIVIA_KW -> true
+            TOKEN_KW -> true
+            OPEN_KW -> true
+            CATEGORY_KW -> true
+            NODE_KW -> true
+            COLON -> true
+            EQ -> true
+            PIPE -> true
+            QUESTION -> true
+            STAR -> true
+            PLUS -> true
+            AT -> true
+            L_PAREN -> true
+            R_PAREN -> true
+            L_BRACE -> true
+            R_BRACE -> true
+            COMMA -> true
+            DOT -> true
+            else -> false
+        }
+    }
 }
 
 /**
@@ -289,3 +327,57 @@ public object CstSchemaDslTokenCategories {
         return schemaId in QUANTIFIER_OP_IDS
     }
 }
+
+/**
+ * Runtime CST schema descriptor for [CstSchemaDsl].
+ */
+public object CstSchemaDslSchema : CstSchemaDescriptor("CstSchemaDsl", arrayOf(
+    SchemaFileSyntax,
+    SchemaHeaderSyntax,
+    PackageHeaderSyntax,
+    QualifiedNameSyntax,
+    TokenDeclSyntax,
+    TokenCategoryDeclSyntax,
+    TokenMemberRefSyntax,
+    CategoryDeclSyntax,
+    NodeDeclSyntax,
+    CategoryClauseSyntax,
+    FieldDeclSyntax,
+    NamedTypeExprSyntax,
+    LiteralTokenTypeExprSyntax,
+    InlineUnionTypeExprSyntax,
+    AnnotationSyntax,
+), arrayOf(
+    WhitespaceToken,
+    LineCommentToken,
+    BlockCommentToken,
+    DocCommentToken,
+    IdentToken,
+    StringLiteralToken,
+    IntLiteralToken,
+    SchemaKwToken,
+    PackageKwToken,
+    TriviaKwToken,
+    TokenKwToken,
+    OpenKwToken,
+    CategoryKwToken,
+    NodeKwToken,
+    ColonToken,
+    EqToken,
+    PipeToken,
+    QuestionToken,
+    StarToken,
+    PlusToken,
+    AtToken,
+    LParenToken,
+    RParenToken,
+    LBraceToken,
+    RBraceToken,
+    CommaToken,
+    DotToken,
+), arrayOf(
+    DeclarationSyntax,
+    TypeExprSyntax,
+), arrayOf(
+    QuantifierOpToken,
+))

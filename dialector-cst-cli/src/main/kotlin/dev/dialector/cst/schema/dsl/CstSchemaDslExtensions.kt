@@ -2,14 +2,17 @@ package dev.dialector.cst.schema.dsl
 
 import dev.dialector.cst.ConcreteSyntaxBuilder
 import dev.dialector.cst.ConcreteSyntaxTree
+import dev.dialector.cst.CstDiagnostic
 import dev.dialector.cst.CstNode
 import dev.dialector.cst.CstToken
 import dev.dialector.cst.NO_SLOT
 import dev.dialector.cst.NULL_NODE_INDEX
+import dev.dialector.cst.buildCst
 import kotlin.Boolean
 import kotlin.Int
 import kotlin.String
 import kotlin.Unit
+import kotlin.collections.List
 
 /**
  * Formats this [ConcreteSyntaxTree] using [CstSchemaDslNodeKinds] and [CstSchemaDslTokenKinds] names.
@@ -37,7 +40,16 @@ public val ConcreteSyntaxTree.rootCstSchemaDslNode: CstNode
 public fun ConcreteSyntaxTree.asCstSchemaDslToken(tokenIndex: Int): CstToken = CstToken(tokenIndex)
 
 /**
- * Adds a [SchemaFileHandle] node to this [ConcreteSyntaxBuilder].
+ * Builds a [ConcreteSyntaxTree] configured with [CstSchemaDslSchema] schema metadata.
+ */
+public inline fun buildCstSchemaDslCst(
+    sourceText: String = "",
+    checkCycles: Boolean = false,
+    block: ConcreteSyntaxBuilder.() -> Unit,
+): ConcreteSyntaxTree = buildCst(sourceText = sourceText, checkCycles = checkCycles, schema = CstSchemaDslSchema, block = block)
+
+/**
+ * Adds a [SchemaFileSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addSchemaFile(
     startOffset: Int = -1,
@@ -45,7 +57,7 @@ public inline fun ConcreteSyntaxBuilder.addSchemaFile(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): SchemaFileHandle {
+): SchemaFileSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.SCHEMA_FILE,
                 parentNode = parentNode,
@@ -54,11 +66,11 @@ public inline fun ConcreteSyntaxBuilder.addSchemaFile(
                 endOffset = endOffset,
                 block = block,
             )
-    return SchemaFileHandle(idx)
+    return SchemaFileSyntax(idx)
 }
 
 /**
- * Adds a missing [SchemaFileHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [SchemaFileSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingSchemaFile(
     offset: Int,
@@ -66,7 +78,7 @@ public fun ConcreteSyntaxBuilder.addMissingSchemaFile(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): SchemaFileHandle {
+): SchemaFileSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.SCHEMA_FILE,
                 offset = offset,
@@ -75,11 +87,11 @@ public fun ConcreteSyntaxBuilder.addMissingSchemaFile(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return SchemaFileHandle(idx)
+    return SchemaFileSyntax(idx)
 }
 
 /**
- * Adds a [SchemaHeaderHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [SchemaHeaderSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addSchemaHeader(
     startOffset: Int = -1,
@@ -87,7 +99,7 @@ public inline fun ConcreteSyntaxBuilder.addSchemaHeader(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): SchemaHeaderHandle {
+): SchemaHeaderSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.SCHEMA_HEADER,
                 parentNode = parentNode,
@@ -96,11 +108,11 @@ public inline fun ConcreteSyntaxBuilder.addSchemaHeader(
                 endOffset = endOffset,
                 block = block,
             )
-    return SchemaHeaderHandle(idx)
+    return SchemaHeaderSyntax(idx)
 }
 
 /**
- * Adds a missing [SchemaHeaderHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [SchemaHeaderSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingSchemaHeader(
     offset: Int,
@@ -108,7 +120,7 @@ public fun ConcreteSyntaxBuilder.addMissingSchemaHeader(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): SchemaHeaderHandle {
+): SchemaHeaderSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.SCHEMA_HEADER,
                 offset = offset,
@@ -117,11 +129,11 @@ public fun ConcreteSyntaxBuilder.addMissingSchemaHeader(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return SchemaHeaderHandle(idx)
+    return SchemaHeaderSyntax(idx)
 }
 
 /**
- * Adds a [PackageHeaderHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [PackageHeaderSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addPackageHeader(
     startOffset: Int = -1,
@@ -129,7 +141,7 @@ public inline fun ConcreteSyntaxBuilder.addPackageHeader(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): PackageHeaderHandle {
+): PackageHeaderSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.PACKAGE_HEADER,
                 parentNode = parentNode,
@@ -138,11 +150,11 @@ public inline fun ConcreteSyntaxBuilder.addPackageHeader(
                 endOffset = endOffset,
                 block = block,
             )
-    return PackageHeaderHandle(idx)
+    return PackageHeaderSyntax(idx)
 }
 
 /**
- * Adds a missing [PackageHeaderHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [PackageHeaderSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingPackageHeader(
     offset: Int,
@@ -150,7 +162,7 @@ public fun ConcreteSyntaxBuilder.addMissingPackageHeader(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): PackageHeaderHandle {
+): PackageHeaderSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.PACKAGE_HEADER,
                 offset = offset,
@@ -159,11 +171,11 @@ public fun ConcreteSyntaxBuilder.addMissingPackageHeader(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return PackageHeaderHandle(idx)
+    return PackageHeaderSyntax(idx)
 }
 
 /**
- * Adds a [QualifiedNameHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [QualifiedNameSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addQualifiedName(
     startOffset: Int = -1,
@@ -171,7 +183,7 @@ public inline fun ConcreteSyntaxBuilder.addQualifiedName(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): QualifiedNameHandle {
+): QualifiedNameSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.QUALIFIED_NAME,
                 parentNode = parentNode,
@@ -180,11 +192,11 @@ public inline fun ConcreteSyntaxBuilder.addQualifiedName(
                 endOffset = endOffset,
                 block = block,
             )
-    return QualifiedNameHandle(idx)
+    return QualifiedNameSyntax(idx)
 }
 
 /**
- * Adds a missing [QualifiedNameHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [QualifiedNameSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingQualifiedName(
     offset: Int,
@@ -192,7 +204,7 @@ public fun ConcreteSyntaxBuilder.addMissingQualifiedName(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): QualifiedNameHandle {
+): QualifiedNameSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.QUALIFIED_NAME,
                 offset = offset,
@@ -201,11 +213,11 @@ public fun ConcreteSyntaxBuilder.addMissingQualifiedName(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return QualifiedNameHandle(idx)
+    return QualifiedNameSyntax(idx)
 }
 
 /**
- * Adds a [TokenDeclHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [TokenDeclSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addTokenDecl(
     startOffset: Int = -1,
@@ -213,7 +225,7 @@ public inline fun ConcreteSyntaxBuilder.addTokenDecl(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): TokenDeclHandle {
+): TokenDeclSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.TOKEN_DECL,
                 parentNode = parentNode,
@@ -222,11 +234,11 @@ public inline fun ConcreteSyntaxBuilder.addTokenDecl(
                 endOffset = endOffset,
                 block = block,
             )
-    return TokenDeclHandle(idx)
+    return TokenDeclSyntax(idx)
 }
 
 /**
- * Adds a missing [TokenDeclHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [TokenDeclSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingTokenDecl(
     offset: Int,
@@ -234,7 +246,7 @@ public fun ConcreteSyntaxBuilder.addMissingTokenDecl(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): TokenDeclHandle {
+): TokenDeclSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.TOKEN_DECL,
                 offset = offset,
@@ -243,11 +255,11 @@ public fun ConcreteSyntaxBuilder.addMissingTokenDecl(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return TokenDeclHandle(idx)
+    return TokenDeclSyntax(idx)
 }
 
 /**
- * Adds a [TokenCategoryDeclHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [TokenCategoryDeclSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addTokenCategoryDecl(
     startOffset: Int = -1,
@@ -255,7 +267,7 @@ public inline fun ConcreteSyntaxBuilder.addTokenCategoryDecl(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): TokenCategoryDeclHandle {
+): TokenCategoryDeclSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.TOKEN_CATEGORY_DECL,
                 parentNode = parentNode,
@@ -264,11 +276,11 @@ public inline fun ConcreteSyntaxBuilder.addTokenCategoryDecl(
                 endOffset = endOffset,
                 block = block,
             )
-    return TokenCategoryDeclHandle(idx)
+    return TokenCategoryDeclSyntax(idx)
 }
 
 /**
- * Adds a missing [TokenCategoryDeclHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [TokenCategoryDeclSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingTokenCategoryDecl(
     offset: Int,
@@ -276,7 +288,7 @@ public fun ConcreteSyntaxBuilder.addMissingTokenCategoryDecl(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): TokenCategoryDeclHandle {
+): TokenCategoryDeclSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.TOKEN_CATEGORY_DECL,
                 offset = offset,
@@ -285,11 +297,11 @@ public fun ConcreteSyntaxBuilder.addMissingTokenCategoryDecl(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return TokenCategoryDeclHandle(idx)
+    return TokenCategoryDeclSyntax(idx)
 }
 
 /**
- * Adds a [TokenMemberRefHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [TokenMemberRefSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addTokenMemberRef(
     startOffset: Int = -1,
@@ -297,7 +309,7 @@ public inline fun ConcreteSyntaxBuilder.addTokenMemberRef(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): TokenMemberRefHandle {
+): TokenMemberRefSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.TOKEN_MEMBER_REF,
                 parentNode = parentNode,
@@ -306,11 +318,11 @@ public inline fun ConcreteSyntaxBuilder.addTokenMemberRef(
                 endOffset = endOffset,
                 block = block,
             )
-    return TokenMemberRefHandle(idx)
+    return TokenMemberRefSyntax(idx)
 }
 
 /**
- * Adds a missing [TokenMemberRefHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [TokenMemberRefSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingTokenMemberRef(
     offset: Int,
@@ -318,7 +330,7 @@ public fun ConcreteSyntaxBuilder.addMissingTokenMemberRef(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): TokenMemberRefHandle {
+): TokenMemberRefSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.TOKEN_MEMBER_REF,
                 offset = offset,
@@ -327,11 +339,11 @@ public fun ConcreteSyntaxBuilder.addMissingTokenMemberRef(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return TokenMemberRefHandle(idx)
+    return TokenMemberRefSyntax(idx)
 }
 
 /**
- * Adds a [CategoryDeclHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [CategoryDeclSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addCategoryDecl(
     startOffset: Int = -1,
@@ -339,7 +351,7 @@ public inline fun ConcreteSyntaxBuilder.addCategoryDecl(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): CategoryDeclHandle {
+): CategoryDeclSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.CATEGORY_DECL,
                 parentNode = parentNode,
@@ -348,11 +360,11 @@ public inline fun ConcreteSyntaxBuilder.addCategoryDecl(
                 endOffset = endOffset,
                 block = block,
             )
-    return CategoryDeclHandle(idx)
+    return CategoryDeclSyntax(idx)
 }
 
 /**
- * Adds a missing [CategoryDeclHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [CategoryDeclSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingCategoryDecl(
     offset: Int,
@@ -360,7 +372,7 @@ public fun ConcreteSyntaxBuilder.addMissingCategoryDecl(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): CategoryDeclHandle {
+): CategoryDeclSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.CATEGORY_DECL,
                 offset = offset,
@@ -369,11 +381,11 @@ public fun ConcreteSyntaxBuilder.addMissingCategoryDecl(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return CategoryDeclHandle(idx)
+    return CategoryDeclSyntax(idx)
 }
 
 /**
- * Adds a [NodeDeclHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [NodeDeclSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addNodeDecl(
     startOffset: Int = -1,
@@ -381,7 +393,7 @@ public inline fun ConcreteSyntaxBuilder.addNodeDecl(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): NodeDeclHandle {
+): NodeDeclSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.NODE_DECL,
                 parentNode = parentNode,
@@ -390,11 +402,11 @@ public inline fun ConcreteSyntaxBuilder.addNodeDecl(
                 endOffset = endOffset,
                 block = block,
             )
-    return NodeDeclHandle(idx)
+    return NodeDeclSyntax(idx)
 }
 
 /**
- * Adds a missing [NodeDeclHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [NodeDeclSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingNodeDecl(
     offset: Int,
@@ -402,7 +414,7 @@ public fun ConcreteSyntaxBuilder.addMissingNodeDecl(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): NodeDeclHandle {
+): NodeDeclSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.NODE_DECL,
                 offset = offset,
@@ -411,11 +423,11 @@ public fun ConcreteSyntaxBuilder.addMissingNodeDecl(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return NodeDeclHandle(idx)
+    return NodeDeclSyntax(idx)
 }
 
 /**
- * Adds a [CategoryClauseHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [CategoryClauseSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addCategoryClause(
     startOffset: Int = -1,
@@ -423,7 +435,7 @@ public inline fun ConcreteSyntaxBuilder.addCategoryClause(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): CategoryClauseHandle {
+): CategoryClauseSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.CATEGORY_CLAUSE,
                 parentNode = parentNode,
@@ -432,11 +444,11 @@ public inline fun ConcreteSyntaxBuilder.addCategoryClause(
                 endOffset = endOffset,
                 block = block,
             )
-    return CategoryClauseHandle(idx)
+    return CategoryClauseSyntax(idx)
 }
 
 /**
- * Adds a missing [CategoryClauseHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [CategoryClauseSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingCategoryClause(
     offset: Int,
@@ -444,7 +456,7 @@ public fun ConcreteSyntaxBuilder.addMissingCategoryClause(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): CategoryClauseHandle {
+): CategoryClauseSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.CATEGORY_CLAUSE,
                 offset = offset,
@@ -453,11 +465,11 @@ public fun ConcreteSyntaxBuilder.addMissingCategoryClause(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return CategoryClauseHandle(idx)
+    return CategoryClauseSyntax(idx)
 }
 
 /**
- * Adds a [FieldDeclHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [FieldDeclSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addFieldDecl(
     startOffset: Int = -1,
@@ -465,7 +477,7 @@ public inline fun ConcreteSyntaxBuilder.addFieldDecl(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): FieldDeclHandle {
+): FieldDeclSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.FIELD_DECL,
                 parentNode = parentNode,
@@ -474,11 +486,11 @@ public inline fun ConcreteSyntaxBuilder.addFieldDecl(
                 endOffset = endOffset,
                 block = block,
             )
-    return FieldDeclHandle(idx)
+    return FieldDeclSyntax(idx)
 }
 
 /**
- * Adds a missing [FieldDeclHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [FieldDeclSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingFieldDecl(
     offset: Int,
@@ -486,7 +498,7 @@ public fun ConcreteSyntaxBuilder.addMissingFieldDecl(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): FieldDeclHandle {
+): FieldDeclSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.FIELD_DECL,
                 offset = offset,
@@ -495,11 +507,11 @@ public fun ConcreteSyntaxBuilder.addMissingFieldDecl(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return FieldDeclHandle(idx)
+    return FieldDeclSyntax(idx)
 }
 
 /**
- * Adds a [NamedTypeExprHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [NamedTypeExprSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addNamedTypeExpr(
     startOffset: Int = -1,
@@ -507,7 +519,7 @@ public inline fun ConcreteSyntaxBuilder.addNamedTypeExpr(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): NamedTypeExprHandle {
+): NamedTypeExprSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.NAMED_TYPE_EXPR,
                 parentNode = parentNode,
@@ -516,11 +528,11 @@ public inline fun ConcreteSyntaxBuilder.addNamedTypeExpr(
                 endOffset = endOffset,
                 block = block,
             )
-    return NamedTypeExprHandle(idx)
+    return NamedTypeExprSyntax(idx)
 }
 
 /**
- * Adds a missing [NamedTypeExprHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [NamedTypeExprSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingNamedTypeExpr(
     offset: Int,
@@ -528,7 +540,7 @@ public fun ConcreteSyntaxBuilder.addMissingNamedTypeExpr(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): NamedTypeExprHandle {
+): NamedTypeExprSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.NAMED_TYPE_EXPR,
                 offset = offset,
@@ -537,11 +549,11 @@ public fun ConcreteSyntaxBuilder.addMissingNamedTypeExpr(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return NamedTypeExprHandle(idx)
+    return NamedTypeExprSyntax(idx)
 }
 
 /**
- * Adds a [LiteralTokenTypeExprHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [LiteralTokenTypeExprSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addLiteralTokenTypeExpr(
     startOffset: Int = -1,
@@ -549,7 +561,7 @@ public inline fun ConcreteSyntaxBuilder.addLiteralTokenTypeExpr(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): LiteralTokenTypeExprHandle {
+): LiteralTokenTypeExprSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.LITERAL_TOKEN_TYPE_EXPR,
                 parentNode = parentNode,
@@ -558,11 +570,11 @@ public inline fun ConcreteSyntaxBuilder.addLiteralTokenTypeExpr(
                 endOffset = endOffset,
                 block = block,
             )
-    return LiteralTokenTypeExprHandle(idx)
+    return LiteralTokenTypeExprSyntax(idx)
 }
 
 /**
- * Adds a missing [LiteralTokenTypeExprHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [LiteralTokenTypeExprSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingLiteralTokenTypeExpr(
     offset: Int,
@@ -570,7 +582,7 @@ public fun ConcreteSyntaxBuilder.addMissingLiteralTokenTypeExpr(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): LiteralTokenTypeExprHandle {
+): LiteralTokenTypeExprSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.LITERAL_TOKEN_TYPE_EXPR,
                 offset = offset,
@@ -579,11 +591,11 @@ public fun ConcreteSyntaxBuilder.addMissingLiteralTokenTypeExpr(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return LiteralTokenTypeExprHandle(idx)
+    return LiteralTokenTypeExprSyntax(idx)
 }
 
 /**
- * Adds a [InlineUnionTypeExprHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [InlineUnionTypeExprSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addInlineUnionTypeExpr(
     startOffset: Int = -1,
@@ -591,7 +603,7 @@ public inline fun ConcreteSyntaxBuilder.addInlineUnionTypeExpr(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): InlineUnionTypeExprHandle {
+): InlineUnionTypeExprSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.INLINE_UNION_TYPE_EXPR,
                 parentNode = parentNode,
@@ -600,11 +612,11 @@ public inline fun ConcreteSyntaxBuilder.addInlineUnionTypeExpr(
                 endOffset = endOffset,
                 block = block,
             )
-    return InlineUnionTypeExprHandle(idx)
+    return InlineUnionTypeExprSyntax(idx)
 }
 
 /**
- * Adds a missing [InlineUnionTypeExprHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [InlineUnionTypeExprSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingInlineUnionTypeExpr(
     offset: Int,
@@ -612,7 +624,7 @@ public fun ConcreteSyntaxBuilder.addMissingInlineUnionTypeExpr(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): InlineUnionTypeExprHandle {
+): InlineUnionTypeExprSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.INLINE_UNION_TYPE_EXPR,
                 offset = offset,
@@ -621,11 +633,11 @@ public fun ConcreteSyntaxBuilder.addMissingInlineUnionTypeExpr(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return InlineUnionTypeExprHandle(idx)
+    return InlineUnionTypeExprSyntax(idx)
 }
 
 /**
- * Adds a [AnnotationHandle] node to this [ConcreteSyntaxBuilder].
+ * Adds a [AnnotationSyntax] node to this [ConcreteSyntaxBuilder].
  */
 public inline fun ConcreteSyntaxBuilder.addAnnotation(
     startOffset: Int = -1,
@@ -633,7 +645,7 @@ public inline fun ConcreteSyntaxBuilder.addAnnotation(
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
     block: (nodeIndex: Int) -> Unit = {},
-): AnnotationHandle {
+): AnnotationSyntax {
     val idx = node(
                 kind = CstSchemaDslNodeKinds.ANNOTATION,
                 parentNode = parentNode,
@@ -642,11 +654,11 @@ public inline fun ConcreteSyntaxBuilder.addAnnotation(
                 endOffset = endOffset,
                 block = block,
             )
-    return AnnotationHandle(idx)
+    return AnnotationSyntax(idx)
 }
 
 /**
- * Adds a missing [AnnotationHandle] recovery node to this [ConcreteSyntaxBuilder].
+ * Adds a missing [AnnotationSyntax] recovery node to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingAnnotation(
     offset: Int,
@@ -654,7 +666,7 @@ public fun ConcreteSyntaxBuilder.addMissingAnnotation(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): AnnotationHandle {
+): AnnotationSyntax {
     val idx = addMissingNode(
                 kind = CstSchemaDslNodeKinds.ANNOTATION,
                 offset = offset,
@@ -663,18 +675,62 @@ public fun ConcreteSyntaxBuilder.addMissingAnnotation(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return AnnotationHandle(idx)
+    return AnnotationSyntax(idx)
 }
 
 /**
- * Adds a [WhitespaceTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Marks a [DeclarationSyntax] slot as unavailable (`isError == true`) when recovery could not establish a usable binding.
+ */
+public fun ConcreteSyntaxBuilder.addUnavailableDeclaration(
+    offset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    endOffset: Int = offset,
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): DeclarationSyntax {
+    val idx = addUnavailableNode(
+                offset = offset,
+                parentNode = parentNode,
+                slot = slot,
+                endOffset = endOffset,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return DeclarationSyntax(idx)
+}
+
+/**
+ * Marks a [TypeExprSyntax] slot as unavailable (`isError == true`) when recovery could not establish a usable binding.
+ */
+public fun ConcreteSyntaxBuilder.addUnavailableTypeExpr(
+    offset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    endOffset: Int = offset,
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): TypeExprSyntax {
+    val idx = addUnavailableNode(
+                offset = offset,
+                parentNode = parentNode,
+                slot = slot,
+                endOffset = endOffset,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return TypeExprSyntax(idx)
+}
+
+/**
+ * Adds a [WhitespaceToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addWhitespaceToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): WhitespaceTokenHandle {
+): WhitespaceToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.WHITESPACE,
                 startOffset = startOffset,
@@ -683,11 +739,11 @@ public fun ConcreteSyntaxBuilder.addWhitespaceToken(
                 slot = slot,
                 isTrivia = true,
             )
-    return WhitespaceTokenHandle(idx)
+    return WhitespaceToken(idx)
 }
 
 /**
- * Adds a missing [WhitespaceTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [WhitespaceToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingWhitespaceToken(
     offset: Int,
@@ -695,7 +751,7 @@ public fun ConcreteSyntaxBuilder.addMissingWhitespaceToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): WhitespaceTokenHandle {
+): WhitespaceToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.WHITESPACE,
                 offset = offset,
@@ -704,18 +760,18 @@ public fun ConcreteSyntaxBuilder.addMissingWhitespaceToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return WhitespaceTokenHandle(idx)
+    return WhitespaceToken(idx)
 }
 
 /**
- * Adds a [LineCommentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [LineCommentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addLineCommentToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): LineCommentTokenHandle {
+): LineCommentToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.LINE_COMMENT,
                 startOffset = startOffset,
@@ -724,11 +780,11 @@ public fun ConcreteSyntaxBuilder.addLineCommentToken(
                 slot = slot,
                 isTrivia = true,
             )
-    return LineCommentTokenHandle(idx)
+    return LineCommentToken(idx)
 }
 
 /**
- * Adds a missing [LineCommentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [LineCommentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingLineCommentToken(
     offset: Int,
@@ -736,7 +792,7 @@ public fun ConcreteSyntaxBuilder.addMissingLineCommentToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): LineCommentTokenHandle {
+): LineCommentToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.LINE_COMMENT,
                 offset = offset,
@@ -745,18 +801,18 @@ public fun ConcreteSyntaxBuilder.addMissingLineCommentToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return LineCommentTokenHandle(idx)
+    return LineCommentToken(idx)
 }
 
 /**
- * Adds a [BlockCommentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [BlockCommentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addBlockCommentToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): BlockCommentTokenHandle {
+): BlockCommentToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.BLOCK_COMMENT,
                 startOffset = startOffset,
@@ -765,11 +821,11 @@ public fun ConcreteSyntaxBuilder.addBlockCommentToken(
                 slot = slot,
                 isTrivia = true,
             )
-    return BlockCommentTokenHandle(idx)
+    return BlockCommentToken(idx)
 }
 
 /**
- * Adds a missing [BlockCommentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [BlockCommentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingBlockCommentToken(
     offset: Int,
@@ -777,7 +833,7 @@ public fun ConcreteSyntaxBuilder.addMissingBlockCommentToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): BlockCommentTokenHandle {
+): BlockCommentToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.BLOCK_COMMENT,
                 offset = offset,
@@ -786,18 +842,18 @@ public fun ConcreteSyntaxBuilder.addMissingBlockCommentToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return BlockCommentTokenHandle(idx)
+    return BlockCommentToken(idx)
 }
 
 /**
- * Adds a [DocCommentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [DocCommentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addDocCommentToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): DocCommentTokenHandle {
+): DocCommentToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.DOC_COMMENT,
                 startOffset = startOffset,
@@ -806,11 +862,11 @@ public fun ConcreteSyntaxBuilder.addDocCommentToken(
                 slot = slot,
                 isTrivia = true,
             )
-    return DocCommentTokenHandle(idx)
+    return DocCommentToken(idx)
 }
 
 /**
- * Adds a missing [DocCommentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [DocCommentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingDocCommentToken(
     offset: Int,
@@ -818,7 +874,7 @@ public fun ConcreteSyntaxBuilder.addMissingDocCommentToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): DocCommentTokenHandle {
+): DocCommentToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.DOC_COMMENT,
                 offset = offset,
@@ -827,18 +883,18 @@ public fun ConcreteSyntaxBuilder.addMissingDocCommentToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return DocCommentTokenHandle(idx)
+    return DocCommentToken(idx)
 }
 
 /**
- * Adds a [IdentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [IdentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addIdentToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): IdentTokenHandle {
+): IdentToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.IDENT,
                 startOffset = startOffset,
@@ -847,11 +903,11 @@ public fun ConcreteSyntaxBuilder.addIdentToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return IdentTokenHandle(idx)
+    return IdentToken(idx)
 }
 
 /**
- * Adds a missing [IdentTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [IdentToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingIdentToken(
     offset: Int,
@@ -859,7 +915,7 @@ public fun ConcreteSyntaxBuilder.addMissingIdentToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): IdentTokenHandle {
+): IdentToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.IDENT,
                 offset = offset,
@@ -868,18 +924,41 @@ public fun ConcreteSyntaxBuilder.addMissingIdentToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return IdentTokenHandle(idx)
+    return IdentToken(idx)
 }
 
 /**
- * Adds a [StringLiteralTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [IdentToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorIdentToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): IdentToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.IDENT,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return IdentToken(idx)
+}
+
+/**
+ * Adds a [StringLiteralToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addStringLiteralToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): StringLiteralTokenHandle {
+): StringLiteralToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.STRING_LITERAL,
                 startOffset = startOffset,
@@ -888,11 +967,11 @@ public fun ConcreteSyntaxBuilder.addStringLiteralToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return StringLiteralTokenHandle(idx)
+    return StringLiteralToken(idx)
 }
 
 /**
- * Adds a missing [StringLiteralTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [StringLiteralToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingStringLiteralToken(
     offset: Int,
@@ -900,7 +979,7 @@ public fun ConcreteSyntaxBuilder.addMissingStringLiteralToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): StringLiteralTokenHandle {
+): StringLiteralToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.STRING_LITERAL,
                 offset = offset,
@@ -909,18 +988,41 @@ public fun ConcreteSyntaxBuilder.addMissingStringLiteralToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return StringLiteralTokenHandle(idx)
+    return StringLiteralToken(idx)
 }
 
 /**
- * Adds a [IntLiteralTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [StringLiteralToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorStringLiteralToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): StringLiteralToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.STRING_LITERAL,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return StringLiteralToken(idx)
+}
+
+/**
+ * Adds a [IntLiteralToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addIntLiteralToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): IntLiteralTokenHandle {
+): IntLiteralToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.INT_LITERAL,
                 startOffset = startOffset,
@@ -929,11 +1031,11 @@ public fun ConcreteSyntaxBuilder.addIntLiteralToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return IntLiteralTokenHandle(idx)
+    return IntLiteralToken(idx)
 }
 
 /**
- * Adds a missing [IntLiteralTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [IntLiteralToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingIntLiteralToken(
     offset: Int,
@@ -941,7 +1043,7 @@ public fun ConcreteSyntaxBuilder.addMissingIntLiteralToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): IntLiteralTokenHandle {
+): IntLiteralToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.INT_LITERAL,
                 offset = offset,
@@ -950,18 +1052,41 @@ public fun ConcreteSyntaxBuilder.addMissingIntLiteralToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return IntLiteralTokenHandle(idx)
+    return IntLiteralToken(idx)
 }
 
 /**
- * Adds a [SchemaKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [IntLiteralToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorIntLiteralToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): IntLiteralToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.INT_LITERAL,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return IntLiteralToken(idx)
+}
+
+/**
+ * Adds a [SchemaKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addSchemaKwToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): SchemaKwTokenHandle {
+): SchemaKwToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.SCHEMA_KW,
                 startOffset = startOffset,
@@ -970,11 +1095,11 @@ public fun ConcreteSyntaxBuilder.addSchemaKwToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return SchemaKwTokenHandle(idx)
+    return SchemaKwToken(idx)
 }
 
 /**
- * Adds a missing [SchemaKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [SchemaKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingSchemaKwToken(
     offset: Int,
@@ -982,7 +1107,7 @@ public fun ConcreteSyntaxBuilder.addMissingSchemaKwToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): SchemaKwTokenHandle {
+): SchemaKwToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.SCHEMA_KW,
                 offset = offset,
@@ -991,18 +1116,41 @@ public fun ConcreteSyntaxBuilder.addMissingSchemaKwToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return SchemaKwTokenHandle(idx)
+    return SchemaKwToken(idx)
 }
 
 /**
- * Adds a [PackageKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [SchemaKwToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorSchemaKwToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): SchemaKwToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.SCHEMA_KW,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return SchemaKwToken(idx)
+}
+
+/**
+ * Adds a [PackageKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addPackageKwToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): PackageKwTokenHandle {
+): PackageKwToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.PACKAGE_KW,
                 startOffset = startOffset,
@@ -1011,11 +1159,11 @@ public fun ConcreteSyntaxBuilder.addPackageKwToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return PackageKwTokenHandle(idx)
+    return PackageKwToken(idx)
 }
 
 /**
- * Adds a missing [PackageKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [PackageKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingPackageKwToken(
     offset: Int,
@@ -1023,7 +1171,7 @@ public fun ConcreteSyntaxBuilder.addMissingPackageKwToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): PackageKwTokenHandle {
+): PackageKwToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.PACKAGE_KW,
                 offset = offset,
@@ -1032,18 +1180,41 @@ public fun ConcreteSyntaxBuilder.addMissingPackageKwToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return PackageKwTokenHandle(idx)
+    return PackageKwToken(idx)
 }
 
 /**
- * Adds a [TriviaKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [PackageKwToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorPackageKwToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): PackageKwToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.PACKAGE_KW,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return PackageKwToken(idx)
+}
+
+/**
+ * Adds a [TriviaKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addTriviaKwToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): TriviaKwTokenHandle {
+): TriviaKwToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.TRIVIA_KW,
                 startOffset = startOffset,
@@ -1052,11 +1223,11 @@ public fun ConcreteSyntaxBuilder.addTriviaKwToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return TriviaKwTokenHandle(idx)
+    return TriviaKwToken(idx)
 }
 
 /**
- * Adds a missing [TriviaKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [TriviaKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingTriviaKwToken(
     offset: Int,
@@ -1064,7 +1235,7 @@ public fun ConcreteSyntaxBuilder.addMissingTriviaKwToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): TriviaKwTokenHandle {
+): TriviaKwToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.TRIVIA_KW,
                 offset = offset,
@@ -1073,18 +1244,41 @@ public fun ConcreteSyntaxBuilder.addMissingTriviaKwToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return TriviaKwTokenHandle(idx)
+    return TriviaKwToken(idx)
 }
 
 /**
- * Adds a [TokenKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [TriviaKwToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorTriviaKwToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): TriviaKwToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.TRIVIA_KW,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return TriviaKwToken(idx)
+}
+
+/**
+ * Adds a [TokenKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addTokenKwToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): TokenKwTokenHandle {
+): TokenKwToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.TOKEN_KW,
                 startOffset = startOffset,
@@ -1093,11 +1287,11 @@ public fun ConcreteSyntaxBuilder.addTokenKwToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return TokenKwTokenHandle(idx)
+    return TokenKwToken(idx)
 }
 
 /**
- * Adds a missing [TokenKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [TokenKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingTokenKwToken(
     offset: Int,
@@ -1105,7 +1299,7 @@ public fun ConcreteSyntaxBuilder.addMissingTokenKwToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): TokenKwTokenHandle {
+): TokenKwToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.TOKEN_KW,
                 offset = offset,
@@ -1114,18 +1308,41 @@ public fun ConcreteSyntaxBuilder.addMissingTokenKwToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return TokenKwTokenHandle(idx)
+    return TokenKwToken(idx)
 }
 
 /**
- * Adds a [OpenKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [TokenKwToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorTokenKwToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): TokenKwToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.TOKEN_KW,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return TokenKwToken(idx)
+}
+
+/**
+ * Adds a [OpenKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addOpenKwToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): OpenKwTokenHandle {
+): OpenKwToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.OPEN_KW,
                 startOffset = startOffset,
@@ -1134,11 +1351,11 @@ public fun ConcreteSyntaxBuilder.addOpenKwToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return OpenKwTokenHandle(idx)
+    return OpenKwToken(idx)
 }
 
 /**
- * Adds a missing [OpenKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [OpenKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingOpenKwToken(
     offset: Int,
@@ -1146,7 +1363,7 @@ public fun ConcreteSyntaxBuilder.addMissingOpenKwToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): OpenKwTokenHandle {
+): OpenKwToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.OPEN_KW,
                 offset = offset,
@@ -1155,18 +1372,41 @@ public fun ConcreteSyntaxBuilder.addMissingOpenKwToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return OpenKwTokenHandle(idx)
+    return OpenKwToken(idx)
 }
 
 /**
- * Adds a [CategoryKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [OpenKwToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorOpenKwToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): OpenKwToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.OPEN_KW,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return OpenKwToken(idx)
+}
+
+/**
+ * Adds a [CategoryKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addCategoryKwToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): CategoryKwTokenHandle {
+): CategoryKwToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.CATEGORY_KW,
                 startOffset = startOffset,
@@ -1175,11 +1415,11 @@ public fun ConcreteSyntaxBuilder.addCategoryKwToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return CategoryKwTokenHandle(idx)
+    return CategoryKwToken(idx)
 }
 
 /**
- * Adds a missing [CategoryKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [CategoryKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingCategoryKwToken(
     offset: Int,
@@ -1187,7 +1427,7 @@ public fun ConcreteSyntaxBuilder.addMissingCategoryKwToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): CategoryKwTokenHandle {
+): CategoryKwToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.CATEGORY_KW,
                 offset = offset,
@@ -1196,18 +1436,41 @@ public fun ConcreteSyntaxBuilder.addMissingCategoryKwToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return CategoryKwTokenHandle(idx)
+    return CategoryKwToken(idx)
 }
 
 /**
- * Adds a [NodeKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [CategoryKwToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorCategoryKwToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): CategoryKwToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.CATEGORY_KW,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return CategoryKwToken(idx)
+}
+
+/**
+ * Adds a [NodeKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addNodeKwToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): NodeKwTokenHandle {
+): NodeKwToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.NODE_KW,
                 startOffset = startOffset,
@@ -1216,11 +1479,11 @@ public fun ConcreteSyntaxBuilder.addNodeKwToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return NodeKwTokenHandle(idx)
+    return NodeKwToken(idx)
 }
 
 /**
- * Adds a missing [NodeKwTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [NodeKwToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingNodeKwToken(
     offset: Int,
@@ -1228,7 +1491,7 @@ public fun ConcreteSyntaxBuilder.addMissingNodeKwToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): NodeKwTokenHandle {
+): NodeKwToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.NODE_KW,
                 offset = offset,
@@ -1237,18 +1500,41 @@ public fun ConcreteSyntaxBuilder.addMissingNodeKwToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return NodeKwTokenHandle(idx)
+    return NodeKwToken(idx)
 }
 
 /**
- * Adds a [ColonTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [NodeKwToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorNodeKwToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): NodeKwToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.NODE_KW,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return NodeKwToken(idx)
+}
+
+/**
+ * Adds a [ColonToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addColonToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): ColonTokenHandle {
+): ColonToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.COLON,
                 startOffset = startOffset,
@@ -1257,11 +1543,11 @@ public fun ConcreteSyntaxBuilder.addColonToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return ColonTokenHandle(idx)
+    return ColonToken(idx)
 }
 
 /**
- * Adds a missing [ColonTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [ColonToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingColonToken(
     offset: Int,
@@ -1269,7 +1555,7 @@ public fun ConcreteSyntaxBuilder.addMissingColonToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): ColonTokenHandle {
+): ColonToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.COLON,
                 offset = offset,
@@ -1278,18 +1564,41 @@ public fun ConcreteSyntaxBuilder.addMissingColonToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return ColonTokenHandle(idx)
+    return ColonToken(idx)
 }
 
 /**
- * Adds a [EqTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [ColonToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorColonToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): ColonToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.COLON,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return ColonToken(idx)
+}
+
+/**
+ * Adds a [EqToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addEqToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): EqTokenHandle {
+): EqToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.EQ,
                 startOffset = startOffset,
@@ -1298,11 +1607,11 @@ public fun ConcreteSyntaxBuilder.addEqToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return EqTokenHandle(idx)
+    return EqToken(idx)
 }
 
 /**
- * Adds a missing [EqTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [EqToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingEqToken(
     offset: Int,
@@ -1310,7 +1619,7 @@ public fun ConcreteSyntaxBuilder.addMissingEqToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): EqTokenHandle {
+): EqToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.EQ,
                 offset = offset,
@@ -1319,18 +1628,41 @@ public fun ConcreteSyntaxBuilder.addMissingEqToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return EqTokenHandle(idx)
+    return EqToken(idx)
 }
 
 /**
- * Adds a [PipeTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [EqToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorEqToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): EqToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.EQ,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return EqToken(idx)
+}
+
+/**
+ * Adds a [PipeToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addPipeToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): PipeTokenHandle {
+): PipeToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.PIPE,
                 startOffset = startOffset,
@@ -1339,11 +1671,11 @@ public fun ConcreteSyntaxBuilder.addPipeToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return PipeTokenHandle(idx)
+    return PipeToken(idx)
 }
 
 /**
- * Adds a missing [PipeTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [PipeToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingPipeToken(
     offset: Int,
@@ -1351,7 +1683,7 @@ public fun ConcreteSyntaxBuilder.addMissingPipeToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): PipeTokenHandle {
+): PipeToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.PIPE,
                 offset = offset,
@@ -1360,18 +1692,41 @@ public fun ConcreteSyntaxBuilder.addMissingPipeToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return PipeTokenHandle(idx)
+    return PipeToken(idx)
 }
 
 /**
- * Adds a [QuestionTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [PipeToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorPipeToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): PipeToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.PIPE,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return PipeToken(idx)
+}
+
+/**
+ * Adds a [QuestionToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addQuestionToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): QuestionTokenHandle {
+): QuestionToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.QUESTION,
                 startOffset = startOffset,
@@ -1380,11 +1735,11 @@ public fun ConcreteSyntaxBuilder.addQuestionToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return QuestionTokenHandle(idx)
+    return QuestionToken(idx)
 }
 
 /**
- * Adds a missing [QuestionTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [QuestionToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingQuestionToken(
     offset: Int,
@@ -1392,7 +1747,7 @@ public fun ConcreteSyntaxBuilder.addMissingQuestionToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): QuestionTokenHandle {
+): QuestionToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.QUESTION,
                 offset = offset,
@@ -1401,18 +1756,41 @@ public fun ConcreteSyntaxBuilder.addMissingQuestionToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return QuestionTokenHandle(idx)
+    return QuestionToken(idx)
 }
 
 /**
- * Adds a [StarTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [QuestionToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorQuestionToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): QuestionToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.QUESTION,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return QuestionToken(idx)
+}
+
+/**
+ * Adds a [StarToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addStarToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): StarTokenHandle {
+): StarToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.STAR,
                 startOffset = startOffset,
@@ -1421,11 +1799,11 @@ public fun ConcreteSyntaxBuilder.addStarToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return StarTokenHandle(idx)
+    return StarToken(idx)
 }
 
 /**
- * Adds a missing [StarTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [StarToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingStarToken(
     offset: Int,
@@ -1433,7 +1811,7 @@ public fun ConcreteSyntaxBuilder.addMissingStarToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): StarTokenHandle {
+): StarToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.STAR,
                 offset = offset,
@@ -1442,18 +1820,41 @@ public fun ConcreteSyntaxBuilder.addMissingStarToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return StarTokenHandle(idx)
+    return StarToken(idx)
 }
 
 /**
- * Adds a [PlusTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [StarToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorStarToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): StarToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.STAR,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return StarToken(idx)
+}
+
+/**
+ * Adds a [PlusToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addPlusToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): PlusTokenHandle {
+): PlusToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.PLUS,
                 startOffset = startOffset,
@@ -1462,11 +1863,11 @@ public fun ConcreteSyntaxBuilder.addPlusToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return PlusTokenHandle(idx)
+    return PlusToken(idx)
 }
 
 /**
- * Adds a missing [PlusTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [PlusToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingPlusToken(
     offset: Int,
@@ -1474,7 +1875,7 @@ public fun ConcreteSyntaxBuilder.addMissingPlusToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): PlusTokenHandle {
+): PlusToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.PLUS,
                 offset = offset,
@@ -1483,18 +1884,41 @@ public fun ConcreteSyntaxBuilder.addMissingPlusToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return PlusTokenHandle(idx)
+    return PlusToken(idx)
 }
 
 /**
- * Adds a [AtTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [PlusToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorPlusToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): PlusToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.PLUS,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return PlusToken(idx)
+}
+
+/**
+ * Adds a [AtToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addAtToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): AtTokenHandle {
+): AtToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.AT,
                 startOffset = startOffset,
@@ -1503,11 +1927,11 @@ public fun ConcreteSyntaxBuilder.addAtToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return AtTokenHandle(idx)
+    return AtToken(idx)
 }
 
 /**
- * Adds a missing [AtTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [AtToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingAtToken(
     offset: Int,
@@ -1515,7 +1939,7 @@ public fun ConcreteSyntaxBuilder.addMissingAtToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): AtTokenHandle {
+): AtToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.AT,
                 offset = offset,
@@ -1524,18 +1948,41 @@ public fun ConcreteSyntaxBuilder.addMissingAtToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return AtTokenHandle(idx)
+    return AtToken(idx)
 }
 
 /**
- * Adds a [LParenTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [AtToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorAtToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): AtToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.AT,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return AtToken(idx)
+}
+
+/**
+ * Adds a [LParenToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addLParenToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): LParenTokenHandle {
+): LParenToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.L_PAREN,
                 startOffset = startOffset,
@@ -1544,11 +1991,11 @@ public fun ConcreteSyntaxBuilder.addLParenToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return LParenTokenHandle(idx)
+    return LParenToken(idx)
 }
 
 /**
- * Adds a missing [LParenTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [LParenToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingLParenToken(
     offset: Int,
@@ -1556,7 +2003,7 @@ public fun ConcreteSyntaxBuilder.addMissingLParenToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): LParenTokenHandle {
+): LParenToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.L_PAREN,
                 offset = offset,
@@ -1565,18 +2012,41 @@ public fun ConcreteSyntaxBuilder.addMissingLParenToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return LParenTokenHandle(idx)
+    return LParenToken(idx)
 }
 
 /**
- * Adds a [RParenTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [LParenToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorLParenToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): LParenToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.L_PAREN,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return LParenToken(idx)
+}
+
+/**
+ * Adds a [RParenToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addRParenToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): RParenTokenHandle {
+): RParenToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.R_PAREN,
                 startOffset = startOffset,
@@ -1585,11 +2055,11 @@ public fun ConcreteSyntaxBuilder.addRParenToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return RParenTokenHandle(idx)
+    return RParenToken(idx)
 }
 
 /**
- * Adds a missing [RParenTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [RParenToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingRParenToken(
     offset: Int,
@@ -1597,7 +2067,7 @@ public fun ConcreteSyntaxBuilder.addMissingRParenToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): RParenTokenHandle {
+): RParenToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.R_PAREN,
                 offset = offset,
@@ -1606,18 +2076,41 @@ public fun ConcreteSyntaxBuilder.addMissingRParenToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return RParenTokenHandle(idx)
+    return RParenToken(idx)
 }
 
 /**
- * Adds a [LBraceTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [RParenToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorRParenToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): RParenToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.R_PAREN,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return RParenToken(idx)
+}
+
+/**
+ * Adds a [LBraceToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addLBraceToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): LBraceTokenHandle {
+): LBraceToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.L_BRACE,
                 startOffset = startOffset,
@@ -1626,11 +2119,11 @@ public fun ConcreteSyntaxBuilder.addLBraceToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return LBraceTokenHandle(idx)
+    return LBraceToken(idx)
 }
 
 /**
- * Adds a missing [LBraceTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [LBraceToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingLBraceToken(
     offset: Int,
@@ -1638,7 +2131,7 @@ public fun ConcreteSyntaxBuilder.addMissingLBraceToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): LBraceTokenHandle {
+): LBraceToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.L_BRACE,
                 offset = offset,
@@ -1647,18 +2140,41 @@ public fun ConcreteSyntaxBuilder.addMissingLBraceToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return LBraceTokenHandle(idx)
+    return LBraceToken(idx)
 }
 
 /**
- * Adds a [RBraceTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [LBraceToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorLBraceToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): LBraceToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.L_BRACE,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return LBraceToken(idx)
+}
+
+/**
+ * Adds a [RBraceToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addRBraceToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): RBraceTokenHandle {
+): RBraceToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.R_BRACE,
                 startOffset = startOffset,
@@ -1667,11 +2183,11 @@ public fun ConcreteSyntaxBuilder.addRBraceToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return RBraceTokenHandle(idx)
+    return RBraceToken(idx)
 }
 
 /**
- * Adds a missing [RBraceTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [RBraceToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingRBraceToken(
     offset: Int,
@@ -1679,7 +2195,7 @@ public fun ConcreteSyntaxBuilder.addMissingRBraceToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): RBraceTokenHandle {
+): RBraceToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.R_BRACE,
                 offset = offset,
@@ -1688,18 +2204,41 @@ public fun ConcreteSyntaxBuilder.addMissingRBraceToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return RBraceTokenHandle(idx)
+    return RBraceToken(idx)
 }
 
 /**
- * Adds a [CommaTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [RBraceToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorRBraceToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): RBraceToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.R_BRACE,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return RBraceToken(idx)
+}
+
+/**
+ * Adds a [CommaToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addCommaToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): CommaTokenHandle {
+): CommaToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.COMMA,
                 startOffset = startOffset,
@@ -1708,11 +2247,11 @@ public fun ConcreteSyntaxBuilder.addCommaToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return CommaTokenHandle(idx)
+    return CommaToken(idx)
 }
 
 /**
- * Adds a missing [CommaTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [CommaToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingCommaToken(
     offset: Int,
@@ -1720,7 +2259,7 @@ public fun ConcreteSyntaxBuilder.addMissingCommaToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): CommaTokenHandle {
+): CommaToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.COMMA,
                 offset = offset,
@@ -1729,18 +2268,41 @@ public fun ConcreteSyntaxBuilder.addMissingCommaToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return CommaTokenHandle(idx)
+    return CommaToken(idx)
 }
 
 /**
- * Adds a [DotTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a [CommaToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorCommaToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): CommaToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.COMMA,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return CommaToken(idx)
+}
+
+/**
+ * Adds a [DotToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addDotToken(
     startOffset: Int,
     endOffset: Int,
     parentNode: Int = NULL_NODE_INDEX,
     slot: Int = NO_SLOT.toInt(),
-): DotTokenHandle {
+): DotToken {
     val idx = addToken(
                 schemaTokenId = CstSchemaDslTokenKinds.DOT,
                 startOffset = startOffset,
@@ -1749,11 +2311,11 @@ public fun ConcreteSyntaxBuilder.addDotToken(
                 slot = slot,
                 isTrivia = false,
             )
-    return DotTokenHandle(idx)
+    return DotToken(idx)
 }
 
 /**
- * Adds a missing [DotTokenHandle] token to this [ConcreteSyntaxBuilder].
+ * Adds a missing [DotToken] token to this [ConcreteSyntaxBuilder].
  */
 public fun ConcreteSyntaxBuilder.addMissingDotToken(
     offset: Int,
@@ -1761,7 +2323,7 @@ public fun ConcreteSyntaxBuilder.addMissingDotToken(
     slot: Int = NO_SLOT.toInt(),
     diagnosticCode: String? = null,
     diagnosticMessage: String? = null,
-): DotTokenHandle {
+): DotToken {
     val idx = addMissingToken(
                 schemaTokenId = CstSchemaDslTokenKinds.DOT,
                 offset = offset,
@@ -1770,5 +2332,38 @@ public fun ConcreteSyntaxBuilder.addMissingDotToken(
                 diagnosticCode = diagnosticCode,
                 diagnosticMessage = diagnosticMessage,
             )
-    return DotTokenHandle(idx)
+    return DotToken(idx)
 }
+
+/**
+ * Adds a [DotToken] token flagged as an error/recovery token (`isError == true`) to this [ConcreteSyntaxBuilder].
+ */
+public fun ConcreteSyntaxBuilder.addErrorDotToken(
+    startOffset: Int,
+    endOffset: Int,
+    parentNode: Int = NULL_NODE_INDEX,
+    slot: Int = NO_SLOT.toInt(),
+    diagnosticCode: String? = null,
+    diagnosticMessage: String? = null,
+): DotToken {
+    val idx = addErrorToken(
+                schemaTokenId = CstSchemaDslTokenKinds.DOT,
+                startOffset = startOffset,
+                endOffset = endOffset,
+                parentNode = parentNode,
+                slot = slot,
+                diagnosticCode = diagnosticCode,
+                diagnosticMessage = diagnosticMessage,
+            )
+    return DotToken(idx)
+}
+
+/**
+ * Validates that this [ConcreteSyntaxTree] conforms to the [CstSchemaDsl] schema, checking:
+ * - Recognized composite node kinds (`UNKNOWN_NODE_KIND`) and token schema IDs (`UNKNOWN_TOKEN_KIND`).
+ * - Required scalar fields (`MISSING_REQUIRED_SLOT`) and required non-empty `+` list fields (`EMPTY_REQUIRED_LIST_SLOT`) when [checkRequiredFields] is `true`.
+ * - Single-element enforcement on scalar slots (`DUPLICATE_SCALAR_SLOT`).
+ * - Permitted child node and token kinds per slot (`INVALID_CHILD_KIND`), undefined slots (`UNKNOWN_SLOT`), and unslotted non-trivia/non-error children (`UNSLOTTED_CHILD`).
+ * - Non-overlapping child spans (`OVERLAPPING_CHILDREN`) and optional contiguous source coverage (`SOURCE_GAP`) when [checkSourceGaps] is `true`.
+ */
+public fun ConcreteSyntaxTree.validateCstSchemaDslTree(checkRequiredFields: Boolean = true, checkSourceGaps: Boolean = false): List<CstDiagnostic> = validate(schema = CstSchemaDslSchema, checkRequiredFields = checkRequiredFields, checkSourceGaps = checkSourceGaps)

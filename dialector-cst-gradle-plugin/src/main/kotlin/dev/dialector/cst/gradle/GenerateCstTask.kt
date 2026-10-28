@@ -96,6 +96,30 @@ public abstract class GenerateCstTask : DefaultTask() {
     @get:Input
     public abstract val generateNavigators: Property<Boolean>
 
+    /**
+     * Suffix appended to generated CST node value class names.
+     */
+    @get:Input
+    public abstract val nodeSuffix: Property<String>
+
+    /**
+     * Suffix appended to generated CST node category value class names.
+     */
+    @get:Input
+    public abstract val categorySuffix: Property<String>
+
+    /**
+     * Suffix appended to generated CST token value class names.
+     */
+    @get:Input
+    public abstract val tokenSuffix: Property<String>
+
+    /**
+     * Suffix appended to generated CST token category value class names.
+     */
+    @get:Input
+    public abstract val tokenCategorySuffix: Property<String>
+
     init {
         group = "dialector"
         description = "Generates CST Kotlin source files from Dialector .cst schema files."
@@ -104,6 +128,10 @@ public abstract class GenerateCstTask : DefaultTask() {
         generateDebugHelpers.convention(true)
         generateBuilderExtensions.convention(true)
         generateNavigators.convention(true)
+        nodeSuffix.convention("Syntax")
+        categorySuffix.convention("Syntax")
+        tokenSuffix.convention("Token")
+        tokenCategorySuffix.convention("Token")
     }
 
     @TaskAction
@@ -126,6 +154,10 @@ public abstract class GenerateCstTask : DefaultTask() {
             generateDebugHelpers = generateDebugHelpers.get(),
             generateBuilderExtensions = generateBuilderExtensions.get(),
             generateNavigators = generateNavigators.get(),
+            nodeSuffix = nodeSuffix.get(),
+            categorySuffix = categorySuffix.get(),
+            tokenSuffix = tokenSuffix.get(),
+            tokenCategorySuffix = tokenCategorySuffix.get(),
         )
         val generator = CstCodeGenerator(config)
 

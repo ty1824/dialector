@@ -71,11 +71,35 @@ public abstract class DialectorCstExtension @Inject constructor(
      */
     public abstract val generateNavigators: Property<Boolean>
 
+    /**
+     * Suffix appended to generated CST node value class names. Defaults to `"Syntax"`.
+     */
+    public abstract val nodeSuffix: Property<String>
+
+    /**
+     * Suffix appended to generated CST node category value class names. Defaults to `"Syntax"`.
+     */
+    public abstract val categorySuffix: Property<String>
+
+    /**
+     * Suffix appended to generated CST token value class names. Defaults to `"Token"`.
+     */
+    public abstract val tokenSuffix: Property<String>
+
+    /**
+     * Suffix appended to generated CST token category value class names. Defaults to `"Token"`.
+     */
+    public abstract val tokenCategorySuffix: Property<String>
+
     init {
         generateTokenHandles.convention(true)
         generateCategoryHandles.convention(true)
         generateDebugHelpers.convention(true)
         generateBuilderExtensions.convention(true)
         generateNavigators.convention(true)
+        nodeSuffix.convention("Syntax")
+        categorySuffix.convention("Syntax")
+        tokenSuffix.convention("Token")
+        tokenCategorySuffix.convention("Token")
     }
 }
