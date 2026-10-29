@@ -2,6 +2,7 @@ package dev.dialector.cst.gradle
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.attributes.Usage
 import org.gradle.api.tasks.SourceSetContainer
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
@@ -11,13 +12,32 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
  * creates the `generateCst` task (and test-scoped `generateTestCst` when applicable),
  * and wires generated Kotlin directories into the project's source sets.
  */
-public class DialectorCstPlugin : Plugin<Project> {
+class DialectorCstPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
         val extension = project.extensions.create(
             EXTENSION_NAME,
             DialectorCstExtension::class.java,
         )
+
+        val cliConfiguration = project.configurations.maybeCreate(CLI_CONFIGURATION_NAME).apply {
+            isCanBeConsumed = false
+            isCanBeResolved = true
+            description = "Classpath containing the dialector-cst CLI tool."
+            attributes {
+                it.attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
+            }
+            defaultDependencies { deps ->
+                val cliVersion = project.version.toString().takeIf { it != "unspecified" && !it.startsWith("unspecified") }
+                val depNotation = if (cliVersion != null) {
+                    "dev.dialector:dialector-cst-cli:$cliVersion"
+                } else {
+                    "dev.dialector:dialector-cst-cli"
+                }
+                deps.add(project.dependencies.create(depNotation))
+            }
+        }
+        extension.cliClasspath.from(cliConfiguration)
 
         extension.sourceDirectories.from(project.layout.projectDirectory.dir("src/main/cst"))
         extension.outputDirectory.convention(
@@ -29,6 +49,7 @@ public class DialectorCstPlugin : Plugin<Project> {
         )
 
         val generateCstTask = project.tasks.register(TASK_NAME, GenerateCstTask::class.java) { task ->
+            task.cliClasspath.from(extension.cliClasspath)
             task.sourceDirectories.from(extension.sourceDirectories)
             task.outputDirectory.set(extension.outputDirectory)
             task.packageName.set(extension.packageName)
@@ -46,6 +67,7 @@ public class DialectorCstPlugin : Plugin<Project> {
 
         val generateTestCstTask = project.tasks.register(TEST_TASK_NAME, GenerateCstTask::class.java) { task ->
             task.description = "Generates test CST Kotlin source files from Dialector .cst schema files."
+            task.cliClasspath.from(extension.cliClasspath)
             task.sourceDirectories.from(extension.testSourceDirectories)
             task.outputDirectory.set(extension.testOutputDirectory)
             task.packageName.set(extension.packageName)
@@ -88,9 +110,10 @@ public class DialectorCstPlugin : Plugin<Project> {
         }
     }
 
-    public companion object {
-        public const val EXTENSION_NAME: String = "dialectorCst"
-        public const val TASK_NAME: String = "generateCst"
-        public const val TEST_TASK_NAME: String = "generateTestCst"
+    companion object {
+        const val EXTENSION_NAME: String = "dialectorCst"
+        const val CLI_CONFIGURATION_NAME: String = "dialectorCstCli"
+        const val TASK_NAME: String = "generateCst"
+        const val TEST_TASK_NAME: String = "generateTestCst"
     }
 }

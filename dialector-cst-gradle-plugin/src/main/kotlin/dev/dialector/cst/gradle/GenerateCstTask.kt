@@ -1,9 +1,7 @@
 package dev.dialector.cst.gradle
 
-import dev.dialector.cst.generator.CstCodeGenerator
+import dev.dialector.cst.cli.generateCstSources
 import dev.dialector.cst.generator.CstGeneratorConfig
-import dev.dialector.cst.schema.CstSchemaException
-import dev.dialector.cst.schema.dsl.CstSchemaParser
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
@@ -11,6 +9,7 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileTree
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.IgnoreEmptyDirectories
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -21,18 +20,35 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.SkipWhenEmpty
 import org.gradle.api.tasks.TaskAction
+import org.gradle.workers.WorkAction
+import org.gradle.workers.WorkParameters
+import org.gradle.workers.WorkerExecutor
+import java.io.File
+import javax.inject.Inject
 
 /**
- * Cacheable Gradle task that compiles `.cst` schema files into CST Kotlin source files.
+ * Cacheable Gradle task that compiles `.cst` schema files into CST Kotlin source files
+ * by submitting work actions to Gradle's [WorkerExecutor] with classloader isolation.
  */
 @CacheableTask
-public abstract class GenerateCstTask : DefaultTask() {
+abstract class GenerateCstTask : DefaultTask() {
+
+    @get:Inject
+    protected abstract val workerExecutor: WorkerExecutor
+
+    /**
+     * Classpath containing the dialector-cst generator and its dependencies.
+     * When not explicitly set, defaults to the `dialectorCstCli` configuration.
+     */
+    @get:Classpath
+    @get:Optional
+    abstract val cliClasspath: ConfigurableFileCollection
 
     /**
      * Source directories or `.cst` files to scan.
      */
     @get:Internal
-    public abstract val sourceDirectories: ConfigurableFileCollection
+    abstract val sourceDirectories: ConfigurableFileCollection
 
     /**
      * Filtered file tree of all `.cst` files found in [sourceDirectories].
@@ -41,7 +57,7 @@ public abstract class GenerateCstTask : DefaultTask() {
     @get:SkipWhenEmpty
     @get:IgnoreEmptyDirectories
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    public val cstSources: FileTree
+    val cstSources: FileTree
         get() = sourceDirectories.asFileTree.matching {
             it.include("**/*.cst")
         }
@@ -50,79 +66,79 @@ public abstract class GenerateCstTask : DefaultTask() {
      * Target directory where generated Kotlin files are written.
      */
     @get:OutputDirectory
-    public abstract val outputDirectory: DirectoryProperty
+    abstract val outputDirectory: DirectoryProperty
 
     /**
      * Optional package name override or default.
      */
     @get:Input
     @get:Optional
-    public abstract val packageName: Property<String>
+    abstract val packageName: Property<String>
 
     /**
      * Optional schema name override or default.
      */
     @get:Input
     @get:Optional
-    public abstract val schemaName: Property<String>
+    abstract val schemaName: Property<String>
 
     /**
      * Whether to generate value-class handles for individual tokens.
      */
     @get:Input
-    public abstract val generateTokenHandles: Property<Boolean>
+    abstract val generateTokenHandles: Property<Boolean>
 
     /**
      * Whether to generate value-class handles for node and token categories.
      */
     @get:Input
-    public abstract val generateCategoryHandles: Property<Boolean>
+    abstract val generateCategoryHandles: Property<Boolean>
 
     /**
      * Whether to generate tree debug formatting and dump helpers.
      */
     @get:Input
-    public abstract val generateDebugHelpers: Property<Boolean>
+    abstract val generateDebugHelpers: Property<Boolean>
 
     /**
      * Whether to generate type-safe `ConcreteSyntaxBuilder` extension functions.
      */
     @get:Input
-    public abstract val generateBuilderExtensions: Property<Boolean>
+    abstract val generateBuilderExtensions: Property<Boolean>
 
     /**
      * Whether to generate typed tree navigation and visitor helpers.
      */
     @get:Input
-    public abstract val generateNavigators: Property<Boolean>
+    abstract val generateNavigators: Property<Boolean>
 
     /**
      * Suffix appended to generated CST node value class names.
      */
     @get:Input
-    public abstract val nodeSuffix: Property<String>
+    abstract val nodeSuffix: Property<String>
 
     /**
      * Suffix appended to generated CST node category value class names.
      */
     @get:Input
-    public abstract val categorySuffix: Property<String>
+    abstract val categorySuffix: Property<String>
 
     /**
      * Suffix appended to generated CST token value class names.
      */
     @get:Input
-    public abstract val tokenSuffix: Property<String>
+    abstract val tokenSuffix: Property<String>
 
     /**
      * Suffix appended to generated CST token category value class names.
      */
     @get:Input
-    public abstract val tokenCategorySuffix: Property<String>
+    abstract val tokenCategorySuffix: Property<String>
 
     init {
         group = "dialector"
-        description = "Generates CST Kotlin source files from Dialector .cst schema files."
+        description = "Generates CST Kotlin source files from Dialector .cst schema files via Gradle WorkerExecutor."
         generateTokenHandles.convention(true)
         generateCategoryHandles.convention(true)
         generateDebugHelpers.convention(true)
@@ -135,69 +151,89 @@ public abstract class GenerateCstTask : DefaultTask() {
     }
 
     @TaskAction
-    public fun generate() {
-        val outDir = outputDirectory.get().asFile
-        if (outDir.exists()) {
-            outDir.deleteRecursively()
-        }
-        outDir.mkdirs()
-
+    fun generate() {
         val files = cstSources.files.sortedBy { it.invariantSeparatorsPath }
         if (files.isEmpty()) {
             logger.info("No .cst files found to process.")
             return
         }
 
-        val config = CstGeneratorConfig(
-            generateTokenHandles = generateTokenHandles.get(),
-            generateCategoryHandles = generateCategoryHandles.get(),
-            generateDebugHelpers = generateDebugHelpers.get(),
-            generateBuilderExtensions = generateBuilderExtensions.get(),
-            generateNavigators = generateNavigators.get(),
-            nodeSuffix = nodeSuffix.get(),
-            categorySuffix = categorySuffix.get(),
-            tokenSuffix = tokenSuffix.get(),
-            tokenCategorySuffix = tokenCategorySuffix.get(),
-        )
-        val generator = CstCodeGenerator(config)
-
-        val pkgOverride = packageName.orNull?.takeIf { it.isNotBlank() }
-        val nameOverride = schemaName.orNull?.takeIf { it.isNotBlank() }
-
-        val errors = mutableListOf<String>()
-
-        for (file in files) {
-            try {
-                val source = file.readText()
-                val fallbackSchemaName = nameOverride
-                    ?: file.nameWithoutExtension.replaceFirstChar { it.uppercaseChar() }.ifBlank { "DialectorCst" }
-                val fallbackPackageName = pkgOverride ?: "dev.dialector.cst.generated"
-
-                val parsed = CstSchemaParser.parse(
-                    source = source,
-                    defaultSchemaName = fallbackSchemaName,
-                    defaultPackageName = fallbackPackageName,
-                )
-                val schema = parsed.copy(
-                    name = nameOverride ?: parsed.name,
-                    packageName = pkgOverride ?: parsed.packageName,
-                ).validate()
-
-                val result = generator.generate(schema)
-                result.writeTo(outDir)
-                logger.info(
-                    "Generated ${result.files.size} CST source file(s) for schema '${schema.name}' from ${file.name}"
-                )
-            } catch (e: CstSchemaException) {
-                val detail = e.errors.joinToString("\n") { "  - $it" }
-                errors.add("Invalid CST schema in ${file.path}:\n$detail")
-            } catch (e: Exception) {
-                errors.add("Failed to generate CST from ${file.path}: ${e.message}")
-            }
+        val workQueue = workerExecutor.classLoaderIsolation { spec ->
+            spec.classpath.from(cliClasspath)
         }
 
-        if (errors.isNotEmpty()) {
-            throw GradleException(errors.joinToString("\n\n"))
+        workQueue.submit(GenerateCstWorkAction::class.java) { params ->
+            params.cstSources.from(files)
+            params.outputDirectory.set(outputDirectory)
+            params.packageName.set(packageName)
+            params.schemaName.set(schemaName)
+            params.generateTokenHandles.set(generateTokenHandles)
+            params.generateCategoryHandles.set(generateCategoryHandles)
+            params.generateDebugHelpers.set(generateDebugHelpers)
+            params.generateBuilderExtensions.set(generateBuilderExtensions)
+            params.generateNavigators.set(generateNavigators)
+            params.nodeSuffix.set(nodeSuffix)
+            params.categorySuffix.set(categorySuffix)
+            params.tokenSuffix.set(tokenSuffix)
+            params.tokenCategorySuffix.set(tokenCategorySuffix)
+        }
+    }
+}
+
+/**
+ * Parameters for [GenerateCstWorkAction].
+ */
+interface GenerateCstWorkParameters : WorkParameters {
+    val cstSources: ConfigurableFileCollection
+    val outputDirectory: DirectoryProperty
+    val packageName: Property<String>
+    val schemaName: Property<String>
+    val generateTokenHandles: Property<Boolean>
+    val generateCategoryHandles: Property<Boolean>
+    val generateDebugHelpers: Property<Boolean>
+    val generateBuilderExtensions: Property<Boolean>
+    val generateNavigators: Property<Boolean>
+    val nodeSuffix: Property<String>
+    val categorySuffix: Property<String>
+    val tokenSuffix: Property<String>
+    val tokenCategorySuffix: Property<String>
+}
+
+/**
+ * Converts [GenerateCstWorkParameters] to a [CstGeneratorConfig].
+ */
+fun GenerateCstWorkParameters.toGeneratorConfig(): CstGeneratorConfig = CstGeneratorConfig(
+    generateTokenHandles = generateTokenHandles.get(),
+    generateCategoryHandles = generateCategoryHandles.get(),
+    generateDebugHelpers = generateDebugHelpers.get(),
+    generateBuilderExtensions = generateBuilderExtensions.get(),
+    generateNavigators = generateNavigators.get(),
+    nodeSuffix = nodeSuffix.get(),
+    categorySuffix = categorySuffix.get(),
+    tokenSuffix = tokenSuffix.get(),
+    tokenCategorySuffix = tokenCategorySuffix.get(),
+)
+
+/**
+ * Work action executing CST code generation inside Gradle's worker queue.
+ */
+abstract class GenerateCstWorkAction : WorkAction<GenerateCstWorkParameters> {
+
+    override fun execute() {
+        val outDir = parameters.outputDirectory.get().asFile
+        val files = parameters.cstSources.files.sortedBy { it.invariantSeparatorsPath }
+        if (files.isEmpty()) return
+
+        val result = generateCstSources(
+            files = files,
+            outputDir = outDir,
+            config = parameters.toGeneratorConfig(),
+            schemaNameOverride = parameters.schemaName.orNull?.takeIf { it.isNotBlank() },
+            packageNameOverride = parameters.packageName.orNull?.takeIf { it.isNotBlank() },
+        )
+
+        if (!result.isSuccess) {
+            throw GradleException(result.errors.joinToString("\n"))
         }
     }
 }

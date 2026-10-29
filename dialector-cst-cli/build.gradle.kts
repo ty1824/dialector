@@ -13,7 +13,7 @@ application {
 dependencies {
     api(project(":dialector-cst"))
     api(libs.kotlinpoet)
-    implementation(libs.clikt)
+    api(libs.clikt)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.compile.testing)
