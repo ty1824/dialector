@@ -1258,6 +1258,31 @@ public class CstKotlinPoetGenerator(
             fileBuilder.addFunction(
                 FunSpec.builder("build${schema.name}Cst")
                     .addModifiers(KModifier.INLINE)
+                    .addKdoc("Builds a [ConcreteSyntaxTree] configured with [%L] schema metadata and [Document].", schemaDescriptorClassName.simpleName)
+                    .addParameter(ParameterSpec.builder("document", CN_DOCUMENT).build())
+                    .addParameter(ParameterSpec.builder("checkCycles", BOOLEAN).defaultValue("false").build())
+                    .addParameter(
+                        ParameterSpec.builder(
+                            "block",
+                            LambdaTypeName.get(
+                                receiver = CN_CONCRETE_SYNTAX_BUILDER,
+                                parameters = emptyList(),
+                                returnType = UNIT,
+                            ),
+                        ).build()
+                    )
+                    .returns(CN_CONCRETE_SYNTAX_TREE)
+                    .addStatement(
+                        "return %M(document = document, checkCycles = checkCycles, schema = %T, block = block)",
+                        M_BUILD_CST,
+                        schemaDescriptorClassName,
+                    )
+                    .build()
+            )
+
+            fileBuilder.addFunction(
+                FunSpec.builder("build${schema.name}Cst")
+                    .addModifiers(KModifier.INLINE)
                     .addKdoc("Builds a [ConcreteSyntaxTree] configured with [%L] schema metadata.", schemaDescriptorClassName.simpleName)
                     .addParameter(ParameterSpec.builder("sourceText", STRING).defaultValue("%S", "").build())
                     .addParameter(ParameterSpec.builder("checkCycles", BOOLEAN).defaultValue("false").build())
@@ -1720,6 +1745,7 @@ public class CstKotlinPoetGenerator(
         private const val CST_PKG = "dev.dialector.cst"
         val CN_CONCRETE_SYNTAX_TREE = ClassName(CST_PKG, "ConcreteSyntaxTree")
         val CN_CONCRETE_SYNTAX_BUILDER = ClassName(CST_PKG, "ConcreteSyntaxBuilder")
+        val CN_DOCUMENT = ClassName(CST_PKG, "Document")
         val CN_CST_NODE = ClassName(CST_PKG, "CstNode")
         val CN_CST_TOKEN = ClassName(CST_PKG, "CstToken")
         val CN_CST_DIAGNOSTIC = ClassName(CST_PKG, "CstDiagnostic")
