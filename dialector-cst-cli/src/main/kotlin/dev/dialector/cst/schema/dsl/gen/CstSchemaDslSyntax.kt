@@ -1,4 +1,4 @@
-package dev.dialector.cst.schema.dsl
+package dev.dialector.cst.schema.dsl.gen
 
 import dev.dialector.cst.ConcreteSyntaxTree
 import dev.dialector.cst.CstCategoryDescriptor

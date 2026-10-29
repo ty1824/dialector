@@ -1,4 +1,4 @@
-package dev.dialector.cst.schema.dsl
+package dev.dialector.cst.schema.dsl.gen
 
 import dev.dialector.cst.CstSchemaDescriptor
 import dev.dialector.cst.ERROR_NODE_KIND

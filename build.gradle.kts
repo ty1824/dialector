@@ -60,6 +60,7 @@ kover {
         filters {
             excludes {
                 packages("dev.dialector.inkt.example")
+                packages("dev.dialector.cst.schema.dsl.gen")
             }
         }
         total {

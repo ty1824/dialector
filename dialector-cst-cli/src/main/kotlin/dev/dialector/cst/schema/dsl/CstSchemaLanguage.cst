@@ -1,6 +1,6 @@
 // Self-hosting CST Schema specification for the Dialector `.cst` Schema DSL.
 schema CstSchemaDsl
-package dev.dialector.cst.schema.dsl
+package dev.dialector.cst.schema.dsl.gen
 
 // --- Trivia Tokens ---
 trivia Whitespace
