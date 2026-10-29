@@ -468,12 +468,12 @@ class ConcreteSyntaxBuilder(
      * Compacts all accumulated structural data into an immutable [ConcreteSyntaxTree].
      */
     fun build(
-        sourceText: String = "",
+        document: Document,
         checkCycles: Boolean = this.checkCycles,
         schema: CstSchemaDescriptor? = this.schema,
     ): ConcreteSyntaxTree {
         val totalNodes = nodeCount
-        if (totalNodes == 0) return ConcreteSyntaxTree.empty(schema = schema)
+        if (totalNodes == 0) return ConcreteSyntaxTree.empty(schema = schema, document = document)
 
         if (checkCycles) {
             validateNoCycles(totalNodes)
@@ -558,11 +558,24 @@ class ConcreteSyntaxBuilder(
             childNodeIndices = childNodeIndicesArr,
             childSlots = childSlotsArr,
             nodeOrderInParent = nodeOrderInParentArr,
-            sourceText = sourceText,
+            document = document,
             diagnostics = immutableDiagnostics,
             schema = schema,
         )
     }
+
+    /**
+     * Compacts all accumulated structural data into an immutable [ConcreteSyntaxTree] using [sourceText].
+     */
+    fun build(
+        sourceText: String = "",
+        checkCycles: Boolean = this.checkCycles,
+        schema: CstSchemaDescriptor? = this.schema,
+    ): ConcreteSyntaxTree = build(
+        document = if (sourceText.isEmpty()) Document.EMPTY else Document(sourceText),
+        checkCycles = checkCycles,
+        schema = schema,
+    )
 
     private fun validateNoCycles(totalNodes: Int) {
         // 0 = unvisited, 1 = visiting, 2 = visited
@@ -631,7 +644,21 @@ class ConcreteSyntaxBuilder(
 }
 
 /**
- * Builds a [ConcreteSyntaxTree] with the provided [ConcreteSyntaxBuilder] DSL block.
+ * Builds a [ConcreteSyntaxTree] with the provided [ConcreteSyntaxBuilder] DSL block and [document].
+ */
+inline fun buildCst(
+    document: Document,
+    checkCycles: Boolean = false,
+    schema: CstSchemaDescriptor? = null,
+    block: ConcreteSyntaxBuilder.() -> Unit,
+): ConcreteSyntaxTree {
+    val builder = ConcreteSyntaxBuilder(checkCycles = checkCycles, schema = schema)
+    builder.block()
+    return builder.build(document = document, checkCycles = checkCycles, schema = schema)
+}
+
+/**
+ * Builds a [ConcreteSyntaxTree] with the provided [ConcreteSyntaxBuilder] DSL block and [sourceText].
  */
 inline fun buildCst(
     sourceText: String = "",
@@ -641,5 +668,5 @@ inline fun buildCst(
 ): ConcreteSyntaxTree {
     val builder = ConcreteSyntaxBuilder(checkCycles = checkCycles, schema = schema)
     builder.block()
-    return builder.build(sourceText, checkCycles = checkCycles, schema = schema)
+    return builder.build(sourceText = sourceText, checkCycles = checkCycles, schema = schema)
 }

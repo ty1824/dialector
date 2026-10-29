@@ -90,400 +90,6 @@ fun decodeTokenSchemaId(tokenKind: Int): Int {
 }
 
 /**
- * Value-class handle representing a CST node.
- * Never use nullable `CstNode?` in hot paths; use [CstNode.NONE] and check [isValid]
- * to guarantee zero heap boxing.
- */
-@JvmInline
-value class CstNode(val nodeIndex: Int) {
-    /**
-     * True if this handle points to a valid node index (>= 0).
-     */
-    val isValid: Boolean get() = nodeIndex >= 0
-
-    /**
-     * True if this handle is the absent sentinel ([NONE]).
-     */
-    val isNone: Boolean get() = nodeIndex < 0
-
-    /**
-     * Reinterprets this node handle as a [CstToken] handle without allocation.
-     */
-    val asToken: CstToken get() = CstToken(nodeIndex)
-
-    /**
-     * Returns the parent node handle, or [CstNode.NONE] if this is a root or invalid node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val parent: CstNode
-        get() = if (isValid) CstNode(tree.getNodeParent(nodeIndex)) else NONE
-
-    /**
-     * Returns the kind integer of this node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val kind: Int
-        get() = tree.getNodeKind(nodeIndex)
-
-    /**
-     * True if this node's kind is a token (leaf), false if it is a composite node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val isToken: Boolean
-        get() = isValid && isTokenKind(tree.getNodeKind(nodeIndex))
-
-    /**
-     * True if this node is a trivia token (whitespace or comment).
-     */
-    context(tree: ConcreteSyntaxTree)
-    val isTrivia: Boolean
-        get() = isValid && isTriviaKind(tree.getNodeKind(nodeIndex))
-
-    /**
-     * True if this node is an [ERROR_NODE_KIND] recovery wrapper, an unavailable slot placeholder,
-     * or a leaf token marked as an error/recovery token.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val isError: Boolean
-        get() = isValid && isErrorKind(tree.getNodeKind(nodeIndex))
-
-    /**
-     * True if this node or token was synthesized by the parser during error recovery
-     * to stand in for a missing mandatory grammar element.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val isMissing: Boolean
-        get() = isValid && tree.isNodeMissing(nodeIndex)
-
-    /**
-     * True if this node or token is present and usable in the syntax tree
-     * (`isValid && !isMissing && !isError`).
-     *
-     * Together with [isNone] (Absent), [isMissing] (Missing), and [isError] (Unavailable / Recovery),
-     * this distinguishes all four states of a CST slot binding.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val isPresent: Boolean
-        get() = isValid && !isMissing && !isError
-
-    /**
-     * Returns the source text slice of this node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val text: String
-        get() = if (isValid) tree.getText(nodeIndex) else ""
-
-    /**
-     * Returns the start character offset of this node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val startOffset: Int
-        get() = tree.getNodeStartOffset(nodeIndex)
-
-    /**
-     * Returns the character length of this node (0 for missing/synthetic nodes).
-     */
-    context(tree: ConcreteSyntaxTree)
-    val length: Int
-        get() = tree.getNodeLength(nodeIndex)
-
-    /**
-     * Returns the end character offset of this node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val endOffset: Int
-        get() = tree.getNodeEndOffset(nodeIndex)
-
-    /**
-     * Returns the zero-allocation [SourceRange] (`startOffset..endOffset`) of this node, or [SourceRange.NONE] if invalid.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val sourceRange: SourceRange
-        get() = if (isValid) tree.getNodeSourceRange(nodeIndex) else SourceRange.NONE
-
-    /**
-     * Returns the 1-based `(line, column)` [SourcePosition] at the start of this node, or [SourcePosition.NONE] if invalid.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val startPosition: SourcePosition
-        get() = if (isValid) tree.getPosition(startOffset) else SourcePosition.NONE
-
-    /**
-     * Returns the 1-based `(line, column)` [SourcePosition] at the end of this node, or [SourcePosition.NONE] if invalid.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val endPosition: SourcePosition
-        get() = if (isValid) tree.getPosition(endOffset) else SourcePosition.NONE
-
-    /**
-     * Returns the schema slot index this node occupies in its parent, or [NO_SLOT] (-1).
-     */
-    context(tree: ConcreteSyntaxTree)
-    val slotInParent: Int
-        get() = if (isValid) tree.getNodeSlotInParent(nodeIndex) else NO_SLOT.toInt()
-
-    /**
-     * Returns the previous sibling node in the parent's children, or [CstNode.NONE].
-     */
-    context(tree: ConcreteSyntaxTree)
-    val prevSibling: CstNode
-        get() = if (isValid) CstNode(tree.getPrevSibling(nodeIndex)) else NONE
-
-    /**
-     * Returns the next sibling node in the parent's children, or [CstNode.NONE].
-     */
-    context(tree: ConcreteSyntaxTree)
-    val nextSibling: CstNode
-        get() = if (isValid) CstNode(tree.getNextSibling(nodeIndex)) else NONE
-
-    /**
-     * Returns the total number of direct children (including tokens and trivia).
-     */
-    context(tree: ConcreteSyntaxTree)
-    val childCount: Int
-        get() = if (isValid) tree.getChildNodeCount(nodeIndex) else 0
-
-    /**
-     * Returns the direct child at relative [index], or [CstNode.NONE] if out of bounds.
-     */
-    context(tree: ConcreteSyntaxTree)
-    fun childAt(index: Int): CstNode =
-        if (isValid) CstNode(tree.getChildNodeAt(nodeIndex, index)) else NONE
-
-    /**
-     * Returns the first child node assigned to [slot], or [CstNode.NONE] if absent.
-     */
-    context(tree: ConcreteSyntaxTree)
-    fun childBySlot(slot: Int): CstNode =
-        if (isValid) CstNode(tree.getChildBySlot(nodeIndex, slot)) else NONE
-
-    /**
-     * Returns the first child token assigned to [slot], or [CstToken.NONE] if absent.
-     */
-    context(tree: ConcreteSyntaxTree)
-    fun tokenBySlot(slot: Int): CstToken =
-        if (isValid) CstToken(tree.getChildBySlot(nodeIndex, slot)) else CstToken.NONE
-
-    /**
-     * Returns a zero-allocation view over all direct children of this node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val children: CstNodeList
-        get() = if (isValid) tree.getChildrenList(nodeIndex) else CstNodeList.EMPTY
-
-    /**
-     * Iterates over all direct children allocated to [slot] without heap allocation.
-     */
-    context(tree: ConcreteSyntaxTree)
-    inline fun forEachChildInSlot(slot: Int, action: (CstNode) -> Unit) {
-        if (!isValid) return
-        tree.forEachChildInSlot(nodeIndex, slot) { childIdx ->
-            action(CstNode(childIdx))
-        }
-    }
-
-    /**
-     * Stackless, zero-allocation depth-first pre-order iteration over all descendants of this node.
-     */
-    context(tree: ConcreteSyntaxTree)
-    inline fun forEachDescendant(
-        inclusive: Boolean = false,
-        includeTrivia: Boolean = true,
-        action: (CstNode) -> Unit,
-    ) {
-        if (!isValid) return
-        tree.forEachDescendant(nodeIndex, inclusive = inclusive, includeTrivia = includeTrivia, action = action)
-    }
-
-    /**
-     * Zero-allocation iteration over all ancestors of this node up to the root.
-     */
-    context(tree: ConcreteSyntaxTree)
-    inline fun forEachAncestor(
-        inclusive: Boolean = false,
-        action: (CstNode) -> Unit,
-    ) {
-        if (!isValid) return
-        tree.forEachAncestor(nodeIndex, inclusive = inclusive, action = action)
-    }
-
-    override fun toString(): String = if (isValid) "CstNode($nodeIndex)" else "CstNode.NONE"
-
-    companion object {
-        /**
-         * Sentinel representing an absent or invalid node.
-         */
-        val NONE: CstNode = CstNode(NULL_NODE_INDEX)
-    }
-}
-
-/**
- * Value-class handle representing a CST leaf token.
- * Never use nullable `CstToken?` in hot paths; use [CstToken.NONE] and check [isValid].
- */
-@JvmInline
-value class CstToken(val tokenIndex: Int) {
-    /**
-     * True if this handle points to a valid token index (>= 0).
-     */
-    val isValid: Boolean get() = tokenIndex >= 0
-
-    /**
-     * True if this handle is the absent sentinel ([NONE]).
-     */
-    val isNone: Boolean get() = tokenIndex < 0
-
-    /**
-     * Reinterprets this token handle as a [CstNode] handle without allocation.
-     */
-    val asNode: CstNode get() = CstNode(tokenIndex)
-
-    context(tree: ConcreteSyntaxTree)
-    val parent: CstNode get() = asNode.parent
-
-    context(tree: ConcreteSyntaxTree)
-    val kind: Int get() = asNode.kind
-
-    /**
-     * Returns the decoded positive 1-based schema token ID, or 0 if this handle does not point to a token.
-     */
-    context(tree: ConcreteSyntaxTree)
-    val schemaId: Int
-        get() {
-            if (!isValid) return 0
-            val rawKind = tree.getNodeKind(tokenIndex)
-            return if (isTokenKind(rawKind)) decodeTokenSchemaId(rawKind) else 0
-        }
-
-    context(tree: ConcreteSyntaxTree)
-    val isTrivia: Boolean get() = asNode.isTrivia
-
-    context(tree: ConcreteSyntaxTree)
-    val isError: Boolean get() = asNode.isError
-
-    context(tree: ConcreteSyntaxTree)
-    val isMissing: Boolean get() = asNode.isMissing
-
-    context(tree: ConcreteSyntaxTree)
-    val isPresent: Boolean get() = asNode.isPresent
-
-    context(tree: ConcreteSyntaxTree)
-    val text: String get() = asNode.text
-
-    context(tree: ConcreteSyntaxTree)
-    val startOffset: Int get() = asNode.startOffset
-
-    context(tree: ConcreteSyntaxTree)
-    val length: Int get() = asNode.length
-
-    context(tree: ConcreteSyntaxTree)
-    val endOffset: Int get() = asNode.endOffset
-
-    context(tree: ConcreteSyntaxTree)
-    val sourceRange: SourceRange get() = asNode.sourceRange
-
-    context(tree: ConcreteSyntaxTree)
-    val startPosition: SourcePosition get() = asNode.startPosition
-
-    context(tree: ConcreteSyntaxTree)
-    val endPosition: SourcePosition get() = asNode.endPosition
-
-    context(tree: ConcreteSyntaxTree)
-    val slotInParent: Int get() = asNode.slotInParent
-
-    context(tree: ConcreteSyntaxTree)
-    val prevSibling: CstNode get() = asNode.prevSibling
-
-    context(tree: ConcreteSyntaxTree)
-    val nextSibling: CstNode get() = asNode.nextSibling
-
-    override fun toString(): String = if (isValid) "CstToken($tokenIndex)" else "CstToken.NONE"
-
-    companion object {
-        /**
-         * Sentinel representing an absent or invalid token.
-         */
-        val NONE: CstToken = CstToken(NULL_TOKEN_INDEX)
-    }
-}
-
-/**
- * Zero-allocation slice view over a contiguous range in [ConcreteSyntaxTree.childNodeIndices].
- * Packs `(startEdgeOffset: Int, endEdgeOffset: Int)` into a single 64-bit [packedRange].
- */
-@JvmInline
-value class CstNodeList(val packedRange: Long) {
-    /**
-     * Starting index into the flattened child edge arrays.
-     */
-    val startEdgeOffset: Int get() = (packedRange ushr 32).toInt()
-
-    /**
-     * Ending index (exclusive) into the flattened child edge arrays.
-     */
-    val endEdgeOffset: Int get() = packedRange.toInt()
-
-    /**
-     * Total number of child elements in this slice (clamped to >= 0).
-     */
-    val size: Int get() = maxOf(0, endEdgeOffset - startEdgeOffset)
-
-    /**
-     * True if this slice contains no elements.
-     */
-    val isEmpty: Boolean get() = size == 0
-
-    /**
-     * Returns the [CstNode] at [index] (0..<size), or [CstNode.NONE] if out of bounds.
-     */
-    context(tree: ConcreteSyntaxTree)
-    operator fun get(index: Int): CstNode {
-        if (index !in 0..<size) return CstNode.NONE
-        return CstNode(tree.getRawChildEdgeNode(startEdgeOffset + index))
-    }
-
-    /**
-     * Zero-allocation inline iteration over all children in this slice.
-     */
-    context(tree: ConcreteSyntaxTree)
-    inline fun forEach(
-        includeTrivia: Boolean = false,
-        action: (CstNode) -> Unit,
-    ) {
-        for (edgeIdx in startEdgeOffset..<endEdgeOffset) {
-            val childIdx = tree.getRawChildEdgeNode(edgeIdx)
-            if (!includeTrivia && isTriviaKind(tree.getNodeKind(childIdx))) continue
-            action(CstNode(childIdx))
-        }
-    }
-
-    /**
-     * Zero-allocation inline iteration over children matching a specific schema [slot].
-     */
-    context(tree: ConcreteSyntaxTree)
-    inline fun forEachInSlot(
-        slot: Int,
-        action: (CstNode) -> Unit,
-    ) {
-        val targetSlot = slot.toShort()
-        for (edgeIdx in startEdgeOffset..<endEdgeOffset) {
-            if (tree.getRawChildEdgeSlot(edgeIdx) == targetSlot) {
-                action(CstNode(tree.getRawChildEdgeNode(edgeIdx)))
-            }
-        }
-    }
-
-    companion object {
-        val EMPTY: CstNodeList = CstNodeList(0L)
-
-        fun pack(startEdgeOffset: Int, endEdgeOffset: Int): CstNodeList {
-            val clampedEnd = maxOf(startEdgeOffset, endEdgeOffset)
-            return CstNodeList((startEdgeOffset.toLong() shl 32) or (clampedEnd.toLong() and 0xFFFF_FFFFL))
-        }
-    }
-}
-
-/**
  * Zero-allocation character range `[startOffset, endOffset)` in source text.
  * Packs `(startOffset: Int, endOffset: Int)` into a single 64-bit [packed] `Long`.
  */
@@ -672,6 +278,7 @@ data class CstDiagnostic(
  *   the schema field slot (`>= 0`) or [NO_SLOT] (`-1`) for trivia and error nodes.
  * - `nodeOrderInParent` stores each node's edge offset inside `childNodeIndices`, enabling
  *   $O(1)$ `prevSibling`, `nextSibling`, and `slotInParent` lookups.
+ * - [document] provides source text and line offset mappings.
  */
 class ConcreteSyntaxTree internal constructor(
     internal val nodeKinds: IntArray,
@@ -682,7 +289,7 @@ class ConcreteSyntaxTree internal constructor(
     internal val childNodeIndices: IntArray,
     internal val childSlots: ShortArray,
     internal val nodeOrderInParent: IntArray,
-    val sourceText: String = "",
+    val document: Document,
     val diagnostics: List<CstDiagnostic> = emptyList(),
     val schema: CstSchemaDescriptor? = null,
 ) {
@@ -791,8 +398,9 @@ class ConcreteSyntaxTree internal constructor(
         if (length == 0) return ""
         val start = nodeStartOffsets[nodeIndex]
         val end = start + length
-        if (start < 0 || end > sourceText.length) return ""
-        return sourceText.substring(start, end)
+        val text = document.text
+        if (start < 0 || end > text.length) return ""
+        return text.substring(start, end)
     }
 
     /**
@@ -802,29 +410,29 @@ class ConcreteSyntaxTree internal constructor(
         if (!range.isValid || range.isEmpty) return ""
         val start = range.startOffset
         val end = range.endOffset
-        if (start < 0 || end > sourceText.length) return ""
-        return sourceText.substring(start, end)
-    }
-
-    private val lineStartOffsets: IntArray by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        computeLineStartOffsets(sourceText)
+        val text = document.text
+        if (start < 0 || end > text.length) return ""
+        return text.substring(start, end)
     }
 
     /**
-     * Total number of lines in [sourceText] (always >= 1).
+     * Total number of lines in [document] (always >= 1).
      */
     val lineCount: Int
-        get() = lineStartOffsets.size
+        get() = document.lineOffsets.size
 
     /**
-     * Converts a 0-based character [offset] into a 1-based `(line, column)` [SourcePosition] in $O(\log L)$ time,
-     * or returns [SourcePosition.NONE] if [offset] is outside `0..sourceText.length`.
+     * Converts a 0-based character [offset] into a 1-based `(line, column)` [SourcePosition],
+     * or returns [SourcePosition.NONE] if [offset] is outside `0..document.text.length`.
      */
     fun getPosition(offset: Int): SourcePosition {
-        if (offset < 0 || offset > sourceText.length) return SourcePosition.NONE
-        val starts = lineStartOffsets
+        val text = document.text
+        if (offset < 0 || offset > text.length) return SourcePosition.NONE
+        val starts = document.lineOffsets
+        if (starts.isEmpty()) return SourcePosition.NONE
         val idx = starts.binarySearch(offset)
         val lineIdx = if (idx >= 0) idx else (-idx - 2)
+        if (lineIdx < 0 || lineIdx >= starts.size) return SourcePosition.NONE
         val lineStart = starts[lineIdx]
         return SourcePosition(line = lineIdx + 1, column = offset - lineStart + 1)
     }
@@ -858,18 +466,19 @@ class ConcreteSyntaxTree internal constructor(
      * By default, trailing line break characters (`\n`, `\r\n`, `\r`) are excluded unless [includeLineBreak] is true.
      */
     fun getLineRange(line: Int, includeLineBreak: Boolean = false): SourceRange {
-        val starts = lineStartOffsets
+        val starts = document.lineOffsets
         if (line !in 1..starts.size) return SourceRange.NONE
         val lineIdx = line - 1
         val start = starts[lineIdx]
-        val nextStart = if (lineIdx + 1 < starts.size) starts[lineIdx + 1] else sourceText.length
+        val text = document.text
+        val nextStart = if (lineIdx + 1 < starts.size) starts[lineIdx + 1] else text.length
         if (includeLineBreak) return SourceRange(start, nextStart)
 
         var end = nextStart
-        if (end > start && sourceText[end - 1] == '\n') {
+        if (end > start && text[end - 1] == '\n') {
             end--
-            if (end > start && sourceText[end - 1] == '\r') end--
-        } else if (end > start && sourceText[end - 1] == '\r') {
+            if (end > start && text[end - 1] == '\r') end--
+        } else if (end > start && text[end - 1] == '\r') {
             end--
         }
         return SourceRange(start, end)
@@ -1561,7 +1170,10 @@ class ConcreteSyntaxTree internal constructor(
         /**
          * Creates an empty [ConcreteSyntaxTree] satisfying the `nodeChildOffsets.size == nodeCount + 1` invariant.
          */
-        fun empty(schema: CstSchemaDescriptor? = null): ConcreteSyntaxTree = ConcreteSyntaxTree(
+        fun empty(
+            schema: CstSchemaDescriptor? = null,
+            document: Document = Document.EMPTY,
+        ): ConcreteSyntaxTree = ConcreteSyntaxTree(
             nodeKinds = EMPTY_INT_ARRAY,
             nodeParents = EMPTY_INT_ARRAY,
             nodeStartOffsets = EMPTY_INT_ARRAY,
@@ -1570,40 +1182,9 @@ class ConcreteSyntaxTree internal constructor(
             childNodeIndices = EMPTY_INT_ARRAY,
             childSlots = EMPTY_SHORT_ARRAY,
             nodeOrderInParent = EMPTY_INT_ARRAY,
-            sourceText = "",
+            document = document,
             diagnostics = emptyList(),
             schema = schema,
         )
-
-        private fun computeLineStartOffsets(text: String): IntArray {
-            var count = 1
-            var i = 0
-            val n = text.length
-            while (i < n) {
-                val c = text[i]
-                if (c == '\r') {
-                    count++
-                    if (i + 1 < n && text[i + 1] == '\n') i++
-                } else if (c == '\n') {
-                    count++
-                }
-                i++
-            }
-            val starts = IntArray(count)
-            starts[0] = 0
-            var lineIdx = 1
-            i = 0
-            while (i < n) {
-                val c = text[i]
-                if (c == '\r') {
-                    if (i + 1 < n && text[i + 1] == '\n') i++
-                    starts[lineIdx++] = i + 1
-                } else if (c == '\n') {
-                    starts[lineIdx++] = i + 1
-                }
-                i++
-            }
-            return starts
-        }
     }
 }

@@ -1,17 +1,9 @@
 package dev.dialector.cst
 
-import dev.dialector.cst.ConcreteSyntaxTree
-import dev.dialector.cst.CstNode
-import dev.dialector.cst.CstToken
-import dev.dialector.cst.DiagnosticSeverity
-import dev.dialector.cst.ERROR_NODE_KIND
-import dev.dialector.cst.NO_SLOT
-import dev.dialector.cst.NULL_NODE_INDEX
-import dev.dialector.cst.buildCst
-import dev.dialector.cst.encodeTokenKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ConcreteSyntaxTreeTest {
@@ -625,5 +617,47 @@ class ConcreteSyntaxTreeTest {
             val debugStr = tree.toDebugTreeString()
             assertTrue(debugStr.contains("';' (Token#99[3]) <ERROR> (6..7)"))
         }
+    }
+
+    @Test
+    fun `ConcreteSyntaxTree works with Document and custom Document implementations`() {
+        val customDoc = object : Document {
+            override val text: String = "line1\nline2\nline3"
+            // Custom line offsets: line 1 at 0, line 2 at 6, line 3 at 12
+            override val lineOffsets: IntArray = intArrayOf(0, 6, 12)
+        }
+
+        val tree = buildCst(document = customDoc) {
+            val root = startNode(kind = 1)
+            addToken(schemaTokenId = 1, startOffset = 0, endOffset = 5, parentNode = root)
+            addToken(schemaTokenId = 2, startOffset = 6, endOffset = 11, parentNode = root)
+            finishNode(root)
+        }
+
+        assertSame(customDoc, tree.document)
+        assertEquals("line1\nline2\nline3", tree.document.text)
+        assertEquals(3, tree.lineCount)
+        assertEquals("line1", tree.getLineText(1))
+        assertEquals("line2", tree.getLineText(2))
+        assertEquals("line3", tree.getLineText(3))
+        assertEquals(SourcePosition(2, 1), tree.getPosition(6))
+        assertEquals(SourcePosition(3, 1), tree.getPosition(12))
+
+        with(tree) {
+            assertEquals(customDoc, tree.root.document)
+            val tok = tree.tokenAtOffset(0)
+            assertEquals(customDoc, tok.document)
+            assertEquals("line1", tok.text)
+        }
+
+        // Test StringDocument and factory functions
+        val stringDoc = Document("hello\nworld")
+        assertEquals(2, stringDoc.lineOffsets.size)
+        assertEquals(0, stringDoc.lineOffsets[0])
+        assertEquals(6, stringDoc.lineOffsets[1])
+        assertEquals("hello\nworld", stringDoc.text)
+
+        val emptyTree = ConcreteSyntaxTree.empty(document = customDoc)
+        assertSame(customDoc, emptyTree.document)
     }
 }

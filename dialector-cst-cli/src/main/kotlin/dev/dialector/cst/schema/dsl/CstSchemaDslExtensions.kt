@@ -5,6 +5,7 @@ import dev.dialector.cst.ConcreteSyntaxTree
 import dev.dialector.cst.CstDiagnostic
 import dev.dialector.cst.CstNode
 import dev.dialector.cst.CstToken
+import dev.dialector.cst.Document
 import dev.dialector.cst.NO_SLOT
 import dev.dialector.cst.NULL_NODE_INDEX
 import dev.dialector.cst.buildCst
@@ -38,6 +39,15 @@ public val ConcreteSyntaxTree.rootCstSchemaDslNode: CstNode
  * Wraps the token index in a generic [CstToken].
  */
 public fun ConcreteSyntaxTree.asCstSchemaDslToken(tokenIndex: Int): CstToken = CstToken(tokenIndex)
+
+/**
+ * Builds a [ConcreteSyntaxTree] configured with [CstSchemaDslSchema] schema metadata and [Document].
+ */
+public inline fun buildCstSchemaDslCst(
+    document: Document,
+    checkCycles: Boolean = false,
+    block: ConcreteSyntaxBuilder.() -> Unit,
+): ConcreteSyntaxTree = buildCst(document = document, checkCycles = checkCycles, schema = CstSchemaDslSchema, block = block)
 
 /**
  * Builds a [ConcreteSyntaxTree] configured with [CstSchemaDslSchema] schema metadata.
