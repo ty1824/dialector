@@ -10,10 +10,17 @@ import dev.dialector.cst.schema.FieldSchema
 import dev.dialector.cst.schema.FieldType
 import dev.dialector.cst.schema.NodeSchema
 import dev.dialector.cst.schema.TokenSchema
-import dev.dialector.cst.schema.dsl.addEqToken
-import dev.dialector.cst.schema.dsl.addPackageHeader
-import dev.dialector.cst.schema.dsl.addSchemaFile
-import dev.dialector.cst.schema.dsl.validateCstSchemaDslTree
+import dev.dialector.cst.schema.dsl.gen.addEqToken
+import dev.dialector.cst.schema.dsl.gen.addPackageHeader
+import dev.dialector.cst.schema.dsl.gen.addSchemaFile
+import dev.dialector.cst.schema.dsl.gen.CstSchemaDslSchema
+import dev.dialector.cst.schema.dsl.gen.CstSchemaDslTokenKinds
+import dev.dialector.cst.schema.dsl.gen.DeclarationSyntax
+import dev.dialector.cst.schema.dsl.gen.IdentToken
+import dev.dialector.cst.schema.dsl.gen.NodeDeclSyntax
+import dev.dialector.cst.schema.dsl.gen.SchemaFileSyntax
+import dev.dialector.cst.schema.dsl.gen.TokenDeclSyntax
+import dev.dialector.cst.schema.dsl.gen.validateCstSchemaDslTree
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -330,7 +337,7 @@ class CstIntegrationTest {
         // 1. Verify CstSchemaLanguage.cst matches CstSchemaParser.selfHostedSchema()
         assertEquals(selfHostedSchema, parsedSchema)
         assertEquals("CstSchemaDsl", parsedSchema.name)
-        assertEquals("dev.dialector.cst.schema.dsl", parsedSchema.packageName)
+        assertEquals("dev.dialector.cst.schema.dsl.gen", parsedSchema.packageName)
         assertEquals(15, parsedSchema.nodes.size)
         assertEquals(2, parsedSchema.categories.size)
         assertEquals(27, parsedSchema.tokens.size)
@@ -345,7 +352,7 @@ class CstIntegrationTest {
         val extensionsFile = result.files.first { it.fileName == "CstSchemaDslExtensions.kt" }
 
         // Verify the checked-in CstSchemaDsl* files match the generator output byte-for-byte
-        val dslDir = java.io.File("src/main/kotlin/dev/dialector/cst/schema/dsl")
+        val dslDir = java.io.File("src/main/kotlin/dev/dialector/cst/schema/dsl/gen")
         assertEquals(java.io.File(dslDir, "CstSchemaDslKinds.kt").readText(), kindsFile.content)
         assertEquals(java.io.File(dslDir, "CstSchemaDslSyntax.kt").readText(), handlesFile.content)
         assertEquals(java.io.File(dslDir, "CstSchemaDslExtensions.kt").readText(), extensionsFile.content)
@@ -461,7 +468,7 @@ class CstIntegrationTest {
     @Test
     fun `schema descriptors and companion objects expose typed metadata`() {
         // 1. Companion objects as descriptors
-        val nodeDesc: dev.dialector.cst.CstNodeDescriptor = dev.dialector.cst.schema.dsl.SchemaFileSyntax
+        val nodeDesc: dev.dialector.cst.CstNodeDescriptor = SchemaFileSyntax
         assertEquals("SchemaFile", nodeDesc.name)
         assertEquals(3, nodeDesc.slots.size)
         assertEquals("schemaHeader", nodeDesc.slots[0].name)
@@ -470,24 +477,24 @@ class CstIntegrationTest {
         assertEquals("declarations", nodeDesc.slots[2].name)
         assertEquals(dev.dialector.cst.CstSlotCardinality.ZERO_OR_MORE, nodeDesc.slots[2].cardinality)
 
-        val tokDesc: dev.dialector.cst.CstTokenDescriptor = dev.dialector.cst.schema.dsl.IdentToken
+        val tokDesc: dev.dialector.cst.CstTokenDescriptor = IdentToken
         assertEquals("Ident", tokDesc.name)
-        assertEquals(dev.dialector.cst.schema.dsl.CstSchemaDslTokenKinds.IDENT, tokDesc.id)
+        assertEquals(CstSchemaDslTokenKinds.IDENT, tokDesc.id)
 
-        val catDesc: dev.dialector.cst.CstCategoryDescriptor = dev.dialector.cst.schema.dsl.DeclarationSyntax
+        val catDesc: dev.dialector.cst.CstCategoryDescriptor = DeclarationSyntax
         assertEquals("Declaration", catDesc.name)
-        assertTrue(catDesc.containsKind(dev.dialector.cst.schema.dsl.NodeDeclSyntax.KIND))
-        assertTrue(catDesc.containsKind(dev.dialector.cst.schema.dsl.TokenDeclSyntax.KIND))
+        assertTrue(catDesc.containsKind(NodeDeclSyntax.KIND))
+        assertTrue(catDesc.containsKind(TokenDeclSyntax.KIND))
 
         // 2. Schema descriptor collects all components
-        val schema: dev.dialector.cst.CstSchemaDescriptor = dev.dialector.cst.schema.dsl.CstSchemaDslSchema
+        val schema: dev.dialector.cst.CstSchemaDescriptor = CstSchemaDslSchema
         assertEquals("CstSchemaDsl", schema.name)
         assertEquals(15, schema.nodes.size)
         assertEquals(27, schema.tokens.size)
         assertEquals(2, schema.categories.size)
         assertEquals(1, schema.tokenCategories.size)
-        assertSame(nodeDesc, schema.getNodeDescriptor(dev.dialector.cst.schema.dsl.SchemaFileSyntax.KIND))
-        assertSame(tokDesc, schema.getTokenDescriptor(dev.dialector.cst.schema.dsl.IdentToken.ID))
+        assertSame(nodeDesc, schema.getNodeDescriptor(SchemaFileSyntax.KIND))
+        assertSame(tokDesc, schema.getTokenDescriptor(IdentToken.ID))
 
         // 3. Tree built via parseToCst attaches schema and formats slot names in toDebugTreeString
         val cst = dev.dialector.cst.schema.dsl.CstSchemaParser.parseToCst("schema Demo\ntoken Ident\n")

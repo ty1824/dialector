@@ -11,6 +11,40 @@ import dev.dialector.cst.schema.FieldType
 import dev.dialector.cst.schema.NodeSchema
 import dev.dialector.cst.schema.TokenCategorySchema
 import dev.dialector.cst.schema.TokenSchema
+import dev.dialector.cst.schema.dsl.gen.AnnotationList
+import dev.dialector.cst.schema.dsl.gen.AnnotationSyntax
+import dev.dialector.cst.schema.dsl.gen.CategoryClauseSyntax
+import dev.dialector.cst.schema.dsl.gen.CategoryDeclSyntax
+import dev.dialector.cst.schema.dsl.gen.CstSchemaDslNodeKinds
+import dev.dialector.cst.schema.dsl.gen.CstSchemaDslSchema
+import dev.dialector.cst.schema.dsl.gen.CstSchemaDslTokenKinds
+import dev.dialector.cst.schema.dsl.gen.FieldDeclSyntax
+import dev.dialector.cst.schema.dsl.gen.InlineUnionTypeExprSyntax
+import dev.dialector.cst.schema.dsl.gen.LiteralTokenTypeExprSyntax
+import dev.dialector.cst.schema.dsl.gen.NamedTypeExprSyntax
+import dev.dialector.cst.schema.dsl.gen.NodeDeclSyntax
+import dev.dialector.cst.schema.dsl.gen.PackageHeaderSyntax
+import dev.dialector.cst.schema.dsl.gen.QualifiedNameSyntax
+import dev.dialector.cst.schema.dsl.gen.SchemaFileSyntax
+import dev.dialector.cst.schema.dsl.gen.SchemaHeaderSyntax
+import dev.dialector.cst.schema.dsl.gen.TokenCategoryDeclSyntax
+import dev.dialector.cst.schema.dsl.gen.TokenDeclSyntax
+import dev.dialector.cst.schema.dsl.gen.TokenMemberRefSyntax
+import dev.dialector.cst.schema.dsl.gen.addAnnotation
+import dev.dialector.cst.schema.dsl.gen.addCategoryClause
+import dev.dialector.cst.schema.dsl.gen.addCategoryDecl
+import dev.dialector.cst.schema.dsl.gen.addFieldDecl
+import dev.dialector.cst.schema.dsl.gen.addInlineUnionTypeExpr
+import dev.dialector.cst.schema.dsl.gen.addLiteralTokenTypeExpr
+import dev.dialector.cst.schema.dsl.gen.addNamedTypeExpr
+import dev.dialector.cst.schema.dsl.gen.addNodeDecl
+import dev.dialector.cst.schema.dsl.gen.addPackageHeader
+import dev.dialector.cst.schema.dsl.gen.addQualifiedName
+import dev.dialector.cst.schema.dsl.gen.addSchemaHeader
+import dev.dialector.cst.schema.dsl.gen.addTokenCategoryDecl
+import dev.dialector.cst.schema.dsl.gen.addTokenDecl
+import dev.dialector.cst.schema.dsl.gen.addTokenMemberRef
+import dev.dialector.cst.schema.dsl.gen.asSchemaFileOrNone
 
 /**
  * Self-hosted parser and extractor for the Dialector `.cst` Schema DSL (`CstSchemaDsl`).
@@ -18,7 +52,7 @@ import dev.dialector.cst.schema.TokenSchema
  * - [parseToCst] lexes and parses any `.cst` source text directly into a lossless [ConcreteSyntaxTree]
  *   conforming to the `CstSchemaDsl` schema (including doc comments, trivia, error nodes, and recovery).
  * - [extractSchema] walks a [ConcreteSyntaxTree] using the generated `CstSchemaDsl` value-class syntax types
- *   ([SchemaFileSyntax], [NodeDeclSyntax], [FieldDeclSyntax], etc.) to build a validated [CstSchema].
+ *   ([dev.dialector.cst.schema.dsl.gen.SchemaFileSyntax], [dev.dialector.cst.schema.dsl.gen.NodeDeclSyntax], [dev.dialector.cst.schema.dsl.gen.FieldDeclSyntax], etc.) to build a validated [CstSchema].
  * - [parse] runs both phases in one step.
  * - [selfHostedSchema] returns the [CstSchema] of `CstSchemaDsl` itself parsed from [CST_SCHEMA_DSL_SOURCE].
  */
@@ -30,7 +64,7 @@ public object CstSchemaParser {
     public val CST_SCHEMA_DSL_SOURCE: String = """
 // Self-hosting CST Schema specification for the Dialector `.cst` Schema DSL.
 schema CstSchemaDsl
-package dev.dialector.cst.schema.dsl
+package dev.dialector.cst.schema.dsl.gen
 
 // --- Trivia Tokens ---
 trivia Whitespace
