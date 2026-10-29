@@ -25,6 +25,22 @@ class DialectorCstPluginTest {
         testProjectDir.deleteRecursively()
     }
 
+    private fun testBuildScript(extraConfig: String = ""): String {
+        val runner = GradleRunner.create().withPluginClasspath()
+        val cpList = runner.pluginClasspath.joinToString { "\"${it.absolutePath.replace("\\", "\\\\")}\"" }
+        return """
+            plugins {
+                id("dev.dialector.cst")
+            }
+
+            dependencies {
+                dialectorCstCli(files($cpList))
+            }
+
+            $extraConfig
+        """.trimIndent()
+    }
+
     @Test
     fun `plugin registers extension and generateCst task with default conventions`() {
         val project = ProjectBuilder.builder()
@@ -35,6 +51,7 @@ class DialectorCstPluginTest {
 
         val extension = project.extensions.findByType(DialectorCstExtension::class.java)
         assertNotNull(extension, "dialectorCst extension should be registered")
+        assertNotNull(project.configurations.findByName(DialectorCstPlugin.CLI_CONFIGURATION_NAME))
         assertEquals(true, extension.generateTokenHandles.get())
         assertEquals(true, extension.generateCategoryHandles.get())
         assertEquals(true, extension.generateDebugHelpers.get())
@@ -90,16 +107,14 @@ class DialectorCstPluginTest {
         )
 
         File(testProjectDir, "build.gradle.kts").writeText(
-            """
-            plugins {
-                id("dev.dialector.cst")
-            }
-
-            dialectorCst {
-                packageName.set("com.example.expr")
-                schemaName.set("ExprLang")
-            }
-            """.trimIndent()
+            testBuildScript(
+                """
+                dialectorCst {
+                    packageName.set("com.example.expr")
+                    schemaName.set("ExprLang")
+                }
+                """.trimIndent()
+            )
         )
 
         val cstDir = File(testProjectDir, "src/main/cst").apply { mkdirs() }
@@ -154,13 +169,7 @@ class DialectorCstPluginTest {
             """.trimIndent()
         )
 
-        File(testProjectDir, "build.gradle.kts").writeText(
-            """
-            plugins {
-                id("dev.dialector.cst")
-            }
-            """.trimIndent()
-        )
+        File(testProjectDir, "build.gradle.kts").writeText(testBuildScript())
 
         val testCstDir = File(testProjectDir, "src/test/cst").apply { mkdirs() }
         File(testCstDir, "TestOnly.cst").writeText(
@@ -192,13 +201,7 @@ class DialectorCstPluginTest {
     @Test
     fun `generateCst task fails with clear diagnostics when schema is invalid`() {
         File(testProjectDir, "settings.gradle.kts").writeText("""rootProject.name = "broken-cst"""")
-        File(testProjectDir, "build.gradle.kts").writeText(
-            """
-            plugins {
-                id("dev.dialector.cst")
-            }
-            """.trimIndent()
-        )
+        File(testProjectDir, "build.gradle.kts").writeText(testBuildScript())
 
         val cstDir = File(testProjectDir, "src/main/cst").apply { mkdirs() }
         File(cstDir, "Broken.cst").writeText(

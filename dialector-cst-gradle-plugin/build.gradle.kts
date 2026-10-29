@@ -6,14 +6,28 @@ plugins {
     alias(libs.plugins.gradle.plugin.publish)
 }
 
-dependencies {
-    implementation(project(":dialector-cst"))
-    implementation(project(":dialector-cst-cli"))
-    compileOnly(kotlin("gradle-plugin"))
+val cliTestClasspath by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
+    }
+}
 
+dependencies {
+    compileOnly(kotlin("gradle-plugin"))
+    compileOnly(project(":dialector-cst-cli"))
+
+    cliTestClasspath(project(":dialector-cst-cli"))
+
+    testImplementation(project(":dialector-cst-cli"))
     testImplementation(libs.kotlin.test)
     testImplementation(gradleTestKit())
     testImplementation(kotlin("gradle-plugin"))
+}
+
+tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
+    pluginClasspath.from(cliTestClasspath)
 }
 
 gradlePlugin {
@@ -24,7 +38,8 @@ gradlePlugin {
             id = "dev.dialector.cst"
             implementationClass = "dev.dialector.cst.gradle.DialectorCstPlugin"
             displayName = "Dialector CST Gradle Plugin"
-            description = "Compiles Dialector .cst schema files into CST Kotlin source files."
+            description = "Compiles Dialector .cst schema files into Kotlin source files."
+            tags = setOf("dialector", "syntax", "generator", "kotlin")
         }
     }
 }

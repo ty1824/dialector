@@ -218,4 +218,66 @@ class DialectorCstCliTest {
         assertEquals(1, valResult.statusCode)
         assertTrue(valResult.stderr.contains("No .cst schema files found"))
     }
+
+    @Test
+    fun `generateCstSources compiles files and triggers onProgress callback`() {
+        val file1 = writeCstFile(
+            "Lang1.cst",
+            """
+            schema LangOne
+            package com.example.one
+            token Tok
+            node NodeA { t: Tok }
+            """,
+        )
+        val file2 = writeCstFile(
+            "Lang2.cst",
+            """
+            schema LangTwo
+            package com.example.two
+            token Tok
+            node NodeB { t: Tok }
+            """,
+        )
+
+        val outDir = File(tempDir, "batch-out")
+        val progressReports = mutableListOf<String>()
+
+        val result = generateCstSources(
+            files = listOf(file1, file2),
+            outputDir = outDir,
+            onProgress = { file, genResult ->
+                progressReports.add("${file.name}:${genResult.schema.name}")
+            },
+        )
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.errors.isEmpty())
+        assertEquals(6, result.generatedFiles.size)
+        assertEquals(listOf("Lang1.cst:LangOne", "Lang2.cst:LangTwo"), progressReports)
+        assertTrue(File(outDir, "com/example/one/LangOneKinds.kt").isFile)
+        assertTrue(File(outDir, "com/example/two/LangTwoKinds.kt").isFile)
+    }
+
+    @Test
+    fun `generateCstSources collects errors without throwing and sets isSuccess to false`() {
+        val brokenFile = writeCstFile(
+            "BrokenBatch.cst",
+            """
+            schema BrokenBatch
+            package com.example.broken
+            node Bad { f: UnknownType }
+            """,
+        )
+
+        val outDir = File(tempDir, "batch-broken-out")
+        val result = generateCstSources(
+            files = listOf(brokenFile),
+            outputDir = outDir,
+        )
+
+        assertFalse(result.isSuccess)
+        assertTrue(result.errors.any { it.contains("BrokenBatch.cst") })
+        assertTrue(result.errors.any { it.contains("UnknownType") })
+    }
 }

@@ -9,87 +9,93 @@ import javax.inject.Inject
 /**
  * Gradle project extension (`dialectorCst { ... }`) for configuring CST schema code generation.
  */
-public abstract class DialectorCstExtension @Inject constructor(
+abstract class DialectorCstExtension @Inject constructor(
     objects: ObjectFactory,
 ) {
     /**
      * Source directories or individual `.cst` schema files to compile for the main source set.
      * Defaults to `src/main/cst`.
      */
-    public val sourceDirectories: ConfigurableFileCollection = objects.fileCollection()
+    val sourceDirectories: ConfigurableFileCollection = objects.fileCollection()
 
     /**
      * Target directory where generated main Kotlin files are written.
      * Defaults to `build/generated/source/cst/main/kotlin`.
      */
-    public abstract val outputDirectory: DirectoryProperty
+    abstract val outputDirectory: DirectoryProperty
 
     /**
      * Source directories or individual `.cst` schema files to compile for the test source set.
      * Defaults to `src/test/cst`.
      */
-    public val testSourceDirectories: ConfigurableFileCollection = objects.fileCollection()
+    val testSourceDirectories: ConfigurableFileCollection = objects.fileCollection()
 
     /**
      * Target directory where generated test Kotlin files are written.
      * Defaults to `build/generated/source/cst/test/kotlin`.
      */
-    public abstract val testOutputDirectory: DirectoryProperty
+    abstract val testOutputDirectory: DirectoryProperty
 
     /**
      * Optional package name override (or default if a `.cst` file omits the `package` header).
      */
-    public abstract val packageName: Property<String>
+    abstract val packageName: Property<String>
 
     /**
      * Optional schema name override (or default if a `.cst` file omits the `schema` header).
      */
-    public abstract val schemaName: Property<String>
+    abstract val schemaName: Property<String>
 
     /**
      * Whether to generate value-class handles for individual tokens. Defaults to `true`.
      */
-    public abstract val generateTokenHandles: Property<Boolean>
+    abstract val generateTokenHandles: Property<Boolean>
 
     /**
      * Whether to generate value-class handles for node and token categories. Defaults to `true`.
      */
-    public abstract val generateCategoryHandles: Property<Boolean>
+    abstract val generateCategoryHandles: Property<Boolean>
 
     /**
      * Whether to generate tree debug formatting and dump helpers. Defaults to `true`.
      */
-    public abstract val generateDebugHelpers: Property<Boolean>
+    abstract val generateDebugHelpers: Property<Boolean>
 
     /**
      * Whether to generate type-safe `ConcreteSyntaxBuilder` extension functions. Defaults to `true`.
      */
-    public abstract val generateBuilderExtensions: Property<Boolean>
+    abstract val generateBuilderExtensions: Property<Boolean>
 
     /**
      * Whether to generate typed tree navigation and visitor helpers. Defaults to `true`.
      */
-    public abstract val generateNavigators: Property<Boolean>
+    abstract val generateNavigators: Property<Boolean>
 
     /**
      * Suffix appended to generated CST node value class names. Defaults to `"Syntax"`.
      */
-    public abstract val nodeSuffix: Property<String>
+    abstract val nodeSuffix: Property<String>
 
     /**
      * Suffix appended to generated CST node category value class names. Defaults to `"Syntax"`.
      */
-    public abstract val categorySuffix: Property<String>
+    abstract val categorySuffix: Property<String>
 
     /**
      * Suffix appended to generated CST token value class names. Defaults to `"Token"`.
      */
-    public abstract val tokenSuffix: Property<String>
+    abstract val tokenSuffix: Property<String>
 
     /**
      * Suffix appended to generated CST token category value class names. Defaults to `"Token"`.
      */
-    public abstract val tokenCategorySuffix: Property<String>
+    abstract val tokenCategorySuffix: Property<String>
+
+    /**
+     * Optional custom classpath for the dialector-cst CLI tool.
+     * Defaults to the `dialectorCstCli` configuration.
+     */
+    val cliClasspath: ConfigurableFileCollection = objects.fileCollection()
 
     init {
         generateTokenHandles.convention(true)

@@ -140,38 +140,22 @@ public class GenerateCommand : CliktCommand(name = "generate") {
             tokenSuffix = tokenSuffix,
             tokenCategorySuffix = tokenCategorySuffix,
         )
-        val generator = CstCodeGenerator(config)
 
-        var hasErrors = false
-        val generatedFiles = mutableListOf<File>()
+        val result = generateCstSources(
+            files = cstFiles,
+            outputDir = outputDir,
+            config = config,
+            schemaNameOverride = schemaNameOverride,
+            packageNameOverride = packageNameOverride,
+            onProgress = { file, genResult ->
+                echo("Generated ${genResult.files.size} file(s) for schema '${genResult.schema.name}' from ${file.name}")
+            },
+        )
 
-        for (file in cstFiles) {
-            try {
-                val result = compileCstFile(
-                    file = file,
-                    outputDir = outputDir,
-                    generator = generator,
-                    schemaNameOverride = schemaNameOverride,
-                    packageNameOverride = packageNameOverride,
-                )
-                for (genFile in result.files) {
-                    val written = genFile.writeTo(outputDir)
-                    generatedFiles.add(written)
-                }
-                echo("Generated ${result.files.size} file(s) for schema '${result.schema.name}' from ${file.name}")
-            } catch (e: CstSchemaException) {
-                hasErrors = true
-                echo("Error in ${file.path}:", err = true)
-                for (err in e.errors) {
-                    echo("  - $err", err = true)
-                }
-            } catch (e: Exception) {
-                hasErrors = true
-                echo("Failed to process ${file.path}: ${e.message}", err = true)
+        if (!result.isSuccess) {
+            for (err in result.errors) {
+                echo(err, err = true)
             }
-        }
-
-        if (hasErrors) {
             throw ProgramResult(1)
         }
     }
@@ -299,6 +283,69 @@ public fun compileCstFile(
         packageNameOverride = packageNameOverride,
     )
     return generator.generate(schema)
+}
+
+/**
+ * Result of a batch CST code generation execution.
+ */
+public data class CstBatchGenerationResult(
+    public val generatedFiles: List<File>,
+    public val errors: List<String>,
+) {
+    public val isSuccess: Boolean get() = errors.isEmpty()
+}
+
+/**
+ * Compiles a collection of `.cst` schema files into generated Kotlin source files written to [outputDir].
+ *
+ * @param files Input `.cst` files to compile.
+ * @param outputDir Target directory where generated Kotlin files are written.
+ * @param config Code generator options and naming conventions.
+ * @param schemaNameOverride Optional schema name override.
+ * @param packageNameOverride Optional package name override.
+ * @param onProgress Optional callback invoked after each file is compiled.
+ * @return [CstBatchGenerationResult] containing written files and collected diagnostic errors (if any).
+ */
+public fun generateCstSources(
+    files: Iterable<File>,
+    outputDir: File,
+    config: CstGeneratorConfig = CstGeneratorConfig(),
+    schemaNameOverride: String? = null,
+    packageNameOverride: String? = null,
+    onProgress: ((file: File, result: CstGeneratorResult) -> Unit)? = null,
+): CstBatchGenerationResult {
+    val generator = CstCodeGenerator(config)
+    val generatedFiles = mutableListOf<File>()
+    val errors = mutableListOf<String>()
+
+    for (file in files) {
+        try {
+            val result = compileCstFile(
+                file = file,
+                outputDir = outputDir,
+                generator = generator,
+                schemaNameOverride = schemaNameOverride,
+                packageNameOverride = packageNameOverride,
+            )
+            for (genFile in result.files) {
+                val written = genFile.writeTo(outputDir)
+                generatedFiles.add(written)
+            }
+            onProgress?.invoke(file, result)
+        } catch (e: CstSchemaException) {
+            errors.add("Error in ${file.path}:")
+            for (err in e.errors) {
+                errors.add("  - $err")
+            }
+        } catch (e: Exception) {
+            errors.add("Failed to process ${file.path}: ${e.message}")
+        }
+    }
+
+    return CstBatchGenerationResult(
+        generatedFiles = generatedFiles,
+        errors = errors,
+    )
 }
 
 public fun main(args: Array<String>) {
