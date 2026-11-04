@@ -22,11 +22,6 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
 kover {
     reports {
         filters {

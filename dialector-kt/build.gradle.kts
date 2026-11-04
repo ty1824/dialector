@@ -23,11 +23,6 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
-
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     if (!System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKey").isNullOrBlank()) {

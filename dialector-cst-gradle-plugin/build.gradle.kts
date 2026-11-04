@@ -77,11 +77,6 @@ tasks.withType<Test> {
     systemProperty("dialectorCstPluginVersion", project.version.toString())
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     if (!System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKey").isNullOrBlank()) {
