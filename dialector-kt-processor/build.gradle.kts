@@ -48,11 +48,6 @@ tasks.withType<org.jmailen.gradle.kotlinter.tasks.ConfigurableKtLintTask> {
     exclude { it.file.toPath().contains(Paths.get("build")) }
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     if (!System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKey").isNullOrBlank()) {
