@@ -30,6 +30,24 @@ tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
     pluginClasspath.from(cliTestClasspath)
 }
 
+val generatePluginVersionSource by tasks.registering {
+    val version = project.version.toString()
+    val outputDir = layout.buildDirectory.dir("generated/sources/version/kotlin")
+    inputs.property("version", version)
+    outputs.dir(outputDir)
+    doLast {
+        val file = outputDir.get().file("dev/dialector/cst/gradle/DialectorCstPluginVersion.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package dev.dialector.cst.gradle
+
+            internal const val DIALECTOR_CST_PLUGIN_VERSION: String = "$version"
+            """.trimIndent() + "\n",
+        )
+    }
+}
+
 gradlePlugin {
     website = "https://dialector.dev"
     vcsUrl = "https://github.com/ty1824/dialector"
@@ -49,10 +67,19 @@ kotlin {
     jvmToolchain {
         languageVersion.set(JavaLanguageVersion.of(javaLanguageVersion))
     }
+    sourceSets.named("main") {
+        kotlin.srcDir(generatePluginVersionSource)
+    }
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    systemProperty("dialectorCstPluginVersion", project.version.toString())
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
 }
 
 mavenPublishing {

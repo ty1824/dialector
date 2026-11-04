@@ -92,12 +92,19 @@ abstract class DialectorCstExtension @Inject constructor(
     abstract val tokenCategorySuffix: Property<String>
 
     /**
+     * Version of the `dev.dialector:dialector-cst-cli` tool artifact to use.
+     * Defaults to the version of this plugin.
+     */
+    abstract val cliVersion: Property<String>
+
+    /**
      * Optional custom classpath for the dialector-cst CLI tool.
      * Defaults to the `dialectorCstCli` configuration.
      */
     val cliClasspath: ConfigurableFileCollection = objects.fileCollection()
 
     init {
+        cliVersion.convention(DialectorCstPlugin.cliVersion)
         generateTokenHandles.convention(true)
         generateCategoryHandles.convention(true)
         generateDebugHelpers.convention(true)

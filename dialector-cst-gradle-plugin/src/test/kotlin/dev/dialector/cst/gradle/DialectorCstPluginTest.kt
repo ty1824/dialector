@@ -1,5 +1,6 @@
 package dev.dialector.cst.gradle
 
+import org.gradle.api.attributes.Usage
 import org.gradle.testfixtures.ProjectBuilder
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
@@ -39,6 +40,145 @@ class DialectorCstPluginTest {
 
             $extraConfig
         """.trimIndent()
+    }
+
+    @Test
+    fun `plugin embeds compile-time constant version matching project version`() {
+        val expectedVersion = System.getProperty("dialectorCstPluginVersion")
+        assertNotNull(expectedVersion, "System property dialectorCstPluginVersion should be passed from build script")
+        assertEquals(expectedVersion, DIALECTOR_CST_PLUGIN_VERSION)
+        assertEquals(expectedVersion, DialectorCstPlugin.DEFAULT_CLI_VERSION)
+        assertEquals(expectedVersion, DialectorCstPlugin.cliVersion)
+        assertTrue(DialectorCstPlugin.cliVersion.isNotBlank())
+    }
+
+    @Test
+    fun `extension cliVersion defaults to compile-time constant version and is configurable`() {
+        val project = ProjectBuilder.builder()
+            .withProjectDir(testProjectDir)
+            .build()
+
+        project.pluginManager.apply("dev.dialector.cst")
+
+        val extension = project.extensions.getByType(DialectorCstExtension::class.java)
+        assertEquals(DIALECTOR_CST_PLUGIN_VERSION, extension.cliVersion.get())
+
+        extension.cliVersion.set("3.4.5-custom")
+        assertEquals("3.4.5-custom", extension.cliVersion.get())
+    }
+
+    @Test
+    fun `plugin configures dialectorCstCli default dependency with default cliVersion`() {
+        val expectedVersion = DialectorCstPlugin.cliVersion
+
+        val project = ProjectBuilder.builder()
+            .withProjectDir(testProjectDir)
+            .build()
+
+        project.pluginManager.apply("dev.dialector.cst")
+
+        val cliConfig = project.configurations.getByName(DialectorCstPlugin.CLI_CONFIGURATION_NAME)
+        assertEquals(false, cliConfig.isCanBeConsumed)
+        assertEquals(true, cliConfig.isCanBeResolved)
+        assertEquals(
+            Usage.JAVA_RUNTIME,
+            cliConfig.attributes.getAttribute(Usage.USAGE_ATTRIBUTE)?.name,
+        )
+
+        // Trigger defaultDependencies execution
+        runCatching { cliConfig.resolve() }
+
+        assertEquals(1, cliConfig.dependencies.size)
+        val defaultDep = cliConfig.dependencies.single()
+        assertEquals("dev.dialector", defaultDep.group)
+        assertEquals("dialector-cst-cli", defaultDep.name)
+        assertEquals(expectedVersion, defaultDep.version)
+    }
+
+    @Test
+    fun `plugin configures dialectorCstCli default dependency using custom extension cliVersion`() {
+        val project = ProjectBuilder.builder()
+            .withProjectDir(testProjectDir)
+            .build()
+
+        project.pluginManager.apply("dev.dialector.cst")
+
+        val extension = project.extensions.getByType(DialectorCstExtension::class.java)
+        extension.cliVersion.set("2.5.0-override")
+
+        val cliConfig = project.configurations.getByName(DialectorCstPlugin.CLI_CONFIGURATION_NAME)
+        runCatching { cliConfig.resolve() }
+
+        assertEquals(1, cliConfig.dependencies.size)
+        val defaultDep = cliConfig.dependencies.single()
+        assertEquals("dev.dialector", defaultDep.group)
+        assertEquals("dialector-cst-cli", defaultDep.name)
+        assertEquals("2.5.0-override", defaultDep.version)
+    }
+
+    @Test
+    fun `plugin respects custom dialectorCstCli dependency without applying default`() {
+        val project = ProjectBuilder.builder()
+            .withProjectDir(testProjectDir)
+            .build()
+
+        project.pluginManager.apply("dev.dialector.cst")
+
+        val cliConfig = project.configurations.getByName(DialectorCstPlugin.CLI_CONFIGURATION_NAME)
+        cliConfig.dependencies.add(project.dependencies.create("dev.dialector:dialector-cst-cli:9.9.9"))
+
+        runCatching { cliConfig.resolve() }
+
+        assertEquals(1, cliConfig.dependencies.size)
+        val customDep = cliConfig.dependencies.single()
+        assertEquals("dev.dialector", customDep.group)
+        assertEquals("dialector-cst-cli", customDep.name)
+        assertEquals("9.9.9", customDep.version)
+    }
+
+    @Test
+    fun `dialectorCstCli default dependency is applied in GradleRunner build`() {
+        File(testProjectDir, "settings.gradle.kts").writeText(
+            """
+            rootProject.name = "cli-version-test"
+            """.trimIndent()
+        )
+
+        File(testProjectDir, "build.gradle.kts").writeText(
+            """
+            plugins {
+                id("dev.dialector.cst")
+            }
+
+            dialectorCst {
+                cliVersion.set("4.5.6-runner")
+            }
+
+            tasks.register("verifyCliDependency") {
+                doLast {
+                    val config = configurations.getByName("dialectorCstCli")
+                    try {
+                        config.resolve()
+                    } catch (_: Exception) {
+                        // Expected to fail resolution in test environment since not published
+                    }
+                    val dep = config.dependencies.firstOrNull { it.group == "dev.dialector" && it.name == "dialector-cst-cli" }
+                    println("RESOLVED_CLI_DEP: " + dep?.group + ":" + dep?.name + ":" + dep?.version)
+                }
+            }
+            """.trimIndent()
+        )
+
+        val result = GradleRunner.create()
+            .withProjectDir(testProjectDir)
+            .withPluginClasspath()
+            .withArguments("verifyCliDependency")
+            .build()
+
+        assertTrue(
+            result.output.contains("RESOLVED_CLI_DEP: dev.dialector:dialector-cst-cli:4.5.6-runner"),
+            "Expected output to contain RESOLVED_CLI_DEP with custom version 4.5.6-runner, but got:\n${result.output}",
+        )
     }
 
     @Test
