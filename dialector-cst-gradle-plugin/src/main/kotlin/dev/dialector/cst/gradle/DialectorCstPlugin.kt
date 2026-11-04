@@ -28,13 +28,8 @@ class DialectorCstPlugin : Plugin<Project> {
                 it.attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
             }
             defaultDependencies { deps ->
-                val cliVersion = project.version.toString().takeIf { it != "unspecified" && !it.startsWith("unspecified") }
-                val depNotation = if (cliVersion != null) {
-                    "dev.dialector:dialector-cst-cli:$cliVersion"
-                } else {
-                    "dev.dialector:dialector-cst-cli"
-                }
-                deps.add(project.dependencies.create(depNotation))
+                val version = extension.cliVersion.get()
+                deps.add(project.dependencies.create("dev.dialector:dialector-cst-cli:$version"))
             }
         }
         extension.cliClasspath.from(cliConfiguration)
@@ -115,5 +110,9 @@ class DialectorCstPlugin : Plugin<Project> {
         const val CLI_CONFIGURATION_NAME: String = "dialectorCstCli"
         const val TASK_NAME: String = "generateCst"
         const val TEST_TASK_NAME: String = "generateTestCst"
+
+        internal const val DEFAULT_CLI_VERSION: String = DIALECTOR_CST_PLUGIN_VERSION
+
+        internal val cliVersion: String get() = DEFAULT_CLI_VERSION
     }
 }
