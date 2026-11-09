@@ -112,6 +112,20 @@ class CstIntegrationTest {
                         return left.nodeIndex.toString() + ":" + op.tokenIndex.toString() + ":" + right.nodeIndex.toString() + ":" + opText
                     }
                 }
+
+                fun runNoneChainingTest(): String {
+                    val tree = buildCst("10 + 20") {}
+                    with(tree) {
+                        val noneBinary = BinaryExpressionSyntax.NONE
+                        val leftExpr = noneBinary.left
+                        val leftLiteral = leftExpr.asNumberLiteral
+                        val leftVal = leftLiteral.value
+                        val leftText = leftVal.asToken.text
+                        val blockNone = BlockSyntax.NONE
+                        val stmts = blockNone.statements
+                        return "${'$'}{noneBinary.isValid}:${'$'}{leftExpr.isNone}:${'$'}{leftLiteral.isNone}:${'$'}{leftVal.isNone}:${'$'}{leftText}:${'$'}{stmts.size}:${'$'}{stmts.isEmpty}"
+                    }
+                }
             }
             """.trimIndent()
         )
@@ -132,6 +146,10 @@ class CstIntegrationTest {
         val output = method.invoke(runnerObject) as String
 
         assertEquals("1:3:4:+", output)
+
+        val noneMethod = runnerClass.getMethod("runNoneChainingTest")
+        val noneOutput = noneMethod.invoke(runnerObject) as String
+        assertEquals("false:true:true:true::0:true", noneOutput)
     }
 
     @Test
