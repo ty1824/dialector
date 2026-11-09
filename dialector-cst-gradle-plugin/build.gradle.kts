@@ -49,15 +49,26 @@ val generatePluginVersionSource by tasks.registering {
 }
 
 gradlePlugin {
-    website = "https://dialector.dev"
+    website = "https://github.com/ty1824/dialector"
     vcsUrl = "https://github.com/ty1824/dialector"
     plugins {
         create("dialectorCst") {
             id = "dev.dialector.cst"
             implementationClass = "dev.dialector.cst.gradle.DialectorCstPlugin"
             displayName = "Dialector CST Gradle Plugin"
-            description = "Compiles Dialector .cst schema files into Kotlin source files."
-            tags = setOf("dialector", "syntax", "generator", "kotlin")
+            description = "Gradle plugin for compiling Dialector .cst concrete syntax tree schemas into type-safe Kotlin source files, token handles, navigation helpers, and builders."
+            tags = setOf(
+                "dialector",
+                "syntax",
+                "cst",
+                "ast",
+                "generator",
+                "compiler",
+                "parser",
+                "kotlin",
+                "code-generation",
+                "language-workbench",
+            )
         }
     }
 }
@@ -85,7 +96,7 @@ mavenPublishing {
     pom {
         name.set("dialector-cst-gradle-plugin")
         description.set("Gradle plugin for compiling Dialector .cst schema files into CST Kotlin code.")
-        url.set("http://dialector.dev")
+        url.set("https://github.com/ty1824/dialector")
         licenses {
             license {
                 name.set("GPL-3.0")

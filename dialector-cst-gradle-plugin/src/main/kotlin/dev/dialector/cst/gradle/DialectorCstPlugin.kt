@@ -106,9 +106,24 @@ class DialectorCstPlugin : Plugin<Project> {
     }
 
     companion object {
+        /**
+         * Name of the project extension registered by this plugin (`dialectorCst`).
+         */
         const val EXTENSION_NAME: String = "dialectorCst"
+
+        /**
+         * Name of the dependency configuration holding the dialector-cst CLI tool classpath.
+         */
         const val CLI_CONFIGURATION_NAME: String = "dialectorCstCli"
+
+        /**
+         * Name of the main CST code generation task (`generateCst`).
+         */
         const val TASK_NAME: String = "generateCst"
+
+        /**
+         * Name of the test CST code generation task (`generateTestCst`).
+         */
         const val TEST_TASK_NAME: String = "generateTestCst"
 
         internal const val DEFAULT_CLI_VERSION: String = DIALECTOR_CST_PLUGIN_VERSION
