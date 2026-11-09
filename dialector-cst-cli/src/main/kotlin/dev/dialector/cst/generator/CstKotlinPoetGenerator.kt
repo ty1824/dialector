@@ -1030,8 +1030,8 @@ public class CstKotlinPoetGenerator(
                         name = field.name,
                         type = targetHandle,
                         kdoc = doc,
-                        format = "%T(tree.getChildBySlot(nodeIndex, %L))",
-                        args = arrayOf(targetHandle, slotConst),
+                        format = "if (isValid) %T(tree.getChildBySlot(nodeIndex, %L)) else %T.NONE",
+                        args = arrayOf(targetHandle, slotConst, targetHandle),
                     )
                 )
             }
@@ -1053,8 +1053,8 @@ public class CstKotlinPoetGenerator(
                         name = field.name,
                         type = targetHandle,
                         kdoc = doc,
-                        format = "%T(tree.getChildBySlot(nodeIndex, %L))",
-                        args = arrayOf(targetHandle, slotConst),
+                        format = "if (isValid) %T(tree.getChildBySlot(nodeIndex, %L)) else %T.NONE",
+                        args = arrayOf(targetHandle, slotConst, targetHandle),
                     )
                 )
             }
@@ -1085,8 +1085,8 @@ public class CstKotlinPoetGenerator(
                 name = field.name,
                 type = listType,
                 kdoc = doc,
-                format = "%T.pack(nodeIndex, %L)",
-                args = arrayOf(listType, slotConst),
+                format = "if (isValid) %T.pack(nodeIndex, %L) else %T.EMPTY",
+                args = arrayOf(listType, slotConst, listType),
             )
         )
     }

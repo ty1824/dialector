@@ -49,7 +49,7 @@ val generatePluginVersionSource by tasks.registering {
 }
 
 gradlePlugin {
-    website = "https://github.com/ty1824/dialector"
+    website = "https://dialector.dev"
     vcsUrl = "https://github.com/ty1824/dialector"
     plugins {
         create("dialectorCst") {
@@ -96,7 +96,7 @@ mavenPublishing {
     pom {
         name.set("dialector-cst-gradle-plugin")
         description.set("Gradle plugin for compiling Dialector .cst schema files into CST Kotlin code.")
-        url.set("https://github.com/ty1824/dialector")
+        url.set("https://dialector.dev")
         licenses {
             license {
                 name.set("GPL-3.0")

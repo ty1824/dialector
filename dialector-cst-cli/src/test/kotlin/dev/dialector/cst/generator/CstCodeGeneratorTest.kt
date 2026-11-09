@@ -97,9 +97,9 @@ class CstCodeGeneratorTest {
         // Check Member Accessors inside Syntax
         assertTrue(handlesCode.contains("context(tree: ConcreteSyntaxTree)"))
         assertTrue(handlesCode.contains("public val left: ExpressionSyntax"))
-        assertTrue(handlesCode.contains("get() = ExpressionSyntax(tree.getChildBySlot(nodeIndex, SLOT_LEFT))"))
+        assertTrue(handlesCode.contains("get() = if (isValid) ExpressionSyntax(tree.getChildBySlot(nodeIndex, SLOT_LEFT)) else ExpressionSyntax.NONE"))
         assertTrue(handlesCode.contains("public val right: ExpressionSyntax"))
-        assertTrue(handlesCode.contains("get() = ExpressionSyntax(tree.getChildBySlot(nodeIndex, SLOT_RIGHT))"))
+        assertTrue(handlesCode.contains("get() = if (isValid) ExpressionSyntax(tree.getChildBySlot(nodeIndex, SLOT_RIGHT)) else ExpressionSyntax.NONE"))
 
         // Check Extensions
         val extCode = result.files.find { it.fileName == "CalculatorExtensions.kt" }!!.content

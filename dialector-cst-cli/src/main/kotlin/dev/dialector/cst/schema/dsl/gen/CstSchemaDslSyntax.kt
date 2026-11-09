@@ -343,20 +343,20 @@ public value class SchemaFileSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val schemaHeader: SchemaHeaderSyntax
-        get() = SchemaHeaderSyntax(tree.getChildBySlot(nodeIndex, SLOT_SCHEMA_HEADER))
+        get() = if (isValid) SchemaHeaderSyntax(tree.getChildBySlot(nodeIndex, SLOT_SCHEMA_HEADER)) else SchemaHeaderSyntax.NONE
 
     /**
      * (Optional child at slot [SLOT_PACKAGE_HEADER] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val packageHeader: PackageHeaderSyntax
-        get() = PackageHeaderSyntax(tree.getChildBySlot(nodeIndex, SLOT_PACKAGE_HEADER))
+        get() = if (isValid) PackageHeaderSyntax(tree.getChildBySlot(nodeIndex, SLOT_PACKAGE_HEADER)) else PackageHeaderSyntax.NONE
 
     /**
      * (Child list at slot [SLOT_DECLARATIONS] = 2)
      */
     public val declarations: DeclarationList
-        get() = DeclarationList.pack(nodeIndex, SLOT_DECLARATIONS)
+        get() = if (isValid) DeclarationList.pack(nodeIndex, SLOT_DECLARATIONS) else DeclarationList.EMPTY
 
     override fun toString(): String = if (isValid) """SchemaFileSyntax($nodeIndex)""" else "SchemaFileSyntax.NONE"
 
@@ -431,14 +431,14 @@ public value class SchemaHeaderSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val schemaKw: SchemaKwToken
-        get() = SchemaKwToken(tree.getChildBySlot(nodeIndex, SLOT_SCHEMA_KW))
+        get() = if (isValid) SchemaKwToken(tree.getChildBySlot(nodeIndex, SLOT_SCHEMA_KW)) else SchemaKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_NAME] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     override fun toString(): String = if (isValid) """SchemaHeaderSyntax($nodeIndex)""" else "SchemaHeaderSyntax.NONE"
 
@@ -510,14 +510,14 @@ public value class PackageHeaderSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val packageKw: PackageKwToken
-        get() = PackageKwToken(tree.getChildBySlot(nodeIndex, SLOT_PACKAGE_KW))
+        get() = if (isValid) PackageKwToken(tree.getChildBySlot(nodeIndex, SLOT_PACKAGE_KW)) else PackageKwToken.NONE
 
     /**
      * (Mandatory child (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_NAME] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val name: QualifiedNameSyntax
-        get() = QualifiedNameSyntax(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) QualifiedNameSyntax(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else QualifiedNameSyntax.NONE
 
     override fun toString(): String = if (isValid) """PackageHeaderSyntax($nodeIndex)""" else "PackageHeaderSyntax.NONE"
 
@@ -588,13 +588,13 @@ public value class QualifiedNameSyntax(
      * (Child list at slot [SLOT_PARTS] = 0)
      */
     public val parts: IdentTokenList
-        get() = IdentTokenList.pack(nodeIndex, SLOT_PARTS)
+        get() = if (isValid) IdentTokenList.pack(nodeIndex, SLOT_PARTS) else IdentTokenList.EMPTY
 
     /**
      * (Child list at slot [SLOT_DOTS] = 1)
      */
     public val dots: DotTokenList
-        get() = DotTokenList.pack(nodeIndex, SLOT_DOTS)
+        get() = if (isValid) DotTokenList.pack(nodeIndex, SLOT_DOTS) else DotTokenList.EMPTY
 
     override fun toString(): String = if (isValid) """QualifiedNameSyntax($nodeIndex)""" else "QualifiedNameSyntax.NONE"
 
@@ -669,48 +669,48 @@ public value class TokenDeclSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val triviaKw: TriviaKwToken
-        get() = TriviaKwToken(tree.getChildBySlot(nodeIndex, SLOT_TRIVIA_KW))
+        get() = if (isValid) TriviaKwToken(tree.getChildBySlot(nodeIndex, SLOT_TRIVIA_KW)) else TriviaKwToken.NONE
 
     /**
      * (Optional token at slot [SLOT_TOKEN_KW] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val tokenKw: TokenKwToken
-        get() = TokenKwToken(tree.getChildBySlot(nodeIndex, SLOT_TOKEN_KW))
+        get() = if (isValid) TokenKwToken(tree.getChildBySlot(nodeIndex, SLOT_TOKEN_KW)) else TokenKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_NAME] = 2)
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     /**
      * (Optional child at slot [SLOT_CATEGORIES] = 3)
      */
     context(tree: ConcreteSyntaxTree)
     public val categories: CategoryClauseSyntax
-        get() = CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_CATEGORIES))
+        get() = if (isValid) CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_CATEGORIES)) else CategoryClauseSyntax.NONE
 
     /**
      * (Optional token at slot [SLOT_EQ] = 4)
      */
     context(tree: ConcreteSyntaxTree)
     public val eq: EqToken
-        get() = EqToken(tree.getChildBySlot(nodeIndex, SLOT_EQ))
+        get() = if (isValid) EqToken(tree.getChildBySlot(nodeIndex, SLOT_EQ)) else EqToken.NONE
 
     /**
      * (Optional token at slot [SLOT_FIXED_TEXT] = 5)
      */
     context(tree: ConcreteSyntaxTree)
     public val fixedText: StringLiteralToken
-        get() = StringLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_FIXED_TEXT))
+        get() = if (isValid) StringLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_FIXED_TEXT)) else StringLiteralToken.NONE
 
     /**
      * (Child list at slot [SLOT_ANNOTATIONS] = 6)
      */
     public val annotations: AnnotationList
-        get() = AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS)
+        get() = if (isValid) AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS) else AnnotationList.EMPTY
 
     override fun toString(): String = if (isValid) """TokenDeclSyntax($nodeIndex)""" else "TokenDeclSyntax.NONE"
 
@@ -800,54 +800,54 @@ public value class TokenCategoryDeclSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val openKw: OpenKwToken
-        get() = OpenKwToken(tree.getChildBySlot(nodeIndex, SLOT_OPEN_KW))
+        get() = if (isValid) OpenKwToken(tree.getChildBySlot(nodeIndex, SLOT_OPEN_KW)) else OpenKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_TOKEN_KW] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val tokenKw: TokenKwToken
-        get() = TokenKwToken(tree.getChildBySlot(nodeIndex, SLOT_TOKEN_KW))
+        get() = if (isValid) TokenKwToken(tree.getChildBySlot(nodeIndex, SLOT_TOKEN_KW)) else TokenKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_CATEGORY_KW] = 2)
      */
     context(tree: ConcreteSyntaxTree)
     public val categoryKw: CategoryKwToken
-        get() = CategoryKwToken(tree.getChildBySlot(nodeIndex, SLOT_CATEGORY_KW))
+        get() = if (isValid) CategoryKwToken(tree.getChildBySlot(nodeIndex, SLOT_CATEGORY_KW)) else CategoryKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_NAME] = 3)
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     /**
      * (Optional child at slot [SLOT_SUPER_CATEGORIES] = 4)
      */
     context(tree: ConcreteSyntaxTree)
     public val superCategories: CategoryClauseSyntax
-        get() = CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_SUPER_CATEGORIES))
+        get() = if (isValid) CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_SUPER_CATEGORIES)) else CategoryClauseSyntax.NONE
 
     /**
      * (Optional token at slot [SLOT_EQ] = 5)
      */
     context(tree: ConcreteSyntaxTree)
     public val eq: EqToken
-        get() = EqToken(tree.getChildBySlot(nodeIndex, SLOT_EQ))
+        get() = if (isValid) EqToken(tree.getChildBySlot(nodeIndex, SLOT_EQ)) else EqToken.NONE
 
     /**
      * (Child list at slot [SLOT_MEMBERS] = 6)
      */
     public val members: TokenMemberRefList
-        get() = TokenMemberRefList.pack(nodeIndex, SLOT_MEMBERS)
+        get() = if (isValid) TokenMemberRefList.pack(nodeIndex, SLOT_MEMBERS) else TokenMemberRefList.EMPTY
 
     /**
      * (Child list at slot [SLOT_PIPES] = 7)
      */
     public val pipes: PipeTokenList
-        get() = PipeTokenList.pack(nodeIndex, SLOT_PIPES)
+        get() = if (isValid) PipeTokenList.pack(nodeIndex, SLOT_PIPES) else PipeTokenList.EMPTY
 
     override fun toString(): String = if (isValid) """TokenCategoryDeclSyntax($nodeIndex)""" else "TokenCategoryDeclSyntax.NONE"
 
@@ -937,14 +937,14 @@ public value class TokenMemberRefSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     /**
      * (Optional token at slot [SLOT_LITERAL] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val literal: StringLiteralToken
-        get() = StringLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_LITERAL))
+        get() = if (isValid) StringLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_LITERAL)) else StringLiteralToken.NONE
 
     override fun toString(): String = if (isValid) """TokenMemberRefSyntax($nodeIndex)""" else "TokenMemberRefSyntax.NONE"
 
@@ -1019,47 +1019,47 @@ public value class CategoryDeclSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val openKw: OpenKwToken
-        get() = OpenKwToken(tree.getChildBySlot(nodeIndex, SLOT_OPEN_KW))
+        get() = if (isValid) OpenKwToken(tree.getChildBySlot(nodeIndex, SLOT_OPEN_KW)) else OpenKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_CATEGORY_KW] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val categoryKw: CategoryKwToken
-        get() = CategoryKwToken(tree.getChildBySlot(nodeIndex, SLOT_CATEGORY_KW))
+        get() = if (isValid) CategoryKwToken(tree.getChildBySlot(nodeIndex, SLOT_CATEGORY_KW)) else CategoryKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_NAME] = 2)
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     /**
      * (Optional child at slot [SLOT_SUPER_CATEGORIES] = 3)
      */
     context(tree: ConcreteSyntaxTree)
     public val superCategories: CategoryClauseSyntax
-        get() = CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_SUPER_CATEGORIES))
+        get() = if (isValid) CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_SUPER_CATEGORIES)) else CategoryClauseSyntax.NONE
 
     /**
      * (Optional token at slot [SLOT_EQ] = 4)
      */
     context(tree: ConcreteSyntaxTree)
     public val eq: EqToken
-        get() = EqToken(tree.getChildBySlot(nodeIndex, SLOT_EQ))
+        get() = if (isValid) EqToken(tree.getChildBySlot(nodeIndex, SLOT_EQ)) else EqToken.NONE
 
     /**
      * (Child list at slot [SLOT_MEMBERS] = 5)
      */
     public val members: IdentTokenList
-        get() = IdentTokenList.pack(nodeIndex, SLOT_MEMBERS)
+        get() = if (isValid) IdentTokenList.pack(nodeIndex, SLOT_MEMBERS) else IdentTokenList.EMPTY
 
     /**
      * (Child list at slot [SLOT_PIPES] = 6)
      */
     public val pipes: PipeTokenList
-        get() = PipeTokenList.pack(nodeIndex, SLOT_PIPES)
+        get() = if (isValid) PipeTokenList.pack(nodeIndex, SLOT_PIPES) else PipeTokenList.EMPTY
 
     override fun toString(): String = if (isValid) """CategoryDeclSyntax($nodeIndex)""" else "CategoryDeclSyntax.NONE"
 
@@ -1149,47 +1149,47 @@ public value class NodeDeclSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val nodeKw: NodeKwToken
-        get() = NodeKwToken(tree.getChildBySlot(nodeIndex, SLOT_NODE_KW))
+        get() = if (isValid) NodeKwToken(tree.getChildBySlot(nodeIndex, SLOT_NODE_KW)) else NodeKwToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_NAME] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     /**
      * (Optional child at slot [SLOT_CATEGORIES] = 2)
      */
     context(tree: ConcreteSyntaxTree)
     public val categories: CategoryClauseSyntax
-        get() = CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_CATEGORIES))
+        get() = if (isValid) CategoryClauseSyntax(tree.getChildBySlot(nodeIndex, SLOT_CATEGORIES)) else CategoryClauseSyntax.NONE
 
     /**
      * (Child list at slot [SLOT_ANNOTATIONS] = 3)
      */
     public val annotations: AnnotationList
-        get() = AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS)
+        get() = if (isValid) AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS) else AnnotationList.EMPTY
 
     /**
      * (Optional token at slot [SLOT_L_BRACE] = 4)
      */
     context(tree: ConcreteSyntaxTree)
     public val lBrace: LBraceToken
-        get() = LBraceToken(tree.getChildBySlot(nodeIndex, SLOT_L_BRACE))
+        get() = if (isValid) LBraceToken(tree.getChildBySlot(nodeIndex, SLOT_L_BRACE)) else LBraceToken.NONE
 
     /**
      * (Child list at slot [SLOT_FIELDS] = 5)
      */
     public val fields: FieldDeclList
-        get() = FieldDeclList.pack(nodeIndex, SLOT_FIELDS)
+        get() = if (isValid) FieldDeclList.pack(nodeIndex, SLOT_FIELDS) else FieldDeclList.EMPTY
 
     /**
      * (Optional token at slot [SLOT_R_BRACE] = 6)
      */
     context(tree: ConcreteSyntaxTree)
     public val rBrace: RBraceToken
-        get() = RBraceToken(tree.getChildBySlot(nodeIndex, SLOT_R_BRACE))
+        get() = if (isValid) RBraceToken(tree.getChildBySlot(nodeIndex, SLOT_R_BRACE)) else RBraceToken.NONE
 
     override fun toString(): String = if (isValid) """NodeDeclSyntax($nodeIndex)""" else "NodeDeclSyntax.NONE"
 
@@ -1276,19 +1276,19 @@ public value class CategoryClauseSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val colon: ColonToken
-        get() = ColonToken(tree.getChildBySlot(nodeIndex, SLOT_COLON))
+        get() = if (isValid) ColonToken(tree.getChildBySlot(nodeIndex, SLOT_COLON)) else ColonToken.NONE
 
     /**
      * (Child list at slot [SLOT_NAMES] = 1)
      */
     public val names: IdentTokenList
-        get() = IdentTokenList.pack(nodeIndex, SLOT_NAMES)
+        get() = if (isValid) IdentTokenList.pack(nodeIndex, SLOT_NAMES) else IdentTokenList.EMPTY
 
     /**
      * (Child list at slot [SLOT_COMMAS] = 2)
      */
     public val commas: CommaTokenList
-        get() = CommaTokenList.pack(nodeIndex, SLOT_COMMAS)
+        get() = if (isValid) CommaTokenList.pack(nodeIndex, SLOT_COMMAS) else CommaTokenList.EMPTY
 
     override fun toString(): String = if (isValid) """CategoryClauseSyntax($nodeIndex)""" else "CategoryClauseSyntax.NONE"
 
@@ -1363,34 +1363,34 @@ public value class FieldDeclSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_COLON] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val colon: ColonToken
-        get() = ColonToken(tree.getChildBySlot(nodeIndex, SLOT_COLON))
+        get() = if (isValid) ColonToken(tree.getChildBySlot(nodeIndex, SLOT_COLON)) else ColonToken.NONE
 
     /**
      * (Mandatory child (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_TYPE_EXPR] = 2)
      */
     context(tree: ConcreteSyntaxTree)
     public val typeExpr: TypeExprSyntax
-        get() = TypeExprSyntax(tree.getChildBySlot(nodeIndex, SLOT_TYPE_EXPR))
+        get() = if (isValid) TypeExprSyntax(tree.getChildBySlot(nodeIndex, SLOT_TYPE_EXPR)) else TypeExprSyntax.NONE
 
     /**
      * (Optional token at slot [SLOT_QUANTIFIER] = 3)
      */
     context(tree: ConcreteSyntaxTree)
     public val quantifier: QuantifierOpToken
-        get() = QuantifierOpToken(tree.getChildBySlot(nodeIndex, SLOT_QUANTIFIER))
+        get() = if (isValid) QuantifierOpToken(tree.getChildBySlot(nodeIndex, SLOT_QUANTIFIER)) else QuantifierOpToken.NONE
 
     /**
      * (Child list at slot [SLOT_ANNOTATIONS] = 4)
      */
     public val annotations: AnnotationList
-        get() = AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS)
+        get() = if (isValid) AnnotationList.pack(nodeIndex, SLOT_ANNOTATIONS) else AnnotationList.EMPTY
 
     override fun toString(): String = if (isValid) """FieldDeclSyntax($nodeIndex)""" else "FieldDeclSyntax.NONE"
 
@@ -1474,7 +1474,7 @@ public value class NamedTypeExprSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     override fun toString(): String = if (isValid) """NamedTypeExprSyntax($nodeIndex)""" else "NamedTypeExprSyntax.NONE"
 
@@ -1546,7 +1546,7 @@ public value class LiteralTokenTypeExprSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val literal: StringLiteralToken
-        get() = StringLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_LITERAL))
+        get() = if (isValid) StringLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_LITERAL)) else StringLiteralToken.NONE
 
     override fun toString(): String = if (isValid) """LiteralTokenTypeExprSyntax($nodeIndex)""" else "LiteralTokenTypeExprSyntax.NONE"
 
@@ -1618,26 +1618,26 @@ public value class InlineUnionTypeExprSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val lParen: LParenToken
-        get() = LParenToken(tree.getChildBySlot(nodeIndex, SLOT_L_PAREN))
+        get() = if (isValid) LParenToken(tree.getChildBySlot(nodeIndex, SLOT_L_PAREN)) else LParenToken.NONE
 
     /**
      * (Child list at slot [SLOT_MEMBERS] = 1)
      */
     public val members: TokenMemberRefList
-        get() = TokenMemberRefList.pack(nodeIndex, SLOT_MEMBERS)
+        get() = if (isValid) TokenMemberRefList.pack(nodeIndex, SLOT_MEMBERS) else TokenMemberRefList.EMPTY
 
     /**
      * (Child list at slot [SLOT_PIPES] = 2)
      */
     public val pipes: PipeTokenList
-        get() = PipeTokenList.pack(nodeIndex, SLOT_PIPES)
+        get() = if (isValid) PipeTokenList.pack(nodeIndex, SLOT_PIPES) else PipeTokenList.EMPTY
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_R_PAREN] = 3)
      */
     context(tree: ConcreteSyntaxTree)
     public val rParen: RParenToken
-        get() = RParenToken(tree.getChildBySlot(nodeIndex, SLOT_R_PAREN))
+        get() = if (isValid) RParenToken(tree.getChildBySlot(nodeIndex, SLOT_R_PAREN)) else RParenToken.NONE
 
     override fun toString(): String = if (isValid) """InlineUnionTypeExprSyntax($nodeIndex)""" else "InlineUnionTypeExprSyntax.NONE"
 
@@ -1715,35 +1715,35 @@ public value class AnnotationSyntax(
      */
     context(tree: ConcreteSyntaxTree)
     public val at: AtToken
-        get() = AtToken(tree.getChildBySlot(nodeIndex, SLOT_AT))
+        get() = if (isValid) AtToken(tree.getChildBySlot(nodeIndex, SLOT_AT)) else AtToken.NONE
 
     /**
      * (Mandatory token (may be [NONE] or `isMissing` on syntax error) at slot [SLOT_NAME] = 1)
      */
     context(tree: ConcreteSyntaxTree)
     public val name: IdentToken
-        get() = IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME))
+        get() = if (isValid) IdentToken(tree.getChildBySlot(nodeIndex, SLOT_NAME)) else IdentToken.NONE
 
     /**
      * (Optional token at slot [SLOT_L_PAREN] = 2)
      */
     context(tree: ConcreteSyntaxTree)
     public val lParen: LParenToken
-        get() = LParenToken(tree.getChildBySlot(nodeIndex, SLOT_L_PAREN))
+        get() = if (isValid) LParenToken(tree.getChildBySlot(nodeIndex, SLOT_L_PAREN)) else LParenToken.NONE
 
     /**
      * (Optional token at slot [SLOT_ARG] = 3)
      */
     context(tree: ConcreteSyntaxTree)
     public val arg: IntLiteralToken
-        get() = IntLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_ARG))
+        get() = if (isValid) IntLiteralToken(tree.getChildBySlot(nodeIndex, SLOT_ARG)) else IntLiteralToken.NONE
 
     /**
      * (Optional token at slot [SLOT_R_PAREN] = 4)
      */
     context(tree: ConcreteSyntaxTree)
     public val rParen: RParenToken
-        get() = RParenToken(tree.getChildBySlot(nodeIndex, SLOT_R_PAREN))
+        get() = if (isValid) RParenToken(tree.getChildBySlot(nodeIndex, SLOT_R_PAREN)) else RParenToken.NONE
 
     override fun toString(): String = if (isValid) """AnnotationSyntax($nodeIndex)""" else "AnnotationSyntax.NONE"
 

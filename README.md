@@ -7,10 +7,10 @@ Dialector provides a series of libraries and build tools designed to simplify th
 
 ## Modules
 
-- **[`dialector-cst-gradle-plugin`](dialector-cst-gradle-plugin/README.md)**: Gradle plugin (`dev.dialector.cst`) that compiles `.cst` concrete syntax tree schema files into type-safe Kotlin code.
-- **`dialector-cst`**: Core runtime library providing immutable `ConcreteSyntaxTree`, `CstNode`, `CstToken`, incremental updates, and builder APIs.
+- **`dialector-cst`**: Concrete syntax tree library providing an efficient, immutable data structure and builder APIs.
+- **`dialector-kt`**: Semantic modeling and abstract syntax tree library.
 - **`dialector-cst-cli`**: Command-line tool and generator used to compile `.cst` schemas into Kotlin code.
-- **`dialector-kt`**: Core semantic modeling and abstract syntax tree library.
+- **[`dialector-cst-gradle-plugin`](dialector-cst-gradle-plugin/README.md)**: Gradle plugin (`dev.dialector.cst`) that compiles `.cst` concrete syntax tree schema files into type-safe Kotlin code.
 - **[`dialector-kt-processor`](dialector-kt-processor/README.md)**: KSP compiler plugin generating node implementations and DSL builders from annotated interfaces.
 - **[`dialector-lsp`](dialector-lsp/README.md)**: Language Server Protocol (LSP) adapter for the Dialector framework.
 

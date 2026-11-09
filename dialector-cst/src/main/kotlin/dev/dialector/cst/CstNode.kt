@@ -92,25 +92,25 @@ value class CstNode(val nodeIndex: Int) {
         get() = if (isValid) tree.getText(nodeIndex) else ""
 
     /**
-     * Returns the start character offset of this node.
+     * Returns the start character offset of this node, or -1 if this node is invalid.
      */
     context(tree: ConcreteSyntaxTree)
     val startOffset: Int
-        get() = tree.getNodeStartOffset(nodeIndex)
+        get() = if (isValid) tree.getNodeStartOffset(nodeIndex) else -1
 
     /**
      * Returns the character length of this node (0 for missing/synthetic nodes).
      */
     context(tree: ConcreteSyntaxTree)
     val length: Int
-        get() = tree.getNodeLength(nodeIndex)
+        get() = if (isValid) tree.getNodeLength(nodeIndex) else 0
 
     /**
-     * Returns the end character offset of this node.
+     * Returns the end character offset of this node, or -1 if this node is invalid.
      */
     context(tree: ConcreteSyntaxTree)
     val endOffset: Int
-        get() = tree.getNodeEndOffset(nodeIndex)
+        get() = if (isValid) tree.getNodeEndOffset(nodeIndex) else -1
 
     /**
      * Returns the zero-allocation [SourceRange] (`startOffset..endOffset`) of this node, or [SourceRange.NONE] if invalid.
